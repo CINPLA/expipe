@@ -1,0 +1,63 @@
+package:
+  name: expipe
+  version: {{ environ.get("GIT_DESCRIBE", "custom")|replace("v", "")|replace("-", "_") }}
+  
+source:
+  path: .
+ 
+build:
+    script: python setup.py install
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - pip
+    - numpy
+    - scipy
+    - pytables
+    - h5py
+    - six
+    - cython
+    - ipython
+    - matplotlib
+    - pyqtgraph
+    - pyqt
+    - nose
+    - astropy
+    - pyyaml
+    - pandas
+    - notebook
+    - seaborn
+    - quantities
+
+  run:
+    - python
+    - setuptools
+    - pip
+    - numpy
+    - scipy
+    - pytables
+    - h5py
+    - six
+    - cython
+    - ipython
+    - matplotlib
+    - pyqtgraph
+    - pyqt
+    - nose
+    - astropy
+    - pyyaml
+    - pandas
+    - notebook
+    - seaborn
+    - quantities
+
+test:
+  imports:
+    - expipe
+
+about:
+  home: https://github.com/CINPLA/expipe/
+  license: GPLv3
+  license_file: LICENSE
