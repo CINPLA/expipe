@@ -7,13 +7,13 @@ Main authors:
 
     | Mikkel Elle Lepperød
     | 
-    | Andreas Solbrå
-    | 
     | Svenn-Arne Dragly
     |
-    | Simen Tennøe
-    |
     | Milad Mobarhan
+    | 
+    | Andreas Solbrå
+    |
+    | Simen Tennøe
     | 
     | Our lab : cinpla.org
     |
