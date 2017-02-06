@@ -29,17 +29,27 @@ on how to run this command.
 If you are involved in CINPLA, please see the 
 `CINPLA setup page <https://github.com/CINPLA/expipe/wiki/CINPLA_setup>`_.
 
-.. doctest::
-
     >>> import expipe
-    >>> expipe.configure(
+    >>> expipe.configure( # doctest: +SKIP
     ...     data_path="",
     ...     email="",
     ...     password="",
     ...     url_prefix="",
     ...     api_key=""
     ... )
+
+To create an action if it does not already exist, use `require_action`:
+
+.. testsetup:
     
+    import expipe
+    expipe.ensure_testing()
+
+.. doctest::
+
+    >>> import expipe.io
+    >>> project = expipe.io.get_project("test")
+    >>> action = project.require_action("something")
 
 
 Indices and tables

@@ -1,8 +1,24 @@
 import yaml
 import os
+import sys
 
 settings_file_path = os.path.join(os.path.expanduser('~'), '.config', 'expipe', 'config.yaml')
+test_settings_file_path = os.path.join(os.path.expanduser('~'), '.config', 'expipe', 'test-config.yaml')
 
+default_settings = {
+    'data_path': os.path.join(os.path.join(os.path.expanduser('~'), 'expipe_data')),
+    'firebase': {
+        'email': '',
+        'password': '',
+        'config': {
+            "apiKey": "",
+            "authDomain": "",
+            "databaseURL": "",
+            "storageBucket": "",
+        }
+    }
+}
+    
 
 def deep_verification(default, current, path=""):
     for key in default:
@@ -39,7 +55,7 @@ def configure(data_path, email, password, url_prefix, api_key):
         prefix of Firebase server URL (https://<url_prefix>.firebaseio.com)
     api_key:
         Firebase API key
-    """    
+    """
     settings_directory = os.path.dirname(settings_file_path)
     
     if not os.path.exists(settings_directory):
@@ -65,19 +81,12 @@ def configure(data_path, email, password, url_prefix, api_key):
         yaml.dump(current_settings, settings_file, default_flow_style=False)
 
 
-default_settings = {
-    'data_path': os.path.join(os.path.join(os.path.expanduser('~'), 'expipe_data')),
-    'firebase': {
-        'email': '',
-        'password': '',
-        'config': {
-            "apiKey": "",
-            "authDomain": "",
-            "databaseURL": "",
-            "storageBucket": "",
-        }
-    }
-}
+def ensure_testing():
+    global settings
+    with open(test_settings_file_path) as settings_file:
+        settings = yaml.load(settings_file)
+        deep_verification(default_settings, settings)
+    assert("allow_tests" in settings and settings["allow_tests"])
 
 try:
     with open(settings_file_path) as settings_file:
@@ -88,3 +97,6 @@ except FileNotFoundError:
           "Type the following for more information about creating a config file:\n\n",
           "\texpipe.configure?\n\n")
     settings = default_settings
+
+if "unittest" in sys.modules.keys() or "_pytest" in sys.modules.keys() or "doctest" in sys.argv:
+    ensure_testing()
