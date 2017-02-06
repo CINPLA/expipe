@@ -1,2 +1,2 @@
-print("ERROR: Expipe currenty has no main function. "
+print("ERROR: Expipe currently has no main function.",
       "Please import expipe as a module.")
