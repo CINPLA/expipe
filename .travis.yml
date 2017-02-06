@@ -9,7 +9,8 @@ install:
 script:
   - source libs/travis-conda-scripts/scripts/config.sh
   - mkdir -p ~/.config/expipe
-  - echo $EXPIPE_CONFIG > ~/.config/expipe/test-config.yaml
+  - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
+  - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
   - bash -ex libs/travis-conda-scripts/scripts/install_package.sh expipe
   - bash -ex libs/travis-conda-scripts/scripts/doctest.sh

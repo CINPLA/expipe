@@ -30,6 +30,7 @@ requirements:
     - notebook
     - seaborn
     - quantities
+    - exdir
 
   run:
     - python
@@ -52,6 +53,7 @@ requirements:
     - notebook
     - seaborn
     - quantities
+    - exdir
 
 test:
   imports:
