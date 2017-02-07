@@ -30,6 +30,8 @@ requirements:
     - notebook
     - seaborn
     - quantities
+    - exdir
+    - pyxona
 
   run:
     - python
@@ -52,6 +54,8 @@ requirements:
     - notebook
     - seaborn
     - quantities
+    - exdir
+    - pyxona
 
 test:
   imports:

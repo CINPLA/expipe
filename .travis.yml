@@ -8,7 +8,11 @@ install:
   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
 script:
   - source libs/travis-conda-scripts/scripts/config.sh
+  - mkdir -p ~/.config/expipe
+  - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
+  - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
   - bash -ex libs/travis-conda-scripts/scripts/install_package.sh expipe
+  - pip install pyrebase # TODO get rid of this dependency -> create conda package or use own code
   - bash -ex libs/travis-conda-scripts/scripts/doctest.sh
   - bash -ex libs/travis-conda-scripts/scripts/upload.sh

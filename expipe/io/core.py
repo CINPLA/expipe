@@ -8,6 +8,7 @@ from expipe import settings
 
 # TODO add attribute managers to allow changing values of modules and actions
 
+datetime_format = '%Y-%m-%dT%H:%M:%S'
 
 class ActionManager:
     def __init__(self, project):
@@ -213,13 +214,24 @@ class Action:
             module._firebase.set(contents)
         return module
 
-
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
         return class_type(self, name)
 
 
 def get_project(project_id):
+    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    if not existing:
+        raise NameError("Project " + project_id + " does not exist.")
+    return Project(project_id)
+
+
+def require_project(project_id):
+    """Creates a new project with the provided id."""
+    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    registered = datetime.datetime.today().strftime(datetime_format)
+    if not existing:
+        db.child("/".join(["projects", project_id])).set({"registered": registered}, user["idToken"])
     return Project(project_id)
 
 
@@ -241,13 +253,7 @@ def _init_module():
     Helper function, which can abort if loading fails.
     """
     global auth, user, db
-    config = {
-        "apiKey": "AIzaSyAjGqZwiCKS2333m820e9UdZ7jbnkfEpjw",
-        "authDomain": "expipe-26506.firebaseapp.com",
-        "databaseURL": "https://expipe-26506.firebaseio.com",
-        "storageBucket": "expipe-26506.appspot.com",
-        "messagingSenderId": "1071687639638"
-    }
+    config = settings['firebase']['config']
 
     firebase = pyrebase.initialize_app(config)
 
@@ -255,7 +261,9 @@ def _init_module():
         email = settings['firebase']['email']
         password = settings['firebase']['password']
         auth = firebase.auth()
-        user = auth.sign_in_with_email_and_password(email, password)
+        user = None
+        if email and password:
+            user = auth.sign_in_with_email_and_password(email, password)
         db = firebase.database()
     except KeyError:
         print("Could not find email and password in configuration.\n"
@@ -263,7 +271,6 @@ def _init_module():
               "For more info see:\n\n"
               "\texpipe.configure?\n\n")
         # raise ImportError("Configuration not complete. See details in output.")
-
 
     return True
 
