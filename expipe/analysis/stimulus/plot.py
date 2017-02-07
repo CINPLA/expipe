@@ -13,7 +13,7 @@ def plot_psth(epo=None, t_start=None, t_stop=None, trials=None, unit=None,
               color='b', title='plot_psth', stim_color='b', edgecolor='k',
               alpha=.2, label='stim on', legend_loc=1, legend_style='patch',
               axs=None, hist_ylabel=True, rast_ylabel='trials', dim='s',
-              ylim=[0,30]):
+              ylim=None):
     """
     Visualize clustering on amplitude at detection point
 
