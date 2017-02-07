@@ -83,6 +83,11 @@ def configure(data_path, email, password, url_prefix, api_key):
 
 def ensure_testing():
     global settings
+    if not os.path.exists(test_settings_file_path):
+        raise FileNotFoundError(
+            "ERROR: Test config does not exist. " +
+            "Please create ~/.config/expipe/test-config.yaml and point it to a testing server."
+        )
     with open(test_settings_file_path) as settings_file:
         settings = yaml.load(settings_file)
         deep_verification(default_settings, settings)

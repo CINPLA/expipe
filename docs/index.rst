@@ -12,6 +12,11 @@ Expipe is a python module for neuroscientific data analysis.
    authors
    expipe
    
+.. testsetup:
+   
+   import expipe
+   expipe.ensure_testing()
+   
 Getting started
 ---------------
 
@@ -37,20 +42,58 @@ If you are involved in CINPLA, please see the
     ...     url_prefix="",
     ...     api_key=""
     ... )
-
-To create an action if it does not already exist, use `require_action`:
-
-.. testsetup:
     
-    import expipe
-    expipe.ensure_testing()
+Create a new project if it does not exist with `require_project`:
 
 .. doctest::
 
     >>> import expipe.io
-    >>> project = expipe.io.get_project("test")
-    >>> action = project.require_action("something")
+    >>> project = expipe.io.require_project("test")
 
+A project can contain a number of actions and subjects.
+
+Actions
+-------
+
+Actions are events that are performed during a project.
+An action can be an experiment or any preparation for an experiment.
+
+To create an action on the project or return an existing action if it already
+exists, use `project.require_action`:
+
+.. doctest::
+
+    >>> action = project.require_action("something")
+    
+Modules
+-------
+
+Actions have multiple properties such as the type,
+location, users and subjects.
+If you want to expand an action with more information,
+you can use modules.
+Modules can hold arbitrary information about the action and can be predefined by
+using templates to make it easy to add the same information to multiple actions.
+Ideally, templates should be designed in the beginning of a project to define
+what should be registered in each action.
+
+To add a module to an action, use `require_module`.
+The function takes an optional `template` parameter:
+
+.. doctest::
+
+    >>> tracking = action.require_module("tracking", template="tracking")
+    
+We recommend using `expipe-browser` to edit module values.
+To retrieve the values of a module, use `module.to_dict()`:
+
+.. doctest::
+
+    >>> print(tracking.to_dict())
+    None
+
+.. todo:: Add contents to this module
+.. todo:: Documentation for retreiving values on a module.
 
 Indices and tables
 ==================

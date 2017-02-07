@@ -8,6 +8,7 @@ from expipe import settings
 
 # TODO add attribute managers to allow changing values of modules and actions
 
+datetime_format = '%Y-%m-%dT%H:%M:%S'
 
 class ActionManager:
     def __init__(self, project):
@@ -213,13 +214,24 @@ class Action:
             module._firebase.set(contents)
         return module
 
-
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
         return class_type(self, name)
 
 
 def get_project(project_id):
+    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    if not existing:
+        raise NameError("Project " + project_id + " does not exist.")
+    return Project(project_id)
+
+
+def require_project(project_id):
+    """Creates a new project with the provided id."""
+    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    registered = datetime.datetime.today().strftime(datetime_format)
+    if not existing:
+        db.child("/".join(["projects", project_id])).set({"registered": registered}, user["idToken"])
     return Project(project_id)
 
 
