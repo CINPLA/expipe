@@ -46,7 +46,7 @@ def convert(axona_filename, exdir_path):
 def load_axona_file(exdir_file):
     aqcuisition = exdir_file["aqcuisition"]
     axona_session = aqcuisition.attrs["axona_session"]
-    axona_filename = os.path.join(aqcuisition.folder, axona_session,
+    axona_filename = os.path.join(aqcuisition.directory, axona_session,
                                   axona_session + ".set")
     return pyxona.File(axona_filename)
 
@@ -107,6 +107,8 @@ def generate_analog_signals(exdir_path):
                 lfp_timeseries.attrs["electrode_idx"] = analog_signal.channel_id - axona_channel_group.channel_group_id * 4
                 lfp_timeseries.attrs['electrode_group_id'] = axona_channel_group.channel_group_id
                 data = lfp_timeseries.require_dataset("data", data=analog_signal.signal)
+                # NOTE: In exdirio (python-neo) sample rate is required on dset
+                data.attrs["sample_rate"] = analog_signal.sample_rate
 
 
 def generate_clusters(exdir_path):
