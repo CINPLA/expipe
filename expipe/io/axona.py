@@ -79,7 +79,7 @@ def make_channel_groups(exdir_path):
     return channel_groups
 
 
-def parse_analog_signals(exdir_path):
+def generate_analog_signals(exdir_path):
     channel_groups = make_channel_groups(exdir_path)
     for channel_group_segment in channel_groups.values():
         channel_group = channel_group_segment['channel_group']
@@ -109,7 +109,7 @@ def parse_analog_signals(exdir_path):
                 data = lfp_timeseries.require_dataset("data", data=analog_signal.signal)
 
 
-def parse_clusters(exdir_path):
+def generate_clusters(exdir_path):
     channel_groups = make_channel_groups(exdir_path)
     for channel_group_segment in channel_groups.values():
         channel_group = channel_group_segment['channel_group']
@@ -140,7 +140,7 @@ def parse_clusters(exdir_path):
                 cluster.attrs["peak_over_rms"] = None
 
 
-def parse_units(exdir_path):
+def generate_units(exdir_path):
     channel_groups = make_channel_groups(exdir_path)
     for channel_group_segment in channel_groups.values():
         channel_group = channel_group_segment['channel_group']
@@ -169,7 +169,7 @@ def parse_units(exdir_path):
                     unit.attrs["unit_description"] = None
 
 
-def parse_spike_trains(exdir_path):
+def generate_spike_trains(exdir_path):
     channel_groups = make_channel_groups(exdir_path)
     for channel_group_segment in channel_groups.values():
         channel_group = channel_group_segment['channel_group']
@@ -197,7 +197,7 @@ def parse_spike_trains(exdir_path):
         waveform_timeseries.require_dataset("timestamps", data=spike_train.times)
 
 
-def parse_tracking(exdir_path):
+def generate_tracking(exdir_path):
     exdir_file = exdir.File(exdir_path)
     general, subject, processing, epochs = _prepare_exdir_file(exdir_file)
     axona_file = load_axona_file(exdir_file=exdir_file)
@@ -218,7 +218,7 @@ def parse_tracking(exdir_path):
         led.attrs['stop_time'] = axona_file._duration
 
 
-def parse_inp(exdir_path):
+def generate_inp(exdir_path):
     # TODO should we save duration as attr or use start-stop time?
     exdir_file = exdir.File(exdir_path)
     general, subject, processing, epochs = _prepare_exdir_file(exdir_file)
@@ -242,11 +242,11 @@ class AxonaFilerecord(Filerecord):
     def import_file(self, axona_setfile):
         convert(axona_filename=axona_setfile, exdir_path=os.path.join(settings["data_path"], self.local_path))
     
-    def parse_tracking(self):
-        parse_tracking(self.local_path)
+    def generate_tracking(self):
+        generate_tracking(self.local_path)
         
-    def parse_analog_signals(self):
-        parse_analog_signals(self.local_path)
+    def generate_analog_signals(self):
+        generate_analog_signals(self.local_path)
         
-    def parse_spike_trains(self):
-        parse_spike_trains(self.local_path)
+    def generate_spike_trains(self):
+        generate_spike_trains(self.local_path)
