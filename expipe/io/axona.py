@@ -164,7 +164,7 @@ def generate_units(exdir_path):
                     times = spike_train.times[indices]
                     unit.require_dataset("times", data=times)
                     
-                    unit.attrs["cluster_group"] = "Unsorted" if index == 0 else "Good" 
+                    unit.attrs["cluster_group"] = "Unsorted" 
                     unit.attrs["cluster_id"] = int(index)
                     # TODO: Add unit_description (e.g. cell type) and source as in NWB
                     unit.attrs["source"] = None
