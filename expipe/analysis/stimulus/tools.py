@@ -124,11 +124,22 @@ def make_spiketrain_trials(epo, t_start, t_stop, unit=None, sptr=None):
     -------
     out : list of neo.SpikeTrains
     '''
-    assert t_start != t_stop, 't_start cannot be equal to t_stop'
-    dim = 's'
-    t_start = t_start.rescale(dim)
-    t_stop = t_stop.rescale(dim)
     from neo.core import SpikeTrain
+    
+    if t_start.ndim == 0:
+        t_starts = t_start * np.ones(len(epo.times))
+    else:
+        t_starts = t_start
+        assert len(epo.times) == len(t_starts), 'epo.times and t_starts have different size'
+
+    if t_stop.ndim == 0:
+        t_stops = t_stop * np.ones(len(epo.times))
+    else:
+        t_stops = epo.durations
+        assert len(epo.times) == len(t_stops), 'epo.times and t_stops have different size'
+
+    dim = 's'
+    
     if sptr is None:
         assert unit is not None, 'unit and st cannot be both None'
         sptr = []
@@ -139,6 +150,8 @@ def make_spiketrain_trials(epo, t_start, t_stop, unit=None, sptr=None):
         sptr = sptr.rescale(dim)
     trials = []
     for j, t in enumerate(epo.times.rescale(dim)):
+        t_start = t_starts[j].rescale(dim)
+        t_stop = t_stops[j].rescale(dim)
         spikes = []
         for spike in sptr[(t+t_start < sptr) & (sptr < t+t_stop)]:
             spikes.append(spike-t)

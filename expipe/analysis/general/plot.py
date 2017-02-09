@@ -5,7 +5,7 @@ from ..misc.plot import simpleaxis
 
 
 def plot_raster(trials, color='b', lw=1, ax=None, marker='.', marker_size=10,
-                ylabel='trials', id_start=0, ylim=None, dim='s'):
+                ylabel='Trials', id_start=0, ylim=None, dim='s'):
     """
     Raster plot of trials
 
@@ -48,6 +48,7 @@ def plot_raster(trials, color='b', lw=1, ax=None, marker='.', marker_size=10,
     t_start = trials[0].t_start.rescale(dim)
     t_stop = trials[0].t_stop.rescale(dim)
     ax.set_xlim([t_start, t_stop])
+    ax.set_xlabel("Times ["+dim+"]")
     if ylabel is not None:
         ax.set_ylabel(ylabel)
     return ax
