@@ -127,15 +127,6 @@ def generate_clusters(exdir_path):
                 cluster.require_dataset("times", data=spike_train.times)
                 cluster.require_dataset("cluster_nums", data=units)
                 cluster.require_dataset("nums", data=cut.indices)
-                
-                cluster_groups = {}
-                for unit in units:
-                    if(unit == 0):
-                        cluster_groups.update({unit: "Unsorted"})
-                    else:
-                        cluster_groups.update({unit: "Good"})
-                        
-                cluster.attrs["cluster_groups"] = cluster_groups
                 cluster.attrs["start_time"] = start_time
                 cluster.attrs["stop_time"] = stop_time
                 # TODO: Add _ peak_over_rms as described in NWB
