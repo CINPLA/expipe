@@ -1,23 +1,44 @@
 import numpy as np
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
+import quantities as pq
+import seaborn
+
+
+def polar_tuning_curve(orients, rates, params={}):
+    """
+    Direction polar tuning curve 
+    """
+    import numpy as np    
+    import math
+    from expipe.analysis.misc import pretty_plotting
+    
+    assert len(orients) == len(rates)
+    
+    fig, ax = plt.subplots()  
+    ax = plt.subplot(111, projection='polar')
+    ax.plot(orients, rates, '-o', **params)
+
+    return fig, ax
+    
 
 def _gauss_function(x, y, A=1, a=0.63):
     r2 = x**2 + y**2
     return A / a**2 / np.pi * np.exp(-r2 / a**2)
-    
 
+    
 def _dog_function(x, y, A=1.0, a=0.63, B=0.85, b=1.23):
     center = _gauss_function(x, y, A, a)
     surround = _gauss_function(x, y, B, b)
     return center - surround
+
     
 def _doe_function(t, a=1, b=2):
     return np.exp(-t / a) / a**2 - np.exp(-t / b) / b**2
 
 
 def _field(x, y, t, A=1.0, a=0.63, B=0.85, b=1.23, c=1, d=2):
-    return _dog_function(x, y, A, a, B, b) * _doe_function (t, c, d)
+    return _dog_function(x, y, A, a, B, b) * _doe_function(t, c, d)
     
 
 class MidpointNormalize(colors.Normalize):
@@ -28,7 +49,6 @@ class MidpointNormalize(colors.Normalize):
     def __call__(self, value, clip=None):
         x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
         return np.ma.masked_array(np.interp(value, x, y))
-
 
 
 def rectangular_scalebar(ax, params={}): 
@@ -179,29 +199,6 @@ def plot_advance_receptive_field(field):
     return fig, (ax_im, ax_line)
 
 
-
-def polar_tuning_curve(trails,
-                       params={}):
-    """
-    Direction polar tuning curve 
-    """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from expipe.analysis.visual_stimulus.tools import average_rate
-    from expipe.analysis.misc import pretty_plotting
-
-    
-    # TODO: average rate should give both radians and degrees 
-    av_rate, orients = average_rate(trails)
-    orients *= np.pi/180.
-    
-    fig, ax = plt.subplots()  
-    ax = plt.subplot(111, projection='polar')
-    ax.plot(orients, av_rate, '-ro', **params)
-    
-    pretty_plotting.set_grid(ax)
-    
-    return fig, ax
 
 
     

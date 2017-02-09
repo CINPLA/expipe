@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 
-def set_grid(ax, bgcolor="#EAEAF2" , linecolor="w", linestyle="-", linewidth=1.3):
+
+def set_grid(ax, bgcolor="#EAEAF2", linecolor="w", linestyle="-", linewidth=1.3):
     """
     Set background color and grid line options
 
@@ -21,13 +22,13 @@ def set_grid(ax, bgcolor="#EAEAF2" , linecolor="w", linestyle="-", linewidth=1.3
     linewidth : float
         linewidth
     """
-    ax.set_axis_bgcolor(bgcolor)
+    ax.set_facecolor(bgcolor)
     ax.set_axisbelow("True")
-    ax.grid(True, color=linecolor, linestyle=linestyle, linewidth=linewidth, zorder = 0)
+    ax.grid(True, color=linecolor, linestyle=linestyle, linewidth=linewidth, zorder=0)
 
 
-def spines_edge_color(ax, edges = {"top": "none", "bottom": "w",
-                                  "right": "none", "left": "w"}):
+def spines_edge_color(ax, edges={"top": "none", "bottom": "w",
+                                 "right": "none", "left": "w"}):
     """
     Set spines edge color
 
@@ -71,7 +72,7 @@ def remove_ticklabels(ax, x_axis=True, y_axis=True):
         ax.set_yticklabels(empty_string_labels)
 
 
-def move_spines(ax, edges = {"bottom": 0, "left": 0}):
+def move_spines(ax, edges={"bottom": 0, "left": 0}):
     """
     Move spines
     Parameters
@@ -84,7 +85,8 @@ def move_spines(ax, edges = {"bottom": 0, "left": 0}):
     """
 
     for edge, value in edges.iteritems():
-        ax.spines[edge].set_position(('data',value))
+        ax.spines[edge].set_position(('data', value))
+
 
 def remove_ticks(ax):
     """
@@ -113,7 +115,7 @@ def set_font():
         'font.size': 14,
         'axes.titlesize': 18,
         'axes.labelsize': 16,
-        'lines.linewidth':2,
+        'lines.linewidth': 2,
     }
     plt.rcParams.update(params)
 
@@ -123,15 +125,15 @@ def set_legend():
     legend options
     """
     params = {
-        'legend.fontsize' : 'medium',
-        'legend.handlelength' : 2.2,
+        'legend.fontsize': 'medium',
+        'legend.handlelength': 2.2,
         'legend.frameon': False,
         'legend.numpoints': 1,
         'legend.scatterpoints': 1,
-        'legend.fontsize' : 14,
-        'legend.handlelength' : 2.2,
-        'legend.borderpad' : 0.0,
-        'legend.framealpha' : 2,
+        'legend.fontsize': 14,
+        'legend.handlelength': 2.2,
+        'legend.borderpad': 0.0,
+        'legend.framealpha': 2,
     }
     plt.rcParams.update(params)
 
@@ -166,9 +168,9 @@ def colormap(color=0):
 
 #########################################################################################
 if __name__ == "__main__":
-    import numpy as np
-
-    t = np.linspace(0,100,1000)
+    import numpy as np 
+    
+    t = np.linspace(0, 100, 1000)
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
