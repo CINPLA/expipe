@@ -158,7 +158,9 @@ def generate_units(exdir_path):
                 unit_times.attrs["start_time"] = start_time
                 unit_times.attrs["stop_time"] = stop_time
                 
-                for index in np.unique(cut.indices):
+                unit_ids = [i for i in np.unique(cut.indices) if i > 0]
+                unit_ids = np.array(unit_ids) - 1  # -1 for pyhton convention
+                for index in unit_ids:
                     unit = unit_times.require_group("unit_{}".format(index))
                     indices = np.where(cut.indices == index)[0]
                     times = spike_train.times[indices]
