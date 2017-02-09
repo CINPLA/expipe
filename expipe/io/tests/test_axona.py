@@ -25,9 +25,9 @@ def test_import_axona_data():
     
     expipe.io.axona.convert(axona_filename, exdir_path)
     
-    expipe.io.axona.parse_analog_signals(exdir_path)
-    expipe.io.axona.parse_spike_trains(exdir_path)
-    expipe.io.axona.parse_clusters(exdir_path)
-    expipe.io.axona.parse_units(exdir_path)    
-    expipe.io.axona.parse_inp(exdir_path)    
-    expipe.io.axona.parse_tracking(exdir_path)    
+    expipe.io.axona.generate_analog_signals(exdir_path)
+    expipe.io.axona.generate_spike_trains(exdir_path)
+    expipe.io.axona.generate_clusters(exdir_path)
+    expipe.io.axona.generate_units(exdir_path)    
+    expipe.io.axona.generate_inp(exdir_path)    
+    expipe.io.axona.generate_tracking(exdir_path)    
