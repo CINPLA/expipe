@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import quantities as pq
 from .tools import *
 from ..misc.plot import simpleaxis
-from ..statistics.plot import (plot_spike_histogram, plot_raster)
+from ..statistics.plot import (plot_spike_histogram)
+from ..general.plot import (plot_raster)
 from ..statistics.tools import (fano_factor_linregress)
 
 
