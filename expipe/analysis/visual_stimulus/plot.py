@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import quantities as pq
-import seaborn
 
 
 def polar_tuning_curve(orients, rates, params={}):

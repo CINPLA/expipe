@@ -4,7 +4,7 @@ import quantities as pq
 from ..misc.plot import simpleaxis
 
 
-def plot_raster(trials, color='b', lw=1, ax=None, marker='.', marker_size=10,
+def plot_raster(trials, color="#3498db", lw=1, ax=None, marker='.', marker_size=10,
                 ylabel='Trials', id_start=0, ylim=None, dim='s'):
     """
     Raster plot of trials

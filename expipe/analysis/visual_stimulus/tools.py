@@ -96,7 +96,7 @@ def compute_selectivity_index(av_rates, orients, selectivity_type):
         orth_n = np.where(orients == orth_angle_n)
 
         if len(orth_p[0]) == 0:
-            raise Exception("orientation not found: " BaseException+str(orth_angle_p))
+            raise Exception("orientation not found: " + str(orth_angle_p))
         if len(orth_n[0]) == 0:
             raise Exception("orientation not found: " + str(orth_angle_n))
 
@@ -106,7 +106,7 @@ def compute_selectivity_index(av_rates, orients, selectivity_type):
     else:
         raise ValueError("unknown selectivity type: ", str(selectivity_type), " options: osi, dsi")
         
-
+        
 def make_stim_off_epoch_array(epo, include_boundary=True):
     '''
     Makes EpochArray of stimulus off periods
