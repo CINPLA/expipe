@@ -54,16 +54,16 @@ def rate_latency(trials=None, epo=None, unit=None, t_start=None, t_stop=None,
 
 def epoch_overview(epo, period, expected_num_epochs=None):
     '''
-    Makes a new EpochArray with start and stop time as first and last event in
+    Makes a new Epoch with start and stop time as first and last event in
     a burst of epochs, bursts are separated by > period + stim duration*2
 
     Parameters
     ----------
-    epo : neo.EpochArray
+    epo : neo.Epoch
 
     Returns
     -------
-    out : neo.EpochArray
+    out : neo.Epoch
     '''
     is_quantities(period, dtype='scalar')
     if len(epo.times) == 1:
@@ -88,7 +88,7 @@ def print_epo(epo, N=20):
 
     Parameters
     ----------
-    epo : neo.EpochArray
+    epo : neo.Epoch
     N : number of epochs to print
 
     Returns
@@ -108,11 +108,11 @@ def print_epo(epo, N=20):
 
 def make_spiketrain_trials(epo, t_start, t_stop, unit=None, sptr=None):
     '''
-    Makes trials based on an EpochArray and given temporal bound
+    Makes trials based on an Epoch and given temporal bound
 
     Parameters
     ----------
-    epo : neo.EpochArray
+    epo : neo.Epoch
     t_start : quantities.Quantity
         time before epochs
     t_stop : quantities.Quantity
@@ -150,11 +150,11 @@ def make_spiketrain_trials(epo, t_start, t_stop, unit=None, sptr=None):
 
 def make_analog_trials(ana, epo, t_start, t_stop):
     '''
-    Makes trials based on an EpochArray and given temporal bound
+    Makes trials based on an Epoch and given temporal bound
 
     Parameters
     ----------
-    epo : neo.EpochArray
+    epo : neo.Epoch
     t_start : quantities.Quantity
         time before epochs
     t_stop : quantities.Quantity
@@ -179,91 +179,4 @@ def make_analog_trials(ana, epo, t_start, t_stop):
                                    sampling_rate=ana.sampling_rate,
                                    t_start=t_start,
                                    t_stop=t_stop))
-    return trials
-
-
-def make_trials(ana, epo, t_start, t_stop):
-    '''
-    Makes trials based on an EpochArray and given temporal bound
-
-    Parameters
-    ----------
-    epo : neo.EpochArray
-    t_start : quantities.Quantity
-        time before epochs
-    t_stop : quantities.Quantity
-        time after epochs
-    ana : neo.AnalogSignal
-
-    Returns
-    -------
-    out : list of neo.AnalogSignal
-    '''
-    assert t_start != t_stop, 't_start cannot be equal to t_stop'
-    dim = 's'
-    t_start.units = dim
-    t_start.units = dim
-    epo.times.units = dim
-    indcs = []
-    for j, t in enumerate(epo.times):
-        spikes = []
-        ind = np.where((t+t_start < ana.times) & (ana.times < t+t_stop))[0]
-        indcs.append(ind)
-    min_len = np.min([len(idxs) for idxs in indcs])
-    indcs = np.array([idcs[:min_len] for idcs in indcs])
-    return indcs
-
-
-
-def make_spiketrain_trials_new(epo, t_start, t_stop, sptr):
-    '''
-    Makes trials based on an EpochArray and given temporal bound
-
-    Parameters
-    ----------
-    epo : neo.EpochArray
-    t_start : quantities.Quantity
-        time before epochs
-    t_stop : quantities.Quantity
-        time after epochs
-    sptr : neo.SpikeTrain
-
-    Returns
-    -------
-    out : list of neo.SpikeTrains
-    '''
-    from neo.core import SpikeTrain
-    import quantities as pq
-
-    if t_start.ndim==0:
-        t_starts = t_start * np.ones(len(epo.times))
-    else:
-        t_starts = t_start
-        assert len(epo.times) == len(t_starts), 'epo.times and t_starts have different size'
-
-    if t_stop.ndim==0:
-        t_stops = t_stop * np.ones(len(epo.times))
-    else:
-        t_stops = epo.durations
-        assert len(epo.times) == len(t_stops), 'epo.times and t_stops have different size'
-
-
-    dim = 's'
-    t_start.units = dim
-    t_start.units = dim
-    epo.times.units = dim
-
-    sptr = sptr.rescale(dim)
-    trials = []
-
-    for j, t in enumerate(epo.times):
-        spikes = []
-        assert t_starts[j] != t_stops[j], 't_start cannot be equal to t_stop'
-
-        for spike in sptr[(t+t_starts[j] < sptr) & (sptr < t+t_stops[j])]:
-            spikes.append(spike-t)
-        trials.append(SpikeTrain(times=spikes*pq.s,
-                                 t_start=t_starts[j],
-                                 t_stop=t_stops[j],
-                                  annotations=epo.labels[j]))
     return trials
