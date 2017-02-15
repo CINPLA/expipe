@@ -1,12 +1,12 @@
 package:
   name: expipe
-  version: {{ environ.get("GIT_DESCRIBE", "custom")|replace("v", "")|replace("-", "_") }}
+  version: {{ environ.get("GIT_DESCRIBE", "0_custom")|replace("v", "")|replace("-", "_") }}
   
 source:
   path: .
  
 build:
-    noarch_python: True
+    noarch: python
     script: python setup.py install
 
 requirements:

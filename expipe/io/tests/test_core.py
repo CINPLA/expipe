@@ -5,12 +5,16 @@ import numpy as np
 
 
 def test_load_experiment():
-    project = expipe.io.get_project("ida_tracking")
-    action = project.require_action('test')
-    #action.location = {'gampræva': 'nordnorge'}
-    tracking = action.require_module("test2", template="analysis_analysis")
-    # tracking._firebase.set({"blah": "græv"})
-    print(tracking._firebase.get("box_size"))
+    
+    
+    
+    project = expipe.io.get_project("ida_mros")
+    action = project.require_action('2017-01-02_1241')
+    tracking = action.require_module("tracking", template="ida_tracking")
+    
+    
+    
+    
     # print(action)
     # print(action.modules)
     # print("Modules:")
