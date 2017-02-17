@@ -226,8 +226,8 @@ def generate_inp(exdir_path):
         
     inp_data = axona_file.inp_data
     inp.require_dataset('timestamps', inp_data.times)
-    inp.require_dataset('event_type', inp_data.event_type)
-    inp.require_dataset('value', inp_data.value)
+    inp.require_dataset('event_types', inp_data.event_types)
+    inp.require_dataset('values', inp_data.values)
 
 
 class AxonaFilerecord(Filerecord):
