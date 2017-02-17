@@ -29,13 +29,13 @@ def convert(axona_filename, exdir_path):
     dtime = axona_file._start_datetime.strftime('%Y-%m-%dT%H:%M:%S')
     exdir_file.attrs['session_start_time'] = dtime
     exdir_file.attrs['session_duration'] = axona_file._duration
-    aqcuisition = exdir_file.require_group("aqcuisition")
+    acquisition = exdir_file.require_group("acquisition")
     general = exdir_file.require_group("general")
     processing = exdir_file.require_group("processing")
     subject = general.require_group("subject")
 
-    target_folder = aqcuisition.require_raw(axona_file.session)
-    aqcuisition.attrs["axona_session"] = axona_file.session
+    target_folder = acquisition.require_raw(axona_file.session)
+    acquisition.attrs["axona_session"] = axona_file.session
 
     for filename in axona_file.related_files:
         shutil.copy(filename, target_folder)
@@ -44,9 +44,9 @@ def convert(axona_filename, exdir_path):
 
 
 def load_axona_file(exdir_file):
-    aqcuisition = exdir_file["aqcuisition"]
-    axona_session = aqcuisition.attrs["axona_session"]
-    axona_filename = os.path.join(aqcuisition.directory, axona_session,
+    acquisition = exdir_file["acquisition"]
+    axona_session = acquisition.attrs["axona_session"]
+    axona_filename = os.path.join(acquisition.directory, axona_session,
                                   axona_session + ".set")
     return pyxona.File(axona_filename)
 
