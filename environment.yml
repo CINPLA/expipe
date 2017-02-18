@@ -16,5 +16,3 @@ dependencies:
   - pip:
     - pycircstat
     - quantities
-    - pyrebase
-    - pyqt5
