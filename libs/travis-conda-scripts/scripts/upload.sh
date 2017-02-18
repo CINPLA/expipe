@@ -1,14 +1,16 @@
 if [ $TRAVIS_TEST_RESULT -eq 0 ]; then
-    PACKAGE=$(conda build -c conda-forge . --output --python $TRAVIS_PYTHON_VERSION)
+    PACKAGE=$(conda build -c conda-forge . --output --python "$TRAVIS_PYTHON_VERSION")
     echo "Package name $PACKAGE"
-    conda convert $PACKAGE --platform all -o packages
+    conda convert "$PACKAGE" --platform win-64 -o packages
+    conda convert "$PACKAGE" --platform osx-64 -o packages
+    conda convert "$PACKAGE" --platform linux-64 -o packages
     cd packages
     for os in $(ls); do
         cd $os
         for package in $(ls); do
             echo "Uploading $package to anaconda with anaconda upload..."
             set +x # hide token
-            anaconda -t "$CONDA_UPLOAD_TOKEN" upload -u "$1" --force $package
+            anaconda -t "$CONDA_UPLOAD_TOKEN" upload -u "$1" --force "$package"
             set -x
         done
         cd ..
