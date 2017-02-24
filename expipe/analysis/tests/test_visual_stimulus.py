@@ -8,7 +8,7 @@ import numpy as np
 #     from expipe.analysis.visual_stimulus.tools import average_rate
 #     from neo.core import SpikeTrain
 #     import quantities as pq
-# 
+#
 #     trails = [
 #             SpikeTrain(np.arange(0, 10, 1.)*pq.s, t_stop=10.0, annotations="90"),
 #             SpikeTrain(np.arange(0, 10, 0.5)*pq.s, t_stop=10.0, annotations="90"),
@@ -19,7 +19,7 @@ import numpy as np
 #             SpikeTrain(np.arange(0, 10, 6)*pq.s, t_stop=10.0, annotations="315"),
 #             SpikeTrain([]*pq.s, t_stop=10.0, annotations="270")
 #             ]
-# 
+#
 #     av_rate, orients = average_rate(trails)
 #     np.testing.assert_array_equal(orients, [0, 45, 90, 135, 270, 315]*pq.deg)
 #     np.testing.assert_array_equal(av_rate, [0.2, 0.5, 1.5, 0.5, 0.0, 0.2]/pq.s)
