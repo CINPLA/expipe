@@ -127,10 +127,12 @@ class Filerecord:
         # TODO make into properties/functions in case settings change
         self.exdir_path = action.project.id + "/" + action.id + "/" + self.id + ".exdir"
         self.local_path = os.path.join(settings["data_path"], self.exdir_path)
-        print("MAKING DIRECTORY", self.local_path)
         path_split = self.local_path.split("/")
         directory = "/".join(path_split[:-1])
-        os.makedirs(directory, exist_ok=True)
+        
+        if not os.path.exists(directory):
+            print("MAKING DIRECTORY", self.local_path)
+            os.makedirs(directory, exist_ok=True)
 
         # TODO if not exists and not required, return error
         ref_path = "/".join(["files", action.project.id, action.id, self.id])

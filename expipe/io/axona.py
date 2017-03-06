@@ -245,3 +245,12 @@ class AxonaFilerecord(Filerecord):
         
     def generate_spike_trains(self):
         generate_spike_trains(self.local_path)
+        
+    def generate_inp(self):
+        generate_inp(self.local_path)
+        
+    def generate_units(self):
+        generate_units(self.local_path)
+        
+    def generate_clusters(self):
+        generate_clusters(self.local_path)
