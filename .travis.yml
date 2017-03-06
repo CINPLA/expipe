@@ -2,7 +2,7 @@ language: python
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
   - "3.5"
-  # - "3.6"
+  - "3.6"
 install:
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
@@ -15,4 +15,14 @@ script:
   - bash -ex libs/travis-conda-scripts/scripts/install_package.sh expipe
   - pip install pyrebase # TODO get rid of this dependency -> create conda package or use own code
   - bash -ex libs/travis-conda-scripts/scripts/doctest.sh
-  - bash -ex libs/travis-conda-scripts/scripts/upload.sh
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla
+    on:
+      tags: true
+  - provider: script
+    skip_cleanup: true
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla #-unstable
+    on:
+      branch: dev

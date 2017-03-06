@@ -35,7 +35,18 @@ def spatial_rate_map(x, y, t, sptr, binsize=0.01*pq.m, box_xlen=1*pq.m,
     out : rate map, xbins, ybins
     """
     from expipe.analysis.misc.tools import is_quantities
-    assert len(x) == len(y) == len(t), 'x, y, t must have same length'
+    if not all([len(var) == len(var2) for var in [x,y,t] for var2 in [x,y,t]]):
+        raise ValueError('x, y, t must have same number of elements')
+    if box_xlen < x.max() or box_ylen < y.max():
+        raise ValueError('box length must be larger or equal to max path length')
+    from decimal import Decimal as dec
+    decimals = 1e10
+    remainderx = dec(float(box_xlen)*decimals) % dec(float(binsize)*decimals)
+    remaindery = dec(float(box_ylen)*decimals) % dec(float(binsize)*decimals)
+    if remainderx != 0 or remaindery != 0:
+        raise ValueError('the remainder should be zero i.e. the ' +
+                                     'box length should be an exact multiple ' +
+                                     'of the binsize')
     is_quantities([x, y, t], 'vector')
     is_quantities(binsize, 'scalar')
     t = t.rescale('s')
@@ -44,25 +55,23 @@ def spatial_rate_map(x, y, t, sptr, binsize=0.01*pq.m, box_xlen=1*pq.m,
     binsize = binsize.rescale('m').magnitude
     x = x.rescale('m').magnitude
     y = y.rescale('m').magnitude
-    assert box_xlen >= x.max()
-    assert box_ylen >= y.max()
 
-    spikes_in_bin, _ = np.histogram(sptr.times, t)
-    time_in_bin = np.diff(t.magnitude)
-    xbins = np.arange(0, box_xlen, binsize)
-    ybins = np.arange(0, box_ylen, binsize)
-    ix = np.digitize(x, xbins)
-    iy = np.digitize(y, ybins)
-    spike_pos = np.zeros((xbins.size+1, ybins.size+1))
-    time_pos = np.zeros((xbins.size+1, ybins.size+1))
-
+    # interpolate one extra timepoint
+    t_ = np.array(t.tolist() + [t.max() + np.median(np.diff(t))]) * pq.s
+    spikes_in_bin, _ = np.histogram(sptr.times, t_)
+    time_in_bin = np.diff(t_.magnitude)
+    xbins = np.arange(0, box_xlen + binsize, binsize)
+    ybins = np.arange(0, box_ylen + binsize, binsize)
+    ix = np.digitize(x, xbins, right=True)
+    iy = np.digitize(y, ybins, right=True)
+    spike_pos = np.zeros((xbins.size, ybins.size))
+    time_pos = np.zeros((xbins.size, ybins.size))
     for n in range(len(x) - 1):
         spike_pos[ix[n], iy[n]] += spikes_in_bin[n]
         time_pos[ix[n], iy[n]] += time_in_bin[n]
     # correct for shifting of map since digitize returns values at right edges
-    # and a supplemental bin added in L 55-56
-    spike_pos = spike_pos[1:-1, 1:-1]
-    time_pos = time_pos[1:-1, 1:-1]
+    spike_pos = spike_pos[1:, 1:]
+    time_pos = time_pos[1:, 1:]
     with np.errstate(divide='ignore', invalid='ignore'):
         rate = np.divide(spike_pos, time_pos)
     if convolve:
@@ -80,7 +89,7 @@ def spatial_rate_map(x, y, t, sptr, binsize=0.01*pq.m, box_xlen=1*pq.m,
         return rate.T
 
 
-def gridness(rate_map, box_xlen, box_ylen, return_acorr=False, 
+def gridness(rate_map, box_xlen, box_ylen, return_acorr=False,
              step_size=0.1*pq.m):
     '''Calculates gridness of a rate map. Calculates the normalized
     autocorrelation (A) of a rate map B where A is given as
