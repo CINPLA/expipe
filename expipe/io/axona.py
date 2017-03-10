@@ -134,7 +134,7 @@ def generate_clusters(exdir_path):
                 clnums = cluster.require_dataset("cluster_nums", data=units)
                 clnums.attrs["num_samples"] = len(units)
                 nums = cluster.require_dataset("nums", data=cut.indices)
-                nums.attrs["num_samples"] = len(scut.indices)
+                nums.attrs["num_samples"] = len(cut.indices)
 
 
 def generate_units(exdir_path):
@@ -239,11 +239,11 @@ def generate_inp(exdir_path):
 
     inp_data = axona_file.inp_data
     times = inp.require_dataset('timestamps', inp_data.times)
-    times.attrs['num_samples'] = len(times)
+    times.attrs['num_samples'] = len(times[:])
     types = inp.require_dataset('event_types', inp_data.event_types)
-    types.attrs['num_samples'] = len(times)
+    types.attrs['num_samples'] = len(types[:])
     vals = inp.require_dataset('values', inp_data.values)
-    vals.attrs['num_samples'] = len(times)
+    vals.attrs['num_samples'] = len(vals[:])
 
 
 class AxonaFilerecord(Filerecord):
@@ -261,3 +261,12 @@ class AxonaFilerecord(Filerecord):
 
     def generate_spike_trains(self):
         generate_spike_trains(self.local_path)
+        
+    def generate_inp(self):
+        generate_inp(self.local_path)
+        
+    def generate_units(self):
+        generate_units(self.local_path)
+        
+    def generate_clusters(self):
+        generate_clusters(self.local_path)

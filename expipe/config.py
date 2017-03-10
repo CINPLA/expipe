@@ -103,5 +103,6 @@ except FileNotFoundError:
           "\texpipe.configure?\n\n")
     settings = default_settings
 
-if "unittest" in sys.modules.keys() or "_pytest" in sys.modules.keys() or "doctest" in sys.argv:
-    ensure_testing()
+# if "unittest" in sys.modules.keys() or "_pytest" in sys.modules.keys() or "doctest" in sys.argv:
+#     print("Test module has been loaded. Using test config.")
+#     ensure_testing()

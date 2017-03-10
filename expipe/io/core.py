@@ -25,7 +25,7 @@ class Project:
     def __init__(self, project_id):
         self.id = project_id
         self.datetime_format = '%Y-%m-%dT%H:%M:%S'
-    
+
     @property
     def actions(self):
         return ActionManager(self)
@@ -54,14 +54,14 @@ class Datafile:
 class FirebaseBackend:
     def __init__(self, path):
         self.path = path
-        
+
     def exists(self):
         value = self.get()
         if value:
             return True
         else:
             return False
-        
+
     def get(self, name=None):
         if name is None:
             value = db.child(self.path).get(user["idToken"]).val()
@@ -69,7 +69,7 @@ class FirebaseBackend:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
         value = exdir.core.convert_back_quantities(value)
         return value
-    
+
     def set(self, name, value=None):
         if value is None:
             value = name
@@ -78,7 +78,7 @@ class FirebaseBackend:
         else:
             value = exdir.core.convert_quantities(value)
             db.child(self.path).child(name).set(value, user["idToken"])
-    
+
     def update(self, name, value=None):
         if value is None:
             value = name
@@ -95,7 +95,7 @@ class Module:
         self.id = module_id
         path = "/".join(["modules", self.action.project.id, self.action.id, self.id])
         self._firebase = FirebaseBackend(path)
-        
+
     def to_dict(self):
         return self._firebase.get()
 
@@ -121,16 +121,17 @@ class ModuleManager:
 
 class Filerecord:
     def __init__(self, action, filerecord_id=None):
-        self.id = filerecord_id or "main" # oneliner hack by Mikkel
+        self.id = filerecord_id or "main"  # oneliner hack by Mikkel
         self.action = action
 
         # TODO make into properties/functions in case settings change
         self.exdir_path = action.project.id + "/" + action.id + "/" + self.id + ".exdir"
         self.local_path = os.path.join(settings["data_path"], self.exdir_path)
-        print("MAKING DIRECTORY", self.local_path)
         path_split = self.local_path.split("/")
         directory = "/".join(path_split[:-1])
-        os.makedirs(directory, exist_ok=True)
+        if not os.path.exists(directory):
+            print("MAKING DIRECTORY", self.local_path)
+            os.makedirs(directory)
 
         # TODO if not exists and not required, return error
         ref_path = "/".join(["files", action.project.id, action.id, self.id])
@@ -202,16 +203,33 @@ class Action:
         # TODO consider adding support for non-shallow fetching
         return ModuleManager(self)
 
-    def require_module(self, name=None, template=None):
-        if template is not None:
+    def require_module(self, name=None, template=None, contents=None,
+                       overwrite=False):
+        if name is None and template is not None:
             template_object = db.child("/".join(["templates", template])).get(user["idToken"]).val()
-            if not name:
-                name = template_object["identifier"]
+            name = template_object["identifier"]
+        if template is None and name is None:
+            raise ValueError('name and template cannot both be None')
         module = Module(action=self, module_id=name)
         if not module._firebase.exists() and template is not None:
             template_contents = db.child("/".join(["templates_contents", template])).get(user["idToken"]).val()
+            if contents is not None:
+                raise NotImplementedError('we do not support require_module with contents')
             contents = template_contents
             module._firebase.set(contents)
+        if not module._firebase.exists() and template is None:
+            if contents is not None:
+                if not isinstance(contents, dict):
+                    raise ValueError('contents must be of type: dict')
+                module._firebase.set(contents)
+        if module._firebase.exists() and template is None:
+            if contents is not None and overwrite:
+                if not isinstance(contents, dict):
+                    raise ValueError('contents must be of type: dict')
+                module._firebase.set(contents)
+            if contents is not None and not overwrite:
+                raise ValueError('Set overwrite to true if you want to ' +
+                                 'overwrite the contents on the database')
         return module
 
     def require_filerecord(self, class_type=None, name=None):
