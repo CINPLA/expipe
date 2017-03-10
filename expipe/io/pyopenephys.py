@@ -121,7 +121,7 @@ class File:
 
         # Count number of recorded channels
         if self._root.tag == 'SETTINGS':
-            print ('Reading settings.xml...')
+            print('Reading settings.xml...')
             for child in self._root:
                 if child.tag == 'SIGNALCHAIN':
                     for granchild in child:
@@ -161,7 +161,7 @@ class File:
                     datfile = [f for f in filenames if '.dat' in f][0]
                     print('.dat: ', datfile)
                     with open(join(self._absolute_foldername, datfile), "rb") as fh:
-                        self._nsamples = self._read_analog_signals(fh, self.nchan)
+                        self._nsamples = self._read_analog_binary_signals(fh, self.nchan)
                         if any('.eventsmessages' in f for f in filenames):
                             messagefile = [f for f in filenames if '.eventsmessages' in f][0]
                             self._create_analog_timestamps(messagefile, self._nsamples)
@@ -172,10 +172,46 @@ class File:
             if osc is True and any('.eventsbinary' in f for f in filenames):
                 posfile = [f for f in filenames if '.eventsbinary' in f][0]
                 print('.eventsbinary: ', posfile)
-                with open(join(self._absolute_foldername, posfile), "r", encoding='utf-8', errors='ignore') as fh:
-                    self._read_tracking(fh)
+                if (sys.version_info > (3, 0)):
+                    with open(join(self._absolute_foldername, posfile), "r", encoding='utf-8', errors='ignore') as fh:
+                        self._read_tracking(fh)
+                else:
+                    with open(join(self._absolute_foldername, posfile), "r") as fh:
+                        self._read_tracking(fh)
+
+
             else:
                 raise ValueError("'.eventsbinary' should be in the folder")
+        elif self._format == 'openephys':
+            # Find continuous CH data
+            contFiles = [f for f in os.listdir(self._absolute_foldername) if 'continuous' in f and 'CH' in f]
+            contFiles = sorted(contFiles)
+
+            anas = []
+
+            if len(contFiles) != 0:
+                for f in contFiles:
+                    print('Loading: ', f)
+                    fullpath = join(self._absolute_foldername, f)
+                    sig = self._read_analog_continuous_signal(fullpath)
+                    try:
+                        anas.append(sig['data'])
+                        ts = sig['timestamps']
+                    except:
+                        print('Error in concatenating a recorded channel...')
+                        pass
+                anas = np.array(anas)
+
+                if any('messages' in f for f in filenames):
+                    messagefile = [f for f in filenames if 'messages' in f][0]
+                    self._nsamples = anas.shape[1]
+                    self._create_analog_timestamps(messagefile, self._nsamples)
+
+                self._analog_signals = anas
+                self._analog_signals_dirty = False
+
+
+        #TODO add openephys format
 
 
         # with open(self._absolute_filename, "r") as f:
@@ -248,33 +284,16 @@ class File:
 
         return self._tracking
 
-    @property
-    def inp_data(self):
-        if self._inp_data_dirty:
-            self._read_inp_data()
-
-        return self._inp_data
-
-    @property
-    def cuts(self):
-        if self._cuts_dirty:
-            self._read_cuts()
-
-        return self._cuts
-
-
 
     def _read_tracking(self, fh):
         # tracking_data = {}
 
-        print ('Reading positions...')
+        print('Reading positions...')
 
         header = self._readHeader(fh)
 
         if float(header['version']) < 0.4:
             raise Exception('Loader is only compatible with .events files with version 0.4 or higher')
-
-        # tracking_data['header'] = header
 
         index = -1
 
@@ -318,13 +337,36 @@ class File:
         y = y[:index]
         w = w[:index]
         h = h[:index]
-        # times are in uS
-        times = timestamps[:index] / 1000.
+        # times are in ms
+        ts_ = timestamps[:index] / 1000.
+
+        #TODO clean nans
 
         # Sort out different Sources
         if len(np.unique(ids)) == 1:
             print("Single tracking source")
-            # TODO
+            sources = np.unique(ids)
+            coord_s, w_s, h_s, ts_s = [], [], [], []
+            sample_rate_s, width_s, height_s = [], [], []
+
+            # adjust times with linear interpolation
+            idx_non_zero = np.where(ts_ != 0)
+            linear_coeff = np.polyfit(np.arange(len(ts_))[idx_non_zero], ts_[idx_non_zero], 1)
+            times_fit = linear_coeff[0]*(np.arange(len(ts_))) + linear_coeff[1]
+            difft = np.diff(times_fit)
+            avg_period = np.mean(difft)
+            sample_rate_s = np.round(1./float(avg_period)) * pq.Hz
+
+            coord_s = np.array([x, y])
+            ts_s = times_fit
+
+            width_s = np.mean(w)
+            height_s = np.mean(h)
+
+            attrs = {}
+            attrs['sample_rate'] = sample_rate_s
+            attrs['length_scale'] = np.array([width_s, height_s])
+
         else:
             print("Multiple tracking sources")
             sources = np.unique(ids)
@@ -356,21 +398,13 @@ class File:
 
             attrs = {}
             attrs['sample_rate'] = np.array(sample_rate_s)
-
+            attrs['length_scale'] = np.array([width_s, height_s])
             # xsize = w
             # ysize = h
             # length_scale = [xsize, ysize, xsize, ysize]
             # attrs['length_scale'] = length_scale
-            attrs['length_scale'] = np.array([width_s, height_s])
-            coord_s = coord_s
-            ts_s = ts_s
 
-            # coords = np.array([x_s, y_s]) * pq.m
-
-        # # dacq doc: positions with value 1023 are missing
-        # for i in range(2 * self._tracked_spots_count):
-        #     coords[:, i] /= length_scale[i]
-        #     coords[np.where(data["coords"][:, i] == 1023)] = np.nan * pq.m
+        # TODO adjust ref system
 
         tracking_data = TrackingData(
             times=ts_s,
@@ -382,68 +416,7 @@ class File:
         self._tracking_dirty = False
 
 
-        # pos_filename = os.path.join(self._path, self._base_filename + ".pos")
-        # if not os.path.exists(pos_filename):
-        #     raise IOError("'.pos' file not found:" + pos_filename)
-        #
-        # with open(pos_filename, "rb") as f:
-        #     attrs = parse_header_and_leave_cursor(f)
-        #
-        #     sample_rate_split = attrs["sample_rate"].split(" ")
-        #     assert(sample_rate_split[1] == "hz")
-        #     sample_rate = float(sample_rate_split[0]) * pq.Hz  # sample_rate 50.0 hz
-        #
-        #     eeg_samples_per_position = float(attrs["EEG_samples_per_position"])
-        #     pos_samples_count = int(attrs["num_pos_samples"])
-        #     bytes_per_timestamp = int(attrs["bytes_per_timestamp"])
-        #     bytes_per_coord = int(attrs["bytes_per_coord"])
-        #
-        #     timestamp_dtype = ">i" + str(bytes_per_timestamp)
-        #     coord_dtype = ">i" + str(bytes_per_coord)
-        #
-        #     bytes_per_pixel_count = 4
-        #     pixel_count_dtype = ">i" + str(bytes_per_pixel_count)
-        #
-        #     bytes_per_pos = (bytes_per_timestamp + 2 * self._tracked_spots_count * bytes_per_coord + 8)  # pos_format is as follows for this file t,x1,y1,x2,y2,numpix1,numpix2.
-        #
-        #     # read data:
-        #     dtype = np.dtype([("t", (timestamp_dtype, 1)),
-        #                       ("coords", (coord_dtype, 1), 2 * self._tracked_spots_count),
-        #                       ("pixel_count", (pixel_count_dtype, 1), 2)])
-        #
-        #     data = np.fromfile(f, dtype=dtype, count=pos_samples_count)
-        #
-        #     try:
-        #         assert_end_of_data(f)
-        #     except AssertionError:
-        #         print("WARNING: found remaining data while parsing pos file")
-        #
-        #     time_scale = float(attrs["timebase"].split(" ")[0]) * pq.Hz
-        #     times = data["t"].astype(float) / time_scale
-        #
-        #     window_min_x = float(attrs["window_min_x"])
-        #     window_max_x = float(attrs["window_max_x"])
-        #     window_min_y = float(attrs["window_min_y"])
-        #     window_max_y = float(attrs["window_max_y"])
-        #     xsize = window_max_x - window_min_x
-        #     ysize = window_max_y - window_min_y
-        #     length_scale = [xsize, ysize, xsize, ysize]
-        #     coords = data["coords"].astype(float) * pq.m
-        #
-        #     # dacq doc: positions with value 1023 are missing
-        #     for i in range(2 * self._tracked_spots_count):
-        #         coords[:, i] /= length_scale[i]
-        #         coords[np.where(data["coords"][:, i] == 1023)] = np.nan * pq.m
-        #
-        #     tracking_data = TrackingData(
-        #         times=times,
-        #         positions=coords,
-        #         attrs=attrs
-        #     )
-        #
-
-
-    def _read_analog_signals(self, filehandle, numchan):
+    def _read_analog_binary_signals(self, filehandle, numchan):
 
         numchan=int(numchan)
 
@@ -469,6 +442,164 @@ class File:
 
         return nread
 
+    def _read_analog_continuous_signal(self, filepath, dtype=float, verbose=False,
+        start_record=None, stop_record=None, ignore_last_record=True):
+        """Load continuous data from a single channel in the file `filepath`.
+
+        This is intended to be mostly compatible with the previous version.
+        The differences are:
+        - Ability to specify start and stop records
+        - Converts numeric data in the header from string to numeric data types
+        - Does not rely on a predefined maximum data size
+        - Does not necessarily drop the last record, which is usually incomplete
+        - Uses the block length that is specified in the header, instead of
+            hardcoding it.
+        - Returns timestamps and recordNumbers as int instead of float
+        - Tests the record metadata (N and record marker) for internal consistency
+
+        The OpenEphys file format breaks the data stream into "records",
+        typically of length 1024 samples. There is only one timestamp per record.
+
+        Args:
+            filepath : string, path to file to load
+            dtype : float or np.int16
+                If float, then the data will be multiplied by bitVolts to convert
+                to microvolts. This increases the memory required by 4 times.
+            verbose : whether to print debugging messages
+            start_record, stop_record : indices that control how much data
+                is read and returned. Pythonic indexing is used,
+                so `stop_record` is not inclusive. If `start` is None, reading
+                begins at the beginning; if `stop` is None, reading continues
+                until the end.
+            ignore_last_record : The last record in the file is almost always
+                incomplete (padded with zeros). By default it is ignored, for
+                compatibility with the old version of this function.
+
+        Returns: dict, with following keys
+            data : array of samples of data
+            header : the header info, as returned by readHeader
+            timestamps : the timestamps of each record of data that was read
+            recordingNumber : the recording number of each record of data that
+                was read. The length is the same as `timestamps`.
+        """
+        if dtype not in [float, np.int16]:
+            raise ValueError("Invalid data type. Must be float or np.int16")
+
+        if verbose:
+            print("Loading continuous data from " + filepath)
+
+        """Here is the OpenEphys file format:
+        'each record contains one 64-bit timestamp, one 16-bit sample
+        count (N), 1 uint16 recordingNumber, N 16-bit samples, and
+        one 10-byte record marker (0 1 2 3 4 5 6 7 8 255)'
+        Thus each record has size 2*N + 22 bytes.
+        """
+        # This is what the record marker should look like
+        spec_record_marker = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 255])
+
+        # Lists for data that's read
+        timestamps = []
+        recordingNumbers = []
+        samples = []
+        samples_read = 0
+        records_read = 0
+
+        # Open the file
+        with file(filepath, 'rb') as f:
+            # Read header info, file length, and number of records
+            header = self._readHeader(f)
+            record_length_bytes = 2 * header['blockLength'] + 22
+            fileLength = os.fstat(f.fileno()).st_size
+            n_records = self._get_number_of_records(filepath)
+
+            # Use this to set start and stop records if not specified
+            if start_record is None:
+                start_record = 0
+            if stop_record is None:
+                stop_record = n_records
+
+            # We'll stop reading after this many records are read
+            n_records_to_read = stop_record - start_record
+
+            # Seek to the start location, relative to the current position
+            # right after the header.
+            f.seek(record_length_bytes * start_record, 1)
+
+            # Keep reading till the file is finished
+            while f.tell() < fileLength and records_read < n_records_to_read:
+                # Skip the last record if requested, which usually contains
+                # incomplete data
+                if ignore_last_record and f.tell() == (
+                    fileLength - record_length_bytes):
+                    break
+
+                # Read the timestamp for this record
+                # litte-endian 64-bit signed integer
+                timestamps.append(np.fromfile(f, np.dtype('<i8'), 1))
+
+                # Read the number of samples in this record
+                # little-endian 16-bit unsigned integer
+                N = np.fromfile(f, np.dtype('<u2'), 1).item()
+                if N != header['blockLength']:
+                    raise IOError('Found corrupted record in block ' +
+                        str(recordNumber))
+
+                # Read and store the recording numbers
+                # big-endian 16-bit unsigned integer
+                recordingNumbers.append(np.fromfile(f, np.dtype('>u2'), 1))
+
+                # Read the data
+                # big-endian 16-bit signed integer
+                data = np.fromfile(f, np.dtype('>i2'), N)
+                if len(data) != N:
+                    raise IOError("could not load the right number of samples")
+
+                # Optionally convert dtype
+                if dtype == float:
+                    data = data * header['bitVolts']
+
+                # Store the data
+                samples.append(data)
+
+                # Extract and test the record marker
+                record_marker = np.fromfile(f, np.dtype('<u1'), 10)
+                if np.any(record_marker != spec_record_marker):
+                    raise IOError("corrupted record marker at record %d" %
+                        records_read)
+
+                # Update the count
+                samples_read += len(samples)
+                records_read += 1
+
+        # Concatenate results, or empty arrays if no data read (which happens
+        # if start_sample is after the end of the data stream)
+        res = {'header': header}
+        if samples_read > 0:
+            res['timestamps'] = np.concatenate(timestamps)
+            res['data'] = np.concatenate(samples)
+            res['recordingNumber'] = np.concatenate(recordingNumbers)
+        else:
+            res['timestamps'] = np.array([], dtype=np.int)
+            res['data'] = np.array([], dtype=dtype)
+            res['recordingNumber'] = np.array([], dtype=np.int)
+
+        return res
+
+
+
+    def _create_analog_timestamps(self, messagefile, nsamples):
+        with open(join(self._absolute_foldername, messagefile)) as fm:
+            lines = fm.readlines()
+            if any('start time:' in l for l in lines):
+                start = [l for l in lines if 'start time:' in l][0]
+                s = start.split()
+                start_time = float(int(s[0]))/self.sample_rate
+
+                self._timestamps = np.arange(nsamples)/self.sample_rate + start_time
+            else:
+                raise Error('eventsmessages file should be in the same folder')
+
+    '''from OpenEphys.py'''
     def _readHeader(self, fh):
         """Read header information from the first 1024 bytes of an OpenEphys file.
 
@@ -518,276 +649,20 @@ class File:
 
         return header
 
-    def _create_analog_timestamps(self, messagefile, nsamples):
-        with open(join(self._absolute_foldername, messagefile)) as fm:
-            lines = fm.readlines()
-            if any('start time:' in l for l in lines):
-                start = [l for l in lines if 'start time:' in l][0]
-                s = start.split()
-                start_time = float(int(s[0]))/self.sample_rate
+    def _get_number_of_records(self, filepath):
+        # Open the file
+        with file(filepath, 'rb') as f:
+            # Read header info
+            header = self._readHeader(f)
 
-                self._timestamps = np.arange(nsamples)/self.sample_rate + start_time
-            else:
-                raise Error('eventsmessages file should be in the same folder')
+            # Get file length
+            fileLength = os.fstat(f.fileno()).st_size
 
+            # Determine the number of records
+            record_length_bytes = 2 * header['blockLength'] + 22
+            n_records = int((fileLength - 1024) / record_length_bytes)
+            if (n_records * record_length_bytes + 1024) != fileLength:
+                print("file does not divide evenly into full records")
+                # raise IOError("file does not divide evenly into full records")
 
-
-    # def _read_cuts(self):
-    #     self._cuts = []
-    #     cut_basename = os.path.join(self._path, self._base_filename)
-    #     cut_files = glob.glob(cut_basename + "_[0-9]*.cut")
-    #
-    #     if not len(cut_files) > 0:
-    #         raise IOError("'.cut' file(s) not found")
-    #
-    #     for cut_filename in sorted(cut_files):
-    #         split_basename = os.path.basename(cut_filename).split(self._base_filename+"_")[-1]
-    #         suffix = split_basename.split('.')[0]
-    #         channel_group_id = int(suffix) - 1  # -1 to match channel_group_id
-    #         lines = ""
-    #         with open(cut_filename, "r") as f:
-    #             for line in f:
-    #                 if line.lstrip().startswith('Exact_cut_for'):
-    #                     break
-    #             lines = f.read()
-    #             lines = lines.replace("\n", "").strip()
-    #             indices = []
-    #             indices += list(map(int, lines.split("  ")))
-    #
-    #             cut = CutData(
-    #                 channel_group_id=channel_group_id,
-    #                 indices=np.asarray(indices, dtype=np.int)
-    #             )
-    #             self._cuts.append(cut)
-    #
-    #     self._cuts_dirty = False
-
-
-        # # TODO read for specific channel
-        # # TODO check that .egf file exists
-        #
-        # self._analog_signals = []
-        # eeg_basename = os.path.join(self._path, self._base_filename)
-        # eeg_files = glob.glob(eeg_basename + ".eeg")
-        # eeg_files += glob.glob(eeg_basename + ".eeg[0-9]*")
-        # eeg_files += glob.glob(eeg_basename + ".egf")
-        # eeg_files += glob.glob(eeg_basename + ".egf[0-9]*")
-        # for eeg_filename in sorted(eeg_files):
-        #     extension = os.path.splitext(eeg_filename)[-1][1:]
-        #     file_type = extension[:3]
-        #     suffix = extension[3:]
-        #     if suffix == "":
-        #         suffix = "1"
-        #     suffix = int(suffix)
-        #     with open(eeg_filename, "rb") as f:
-        #         attrs = parse_header_and_leave_cursor(f)
-        #         attrs["raw_filename"] = eeg_filename
-        #
-        #         if file_type == "eeg":
-        #             sample_count = int(attrs["num_EEG_samples"])
-        #         elif file_type == "egf":
-        #             sample_count = int(attrs["num_EGF_samples"])
-        #         else:
-        #             raise IOError("Unknown file type. Should be .eeg or .efg.")
-        #
-        #         sample_rate_split = attrs["sample_rate"].split(" ")
-        #         bytes_per_sample = attrs["bytes_per_sample"]
-        #         assert(sample_rate_split[1].lower() == "hz")
-        #         sample_rate = float(sample_rate_split[0]) * pq.Hz  # sample_rate 250.0 hz
-        #
-        #         sample_dtype = (('<i' + str(bytes_per_sample), 1), attrs["num_chans"])
-        #         data = np.fromfile(f, dtype=sample_dtype, count=sample_count)
-        #         assert_end_of_data(f)
-        #
-        #         eeg_final_channel_id = self.attrs["EEG_ch_" + str(suffix)]
-        #         eeg_mode = self.attrs["mode_ch_" + str(eeg_final_channel_id)]
-        #         ref_id = self.attrs["b_in_ch_" + str(eeg_final_channel_id)]
-        #         eeg_original_channel_id = self.attrs["ref_" + str(ref_id)]
-        #
-        #         attrs["channel_id"] = eeg_original_channel_id
-        #
-        #         gain = self.attrs["gain_ch_{}".format(eeg_final_channel_id)]
-        #
-        #         signal = scale_analog_signal(data,
-        #                                      gain,
-        #                                      self._adc_fullscale,
-        #                                      bytes_per_sample)
-        #
-        #         # TODO read start time
-        #
-        #         analog_signal = AnalogSignal(
-        #             channel_id=eeg_original_channel_id,
-        #             signal=signal,
-        #             sample_rate=sample_rate,
-        #             attrs=attrs
-        #         )
-        #
-        #         self._analog_signals.append(analog_signal)
-        #
-        # self._analog_signals_dirty = False
-
-
-    # def _read_channel_groups(self):
-    #     # TODO this file reading can be removed, perhaps?
-    #     channel_group_filenames = glob.glob(os.path.join(self._path, self._base_filename) + ".[0-9]*")
-    #
-    #     self._channel_id_to_channel_group = {}
-    #     self._channel_group_id_to_channel_group = {}
-    #     self._channel_count = 0
-    #     self._channel_groups = []
-    #     for channel_group_filename in channel_group_filenames:
-    #         # increment before, because channel_groups start at 1
-    #         basename, extension = os.path.splitext(channel_group_filename)
-    #         channel_group_id = int(extension[1:]) - 1
-    #         with open(channel_group_filename, "rb") as f:
-    #             channel_group_attrs = parse_header_and_leave_cursor(f)
-    #             num_chans = channel_group_attrs["num_chans"]
-    #             channels = []
-    #             for i in range(num_chans):
-    #                 channel_id = self._channel_count + i
-    #                 channel = Channel(
-    #                     channel_id,
-    #                     name="channel_{}_channel_group_{}_internal_{}".format(channel_id, channel_group_id, i),
-    #                     gain=self._channel_gain(channel_group_id, i)
-    #                 )
-    #                 channels.append(channel)
-    #
-    #             channel_group = ChannelGroup(
-    #                 channel_group_id,
-    #                 filename=channel_group_filename,
-    #                 channels=channels,
-    #                 adc_fullscale=self._adc_fullscale,
-    #                 attrs=channel_group_attrs
-    #             )
-    #
-    #             self._channel_groups.append(channel_group)
-    #             self._channel_group_id_to_channel_group[channel_group_id] = channel_group
-    #
-    #             for i in range(num_chans):
-    #                 channel_id = self._channel_count + i
-    #                 self._channel_id_to_channel_group[channel_id] = channel_group
-    #
-    #             # increment after, because channels start at 0
-    #             self._channel_count += num_chans
-    #
-    #     # TODO add channels only for files that exist
-    #     self._channel_ids = np.arange(self._channel_count)
-    #     self._channel_groups_dirty = False
-    #
-    # def _channel_gain(self, channel_group_index, channel_index):
-    #     # TODO split into two functions, one for mapping and one for gain lookup
-    #     global_channel_index = channel_group_index * 4 + channel_index
-    #     param_name = "gain_ch_{}".format(global_channel_index)
-    #     return float(self.attrs[param_name])
-    #
-    # def _read_inp_data(self):
-    #     """
-    #     Reads axona .inp files.
-    #     Event type can be 'I', 'O', or 'K' representing input,
-    #     output, and keypress, respectively.
-    #     The value of all event types is assumed to have dtype='>i',
-    #     even though this is not true for keypress.
-    #     """
-    #     inp_filename = os.path.join(self._path, self._base_filename + ".inp")
-    #     if not os.path.exists(inp_filename):
-    #         raise IOError("'.inp' file not found:" + inp_filename)
-    #
-    #     with open(inp_filename, "rb") as f:
-    #         attrs = parse_header_and_leave_cursor(f)
-    #
-    #         sample_rate_split = attrs["timebase"].split(" ")
-    #         assert(sample_rate_split[1] == "hz")
-    #         sample_rate = float(sample_rate_split[0]) * pq.Hz  # sample_rate 50.0 hz
-    #
-    #         duration = float(attrs["duration"]) * pq.s
-    #         num_inp_samples = int(attrs["num_inp_samples"])
-    #         bytes_per_timestamp = int(attrs["bytes_per_timestamp"])
-    #         bytes_per_type = int(attrs["bytes_per_type"])
-    #         bytes_per_value = int(attrs["bytes_per_value"])
-    #
-    #         timestamp_dtype = ">i" + str(bytes_per_timestamp)
-    #         type_dtype = "S"
-    #         value_dtype = 'i1'
-    #
-    #         # read data:
-    #         dtype = np.dtype([("t", (timestamp_dtype, 1)),
-    #                           ("event_types", (type_dtype, bytes_per_type)),
-    #                           ("values", (value_dtype, bytes_per_value))])
-    #
-    #         # num_inp_samples cannot be used because it
-    #         # does not include outputs ('O').
-    #         # We need to find the length of the data manually
-    #         # by seeking to the end of the file and subtracting
-    #         # the position at data_start.
-    #         current_position = f.tell()
-    #         f.seek(-data_end_length, os.SEEK_END)
-    #         end_position = f.tell()
-    #         data_byte_count = end_position - current_position
-    #         data_count = int(data_byte_count / dtype.itemsize)
-    #         assert_end_of_data(f)
-    #
-    #         # seek back to data start and read the newly calculated
-    #         # number of samples
-    #         f.seek(current_position, os.SEEK_SET)
-    #
-    #         data = np.fromfile(f, dtype=dtype, count=data_count)
-    #
-    #         assert_end_of_data(f)
-    #         times = data["t"].astype(float) / sample_rate
-    #
-    #         inp_data = InpData(
-    #             duration=duration,
-    #             times=times,
-    #             event_types=data["event_types"].astype(str),
-    #             values=data["values"],
-    #         )
-    #
-    #     self._inp_data = inp_data
-    #     self._inp_data_dirty = False
-
-    # def parse_attrs(text):
-    #     attrs = {}
-    #
-    #     for line in text.split("\n"):
-    #         line = line.strip()
-    #
-    #         if len(line) == 0:
-    #             continue
-    #
-    #         line_splitted = line.split(" ", 1)
-    #
-    #         name = line_splitted[0]
-    #         attrs[name] = None
-    #
-    #         if len(line_splitted) > 1:
-    #             try:
-    #                 attrs[name] = int(line_splitted[1])
-    #             except:
-    #                 try:
-    #                     attrs[name] = float(line_splitted[1])
-    #                 except:
-    #                     attrs[name] = line_splitted[1]
-    #     return attrs
-    #
-    #
-    # def parse_header_and_leave_cursor(file_handle):
-    #     header = ""
-    #     while True:
-    #         search_string = "data_start"
-    #         byte = file_handle.read(1)
-    #         header += str(byte, 'latin-1')
-    #
-    #         if not byte:
-    #             raise IOError("Hit end of file before '" + search_string + "' found.")
-    #
-    #         if header[-len(search_string):] == search_string:
-    #             break
-    #
-    #     attrs = parse_attrs(header)
-    #
-    #     return attrs
-    #
-    #
-    # def assert_end_of_data(file_handle):
-    #     remaining_data = str(file_handle.read(), 'latin1')
-    #     assert(remaining_data.strip() == "data_end")
+        return n_records
