@@ -13,6 +13,8 @@ Authors: Alessio Buccino @CINPLA,
          Mikkel E. Lepperod @CINPLA
 """
 
+#TODO: add extensive funciton descrption and verbose option for prints
+
 from __future__ import division
 from __future__ import print_function
 from __future__ import with_statement
@@ -27,59 +29,18 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 
 # constants for pre-allocating matrices:
+#TODO is it really necessary? for long recordings it may segfault: consider append
 MAX_NUMBER_OF_EVENTS = int(1e6)
 
-data_end_string = "\r\ndata_end\r\n"
-data_end_length = len(data_end_string)
-
-assert(data_end_length == 12)
-
-
-def scale_analog_signal(value, gain, adc_fullscale_mv, bytes_per_sample):
-    """
-    Takes value as raw sample data and converts it to millivolts quantity.
-    The mapping in the case of bytes_per_sample = 1 is
-        [-128, 127] -> [-1.0, (127.0/128.0)] * adc_fullscale_mv / gain (mV)
-    The correctness of this mapping has been verified by contacting Axona.
-    """
-    if type(value) is np.ndarray and value.base is not None:
-        raise ValueError("Value passed to scale_analog_signal cannot be a numpy view because we need to convert the entire array to a quantity.")
-    max_value = 2**(8 * bytes_per_sample - 1)  # 128 when bytes_per_sample = 1
-    result = (value / max_value) * (adc_fullscale_mv / gain)
-    result = result
-    return result
-
-
-class Channel:
-    def __init__(self, index, name, gain):
-        self.index = index
-        self.name = name
-        self.gain = gain
-
-
-class ChannelGroup:
-    def __init__(self, channel_group_id, filename, channels, adc_fullscale, attrs):
-        self.attrs = attrs
-        self.filename = filename
-        self.channel_group_id = channel_group_id
-        self.channels = channels
-        self._adc_fullscale = adc_fullscale
-
-    @property
-    def analog_signals(self):
-        return self.analog_signals
-
-
-class AnalogSignal:
-    def __init__(self, channel_id, signal, sample_rate, attrs):
-        self.channel_id = channel_id
-        self.signal = signal
+class AnalogSignals:
+    def __init__(self, signals, times, sample_rate):
+        self.signals = signals
+        self.times = times
         self.sample_rate = sample_rate
-        self.attrs = attrs
 
     def __str__(self):
-        return "<Axona analog signal: channel: {}, shape: {}, sample_rate: {}>".format(
-            self.channel_id, self.signal.shape, self.sample_rate
+        return "<OpenEphys analog signals:shape: {}, sample_rate: {}>".format(
+            self.signals.shape, self.sample_rate
         )
 
 
@@ -90,7 +51,7 @@ class TrackingData:
         self.positions = positions
 
     def __str__(self):
-        return "<Axona tracking data: times shape: {}, positions shape: {}>".format(
+        return "<OpenEphys tracking data: times shape: {}, positions shape: {}>".format(
             self.times.shape, self.positions.shape
         )
 
@@ -112,12 +73,16 @@ class File:
         tree = ET.parse(join(self._absolute_foldername, 'settings.xml'))
         self._root = tree.getroot()
         self.nchan = 0
-        rhythm = False
-        rhythmID = -1
+        self.rhythm = False
+        self.rhythmID = []
         rhythmRates = np.array([1., 1.25, 1.5, 2, 2.5, 3, 3.33, 4., 5., 6.25, 8., 10., 12.5, 15., 20., 25., 30.])
-        osc = False
-        oscID = -1
+        self.osc = False
+        self.oscID = []
+        self.oscPort = []
+        self.oscAddress = []
         self.tracking_timesamples_rate = 1000 * 1000. * pq.Hz
+
+        # TODO: support for multiple exp in same folder
 
         # Count number of recorded channels
         if self._root.tag == 'SETTINGS':
@@ -126,8 +91,8 @@ class File:
                 if child.tag == 'SIGNALCHAIN':
                     for granchild in child:
                         if granchild.tag == 'PROCESSOR' and granchild.attrib['name'] == 'Sources/Rhythm FPGA':
-                            rhythm = True
-                            rhythmID = granchild.attrib['NodeId']
+                            self.rhythm = True
+                            self.rhythmID = granchild.attrib['NodeId']
                             for chan in granchild:
                                 if chan.tag == 'CHANNEL':
                                     for selec in chan:
@@ -137,11 +102,17 @@ class File:
                                 if chan.tag == 'EDITOR':
                                     sampleIdx = int(chan.attrib['SampleRate'])-1
                                     self.sample_rate = rhythmRates[sampleIdx] * 1000. * pq.Hz
-                            print('RhythmFPGA with ', self.nchan, ' channels. NodeId: ', rhythmID)
+                            print('RhythmFPGA with ', self.nchan, ' channels. NodeId: ', self.rhythmID)
                         if granchild.tag == 'PROCESSOR' and granchild.attrib['name'] == 'Sources/OSC Port':
-                            osc = True
-                            oscID = granchild.attrib['NodeId']
-                            print('OSC Port. NodeId: ', oscID)
+                            self.osc = True
+                            self.oscID.append(granchild.attrib['NodeId'])
+                            for ed in granchild:
+                                if ed.tag == 'EDITOR':
+                                    for oscnode in ed:
+                                        if oscnode.tag == 'OSCNODE':
+                                            self.oscPort.append(oscnode.attrib['port'])
+                                            self.oscAddress.append(oscnode.attrib['address'])
+                            print('OSC Port. NodeId: ', self.oscID)
                 if child.tag == 'CONTROLPANEL':
                     # Check openephys format
                     if child.attrib['recordEngine'] == 'OPENEPHYS':
@@ -152,95 +123,10 @@ class File:
                         self._format = 'INVALID'
                     print('Decoding data from ', self._format, ' format')
 
-
-        # Check and decode files
-        if self._format == 'binary':
-            print(rhythm)
-            if rhythm is True:
-                if any('.dat' in f for f in filenames):
-                    datfile = [f for f in filenames if '.dat' in f][0]
-                    print('.dat: ', datfile)
-                    with open(join(self._absolute_foldername, datfile), "rb") as fh:
-                        self._nsamples = self._read_analog_binary_signals(fh, self.nchan)
-                        if any('.eventsmessages' in f for f in filenames):
-                            messagefile = [f for f in filenames if '.eventsmessages' in f][0]
-                            self._create_analog_timestamps(messagefile, self._nsamples)
-                else:
-                    raise ValueError("'.dat' should be in the folder")
-            else:
-                print('No rhythm FPGA data')
-            if osc is True and any('.eventsbinary' in f for f in filenames):
-                posfile = [f for f in filenames if '.eventsbinary' in f][0]
-                print('.eventsbinary: ', posfile)
-                if (sys.version_info > (3, 0)):
-                    with open(join(self._absolute_foldername, posfile), "r", encoding='utf-8', errors='ignore') as fh:
-                        self._read_tracking(fh)
-                else:
-                    with open(join(self._absolute_foldername, posfile), "r") as fh:
-                        self._read_tracking(fh)
+        self._analog_signals_dirty = True
+        self._tracking_dirty = True
 
 
-            else:
-                raise ValueError("'.eventsbinary' should be in the folder")
-        elif self._format == 'openephys':
-            # Find continuous CH data
-            contFiles = [f for f in os.listdir(self._absolute_foldername) if 'continuous' in f and 'CH' in f]
-            contFiles = sorted(contFiles)
-
-            anas = []
-
-            if len(contFiles) != 0:
-                for f in contFiles:
-                    print('Loading: ', f)
-                    fullpath = join(self._absolute_foldername, f)
-                    sig = self._read_analog_continuous_signal(fullpath)
-                    try:
-                        anas.append(sig['data'])
-                        ts = sig['timestamps']
-                    except:
-                        print('Error in concatenating a recorded channel...')
-                        pass
-                anas = np.array(anas)
-
-                if any('messages' in f for f in filenames):
-                    messagefile = [f for f in filenames if 'messages' in f][0]
-                    self._nsamples = anas.shape[1]
-                    self._create_analog_timestamps(messagefile, self._nsamples)
-
-                self._analog_signals = anas
-                self._analog_signals_dirty = False
-
-
-        #TODO add openephys format
-
-
-        # with open(self._absolute_filename, "r") as f:
-        #     text = f.read()
-        #
-        # attrs = parse_attrs(text)
-        #
-        # self._adc_fullscale = float(attrs["ADC_fullscale_mv"]) * 1000.0 * pq.uV
-        # if all(key in attrs for key in ['trial_date', 'trial_time']):
-        #     self._start_datetime = datetime.strptime(attrs['trial_date'] +
-        #                                              attrs['trial_time'],
-        #                                              '%A, %d %b %Y%H:%M:%S')
-        # else:
-        #     self._start_datetime = None
-        # self._duration = float(attrs["duration"]) * pq.s
-        # self._tracked_spots_count = int(attrs["tracked_spots"])
-        # self.attrs = attrs
-        #
-        # self._channel_groups = []
-        # self._analog_signals = []
-        # self._cuts = []
-        # self._inp_data = None
-        # self._tracking = None
-        #
-        # self._channel_groups_dirty = True
-        # self._analog_signals_dirty = True
-        # self._cuts_dirty = True
-        # self._inp_data_dirty = True
-        # self._tracking_dirty = True
 
     @property
     def settings(self):
@@ -248,27 +134,13 @@ class File:
 
     @property
     def session(self):
-        return self._base_filename
+        return self._absolute_foldername
 
     @property
     def related_files(self):
-        file_path = os.path.join(self._path, self._base_filename)
-        cut_files = glob.glob(os.path.join(file_path + "_[0-9]*.cut"))
+        filenames = [f for f in os.listdir(self._absolute_foldername)]
 
-        return glob.glob(os.path.join(file_path + ".*")) + cut_files
-
-    def channel_group(self, channel_id):
-        if self._channel_groups_dirty:
-            self._read_channel_groups()
-
-        return self._channel_id_to_channel_group[channel_id]
-
-    @property
-    def channel_groups(self):
-        if self._channel_groups_dirty:
-            self._read_channel_groups()
-
-        return self._channel_groups
+        return glob.glob(os.path.join(self._absolute_foldername, filenames))
 
     @property
     def analog_signals(self):
@@ -285,12 +157,26 @@ class File:
         return self._tracking
 
 
-    def _read_tracking(self, fh):
-        # tracking_data = {}
+    def _read_tracking(self):
+        filenames = [f for f in os.listdir(self._absolute_foldername)]
+        if self.osc is True and any('.eventsbinary' in f for f in filenames):
+            posfile = [f for f in filenames if '.eventsbinary' in f][0]
+            print('.eventsbinary: ', posfile)
+            if sys.version_info > (3, 0):
+                with open(join(self._absolute_foldername, posfile), "r", encoding='utf-8', errors='ignore') as fh:
+                    self._read_tracking_events(fh)
+            else:
+                with open(join(self._absolute_foldername, posfile), "r") as fh:
+                    self._read_tracking_events(fh)
+        else:
+            raise ValueError("'.eventsbinary' should be in the folder")
 
+
+    def _read_tracking_events(self, fh):
         print('Reading positions...')
 
-        header = self._readHeader(fh)
+        #TODO consider NOT writing header from openephys
+        header = readHeader(fh)
 
         if float(header['version']) < 0.4:
             raise Exception('Loader is only compatible with .events files with version 0.4 or higher')
@@ -338,32 +224,27 @@ class File:
         w = w[:index]
         h = h[:index]
         # times are in ms
-        ts_ = timestamps[:index] / 1000.
-
-        #TODO clean nans
+        ts = timestamps[:index] / 1000.
 
         # Sort out different Sources
         if len(np.unique(ids)) == 1:
             print("Single tracking source")
-            sources = np.unique(ids)
-            coord_s, w_s, h_s, ts_s = [], [], [], []
-            sample_rate_s, width_s, height_s = [], [], []
 
             # adjust times with linear interpolation
-            idx_non_zero = np.where(ts_ != 0)
-            linear_coeff = np.polyfit(np.arange(len(ts_))[idx_non_zero], ts_[idx_non_zero], 1)
-            times_fit = linear_coeff[0]*(np.arange(len(ts_))) + linear_coeff[1]
+            idx_non_zero = np.where(ts != 0)
+            linear_coeff = np.polyfit(np.arange(len(ts))[idx_non_zero], ts[idx_non_zero], 1)
+            times_fit = linear_coeff[0]*(np.arange(len(ts))) + linear_coeff[1]
             difft = np.diff(times_fit)
             avg_period = np.mean(difft)
             sample_rate_s = np.round(1./float(avg_period)) * pq.Hz
 
-            coord_s = np.array([x, y])
+            coord_s = np.array([x, 1-y])
             ts_s = times_fit
 
             width_s = np.mean(w)
             height_s = np.mean(h)
 
-            attrs = {}
+            attrs = dict()
             attrs['sample_rate'] = sample_rate_s
             attrs['length_scale'] = np.array([width_s, height_s])
 
@@ -377,8 +258,7 @@ class File:
                 y_ = np.squeeze(y[np.where(ids==ss)])
                 w_ = np.squeeze(w[np.where(ids==ss)])
                 h_ = np.squeeze(h[np.where(ids==ss)])
-                ts_ = np.squeeze(times[np.where(ids==ss)])
-                print('Ts len: ', len(ts_))
+                ts_ = np.squeeze(ts[np.where(ids==ss)])
 
                 # adjust times with linear interpolation
                 idx_non_zero = np.where(ts_ != 0)
@@ -388,7 +268,7 @@ class File:
                 avg_period = np.mean(difft)
                 sample_rate_ = np.round(1./float(avg_period)) * pq.Hz
 
-                coord_ = np.array([x_, y_])
+                coord_ = np.array([x_, 1-y_])
                 coord_s.append(coord_)
                 ts_s.append(times_fit)
 
@@ -396,15 +276,15 @@ class File:
                 width_s.append(np.mean(w_))
                 height_s.append(np.mean(h_))
 
-            attrs = {}
+            attrs = dict()
             attrs['sample_rate'] = np.array(sample_rate_s)
             attrs['length_scale'] = np.array([width_s, height_s])
-            # xsize = w
-            # ysize = h
-            # length_scale = [xsize, ysize, xsize, ysize]
-            # attrs['length_scale'] = length_scale
+            attrs['nodeId'] = self.oscID
+            attrs['port'] = self.oscPort
+            attrs['address'] = self.oscAddress
 
-        # TODO adjust ref system
+        # TODO adjust ref system: camera (0,0) is top left corner
+
 
         tracking_data = TrackingData(
             times=ts_s,
@@ -414,6 +294,50 @@ class File:
 
         self._tracking = tracking_data
         self._tracking_dirty = False
+
+    def _read_analog_signals(self):
+        # Check and decode files
+        filenames = [f for f in os.listdir(self._absolute_foldername)]
+        anas = np.array([])
+        timestamps = np.array([])
+        if self._format == 'binary':
+            if self.rhythm is True:
+                if any('.dat' in f for f in filenames):
+                    datfile = [f for f in filenames if '.dat' in f][0]
+                    print('.dat: ', datfile)
+                    with open(join(self._absolute_foldername, datfile), "rb") as fh:
+                        anas, nsamples = self._read_analog_binary_signals(fh, self.nchan)
+                        timestamps = np.arange(nsamples) / self.sample_rate
+                        self._analog_signals_dirty = False
+                else:
+                    raise ValueError("'.dat' should be in the folder")
+            else:
+                print('No rhythm FPGA data')
+        elif self._format == 'openephys':
+            # Find continuous CH data
+            contFiles = [f for f in os.listdir(self._absolute_foldername) if 'continuous' in f and 'CH' in f]
+            contFiles = sorted(contFiles)
+            if len(contFiles) != 0:
+                for f in contFiles:
+                    print('Loading: ', f)
+                    fullpath = join(self._absolute_foldername, f)
+                    sig = self._read_analog_continuous_signal(fullpath)
+                    if len(anas) >= 1 and len(sig['data']) == len(anas[-1]):
+                        anas = np.append(anas, sig['data'])
+                    else:
+                        raise Exception('Channels must have the same number of samples')
+
+                anas = np.array(anas)
+                nsamples = anas.shape[1]
+                timestamps = np.arange(nsamples) / self.sample_rate
+                self._analog_signals_dirty = False
+
+        if not self._analog_signals_dirty:
+            self._analog_signals = AnalogSignals(
+                signals=anas,
+                times=timestamps,
+                sample_rate=self.sample_rate
+            )
 
 
     def _read_analog_binary_signals(self, filehandle, numchan):
@@ -437,10 +361,7 @@ class File:
 
         print('Done!')
 
-        self._analog_signals = samples
-        self._analog_signals_dirty = False
-
-        return nread
+        return samples, nread
 
     def _read_analog_continuous_signal(self, filepath, dtype=float, verbose=False,
         start_record=None, stop_record=None, ignore_last_record=True):
@@ -507,10 +428,10 @@ class File:
         # Open the file
         with file(filepath, 'rb') as f:
             # Read header info, file length, and number of records
-            header = self._readHeader(f)
+            header = readHeader(f)
             record_length_bytes = 2 * header['blockLength'] + 22
             fileLength = os.fstat(f.fileno()).st_size
-            n_records = self._get_number_of_records(filepath)
+            n_records = self.get_number_of_records(filepath)
 
             # Use this to set start and stop records if not specified
             if start_record is None:
@@ -541,8 +462,7 @@ class File:
                 # little-endian 16-bit unsigned integer
                 N = np.fromfile(f, np.dtype('<u2'), 1).item()
                 if N != header['blockLength']:
-                    raise IOError('Found corrupted record in block ' +
-                        str(recordNumber))
+                    raise IOError('Found corrupted record in block')
 
                 # Read and store the recording numbers
                 # big-endian 16-bit unsigned integer
@@ -597,10 +517,10 @@ class File:
 
                 self._timestamps = np.arange(nsamples)/self.sample_rate + start_time
             else:
-                raise Error('eventsmessages file should be in the same folder')
+                raise Exception('eventsmessages file should be in the same folder')
 
     '''from OpenEphys.py'''
-    def _readHeader(self, fh):
+    def readHeader(fh):
         """Read header information from the first 1024 bytes of an OpenEphys file.
 
         Args:
@@ -649,11 +569,11 @@ class File:
 
         return header
 
-    def _get_number_of_records(self, filepath):
+    def get_number_of_records(filepath):
         # Open the file
         with file(filepath, 'rb') as f:
             # Read header info
-            header = self._readHeader(f)
+            header = readHeader(f)
 
             # Get file length
             fileLength = os.fstat(f.fileno()).st_size
