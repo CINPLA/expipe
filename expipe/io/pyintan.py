@@ -30,7 +30,7 @@ def load(filepath, savedat=False):
     if 'rhs' in filepath:
         data = loadRHS(filepath, savedat)
     elif 'rhd' in filepath:
-        print 'to be implemented soon'
+        print('to be implemented soon')
         data = []
     else:
         raise Exception("Not a recognized file type. Please input a .continuous, .spikes, or .events file")
@@ -43,7 +43,7 @@ def loadRHS(filepath, savedat=False):
 
     t1 = time.time()
 
-    print 'loading intan data'
+    print('loading intan data')
 
     f = open(filepath, 'rb')
     filesize = os.fstat(f.fileno()).st_size - f.tell()
@@ -52,14 +52,14 @@ def loadRHS(filepath, savedat=False):
     # Technologies RHS2000 data file.
     magic_number = np.fromfile(f, np.dtype('u4'), 1)
     if magic_number != int('d69127ac', 16):
-        raise Error('Unrecognized file type.')
+        raise IOError('Unrecognized file type.')
 
     # Read version number.
     data_file_main_version_number = np.fromfile(f, 'i2', 1)[0]
     data_file_secondary_version_number = np.fromfile(f, 'i2', 1)[0]
 
-    print 'Reading Intan Technologies RHS2000 Data File, Version ', data_file_main_version_number, \
-        data_file_secondary_version_number
+    print('Reading Intan Technologies RHS2000 Data File, Version ', data_file_main_version_number, \
+        data_file_secondary_version_number)
 
     num_samples_per_data_block = 128
 
@@ -172,7 +172,7 @@ def loadRHS(filepath, savedat=False):
     # Read signal summary from data file header.
 
     number_of_signal_groups = np.fromfile(f, 'i2', 1)[0]
-    print 'Signal groups: ', number_of_signal_groups
+    print('Signal groups: ', number_of_signal_groups)
 
     for signal_group in range(number_of_signal_groups):
         signal_group_name = fread_QString(f)
@@ -244,13 +244,13 @@ def loadRHS(filepath, savedat=False):
     num_board_dig_in_channels = board_dig_in_index
     num_board_dig_out_channels = board_dig_out_index
 
-    print 'Found ', num_amplifier_channels, ' amplifier channel' , plural(num_amplifier_channels)
+    print('Found ', num_amplifier_channels, ' amplifier channel' , plural(num_amplifier_channels)())
     if dc_amp_data_saved != 0:
-        print 'Found ', num_amplifier_channels, 'DC amplifier channel' , plural(num_amplifier_channels)
-    print 'Found ', num_board_adc_channels, ' board ADC channel' , plural(num_board_adc_channels)
-    print 'Found ', num_board_dac_channels, ' board DAC channel' , plural(num_board_adc_channels)
-    print 'Found ', num_board_dig_in_channels, ' board digital input channel' , plural(num_board_dig_in_channels)
-    print 'Found ', num_board_dig_out_channels, ' board digital output channel' , plural(num_board_dig_out_channels)
+        print('Found ', num_amplifier_channels, 'DC amplifier channel' , plural(num_amplifier_channels))
+    print('Found ', num_board_adc_channels, ' board ADC channel' , plural(num_board_adc_channels))
+    print('Found ', num_board_dac_channels, ' board DAC channel' , plural(num_board_adc_channels))
+    print('Found ', num_board_dig_in_channels, ' board digital input channel' , plural(num_board_dig_in_channels))
+    print('Found ', num_board_dig_out_channels, ' board digital output channel' , plural(num_board_dig_out_channels))
 
     # Determine how many samples the data file contains.
 
@@ -289,15 +289,15 @@ def loadRHS(filepath, savedat=False):
     record_time = num_amplifier_samples / sample_rate
 
     if data_present:
-        print 'File contains ', record_time, ' seconds of data.  ' \
-                                             'Amplifiers were sampled at ', sample_rate / 1000 , ' kS/s.'
+        print('File contains ', record_time, ' seconds of data.  ' \
+                                             'Amplifiers were sampled at ', sample_rate / 1000 , ' kS/s.')
     else:
-        print 'Header file contains no data.  Amplifiers were sampled at ', sample_rate / 1000 ,  'kS/s.'
+        print('Header file contains no data.  Amplifiers were sampled at ', sample_rate / 1000 ,  'kS/s.')
 
     if data_present:
 
         # Pre-allocate memory for data.
-        print 'Allocating memory for data'
+        print('Allocating memory for data')
 
         t = np.zeros(num_amplifier_samples)
 
@@ -317,7 +317,7 @@ def loadRHS(filepath, savedat=False):
         board_dig_out_raw = np.zeros(num_board_dig_out_samples)
 
         # Read sampled data from file.
-        print 'Reading data from file'
+        print('Reading data from file')
 
         amplifier_index = 0
         board_adc_index = 0
@@ -328,7 +328,7 @@ def loadRHS(filepath, savedat=False):
         print_increment = 10
         percent_done = print_increment
 
-        print 'num_data_blocks: ', num_data_blocks
+        print('num_data_blocks: ', num_data_blocks)
 
         for i in range(num_data_blocks):
             t[amplifier_index:(amplifier_index + num_samples_per_data_block)] = \
@@ -368,7 +368,7 @@ def loadRHS(filepath, savedat=False):
 
             fraction_done = 100 * float((i+1) / float(num_data_blocks))
             if fraction_done >= percent_done:
-                print percent_done, '% done'
+                print(percent_done, '% done')
                 percent_done = percent_done + print_increment
 
         # Make sure we have read exactly the right amount of data.
@@ -381,16 +381,16 @@ def loadRHS(filepath, savedat=False):
     f.close()
 
     t2 = time.time()
-    print 'Loading done. time: ', t2 - t1
+    print('Loading done. time: ', t2 - t1)
 
     if data_present:
 
-        print 'Parsing data'
+        print('Parsing data')
 
         # # Extract digital input channels to separate variables.
         # '''FIX THIS'''
         # for i in range(num_board_dig_in_channels):
-        #     # print len(board_dig_in_channels)
+        #     # print(len(board_dig_in_channels)
         #     mask = (2 ** board_dig_in_channels[i]['native_order']) * np.ones(len(board_dig_in_raw))
         #     # board_dig_in_data[i,:] = (board_dig_in_raw & mask > 0)
         #
@@ -422,12 +422,12 @@ def loadRHS(filepath, savedat=False):
         # Check for gaps in timestamps.
         num_gaps = len(np.where(np.diff(t) != 1)[0])
         if num_gaps == 0:
-            print 'No missing timestamps in data.'
+            print('No missing timestamps in data.')
         else:
-            print 'Warning: ', num_gaps, ' gaps in timestamp data found.  Time scale will not be uniform!'
+            print('Warning: ', num_gaps, ' gaps in timestamp data found.  Time scale will not be uniform!')
 
         t3 = time.time()
-        print 'Parsing done. time: ', t3 - t2
+        print('Parsing done. time: ', t3 - t2)
 
         # Scale time steps (units = seconds).
         t = t / float(sample_rate)
@@ -449,7 +449,7 @@ def loadRHS(filepath, savedat=False):
         #         percent_done = percent_done + print_increment
 
     # Create data dictionary
-    print 'Creating data structure...'
+    print('Creating data structure...')
     data = {}
     data['notes'] = notes
     data['frequency_parameters'] = frequency_parameters
@@ -500,7 +500,7 @@ def loadRHS(filepath, savedat=False):
 
 
     if savedat:
-        print(str('Writing ' + filepath[:-4] + '.dat.'))
+        print('Writing ' + filepath[:-4] + '.dat.')
         fdat = filepath[:-4] + '.dat'
         with open(fdat, 'wb') as f:
             np.transpose(amplifier_data).tofile(f)
@@ -513,7 +513,7 @@ def fread_QString(f):
     length = np.fromfile(f, 'u4', 1)[0]
 
     if hex(length) == '0xffffffff':
-        print 'return fread_QString'
+        print('return fread_QString')
         return
 
     # convert length from bytes to 16-bit Unicode words
