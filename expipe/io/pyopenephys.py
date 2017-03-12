@@ -28,9 +28,6 @@ import numpy as np
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-# constants for pre-allocating matrices:
-#TODO is it really necessary? for long recordings it may segfault: consider append
-MAX_NUMBER_OF_EVENTS = int(1e6)
 
 class AnalogSignals:
     def __init__(self, signals, times, sample_rate):
@@ -183,12 +180,12 @@ class File:
 
         index = -1
 
-        ids = np.zeros(MAX_NUMBER_OF_EVENTS)
-        timestamps = np.zeros(MAX_NUMBER_OF_EVENTS)
-        x = np.zeros(MAX_NUMBER_OF_EVENTS)
-        y = np.zeros(MAX_NUMBER_OF_EVENTS)
-        h = np.zeros(MAX_NUMBER_OF_EVENTS)
-        w = np.zeros(MAX_NUMBER_OF_EVENTS)
+        ids = np.array([])
+        timestamps = np.array([])
+        x = np.array([])
+        y = np.array([])
+        h = np.array([])
+        w = np.array([])
 
         nsamples = (os.fstat(fh.fileno()).st_size -fh.tell()) / 25
         print('Estimated position samples: ', nsamples)
@@ -205,26 +202,18 @@ class File:
             wcurr = np.fromfile(fh, np.dtype('<f4'), 1)
             hcurr = np.fromfile(fh, np.dtype('<f4'), 1)
 
-            # if not np.isnan(xcurr) and not np.isnan(ycurr) and not np.isnan(wcurr) and not np.isnan(hcurr):
-            #     if len(xcurr) == 1 and len(ycurr) == 1 and len(wcurr) == 1 and len(hcurr) == 1:
-            ids[index] = idcurr
-            x[index] = xcurr
-            y[index] = ycurr
-            w[index] = wcurr
-            h[index] = hcurr
-            timestamps[index] = tcurr
+            ids = np.append(ids, idcurr)
+            timestamps = np.append(timestamps, tcurr)
+            x = np.append(x, xcurr)
+            y = np.append(y, ycurr)
+            w = np.append(w, wcurr)
+            h = np.append(h, hcurr)
 
             nread += 1
 
         print('Read position samples: ', nread)
 
-        ids = ids[:index]
-        x = x[:index]
-        y = y[:index]
-        w = w[:index]
-        h = h[:index]
-        # times are in ms
-        ts = timestamps[:index] / 1000.
+        ts = timestamps / 1000.
 
         # Sort out different Sources
         if len(np.unique(ids)) == 1:
@@ -238,6 +227,7 @@ class File:
             avg_period = np.mean(difft)
             sample_rate_s = np.round(1./float(avg_period)) * pq.Hz
 
+            # Camera (0,0) is top left corner -> adjust y
             coord_s = np.array([x, 1-y])
             ts_s = times_fit
 
@@ -268,6 +258,7 @@ class File:
                 avg_period = np.mean(difft)
                 sample_rate_ = np.round(1./float(avg_period)) * pq.Hz
 
+                # Camera (0,0) is top left corner -> adjust y
                 coord_ = np.array([x_, 1-y_])
                 coord_s.append(coord_)
                 ts_s.append(times_fit)
@@ -282,8 +273,6 @@ class File:
             attrs['nodeId'] = self.oscID
             attrs['port'] = self.oscPort
             attrs['address'] = self.oscAddress
-
-        # TODO adjust ref system: camera (0,0) is top left corner
 
 
         tracking_data = TrackingData(
@@ -306,7 +295,7 @@ class File:
                     datfile = [f for f in filenames if '.dat' in f][0]
                     print('.dat: ', datfile)
                     with open(join(self._absolute_foldername, datfile), "rb") as fh:
-                        anas, nsamples = self._read_analog_binary_signals(fh, self.nchan)
+                        anas, nsamples = read_analog_binary_signals(fh, self.nchan)
                         timestamps = np.arange(nsamples) / self.sample_rate
                         self._analog_signals_dirty = False
                 else:
@@ -318,19 +307,23 @@ class File:
             contFiles = [f for f in os.listdir(self._absolute_foldername) if 'continuous' in f and 'CH' in f]
             contFiles = sorted(contFiles)
             if len(contFiles) != 0:
+                print('Reading all channels')
                 for f in contFiles:
-                    print('Loading: ', f)
                     fullpath = join(self._absolute_foldername, f)
-                    sig = self._read_analog_continuous_signal(fullpath)
-                    if len(anas) >= 1 and len(sig['data']) == len(anas[-1]):
-                        anas = np.append(anas, sig['data'])
+                    sig = read_analog_continuous_signal(fullpath)
+                    if anas.shape[0] < 1:
+                        anas = sig['data'][None, :]
                     else:
-                        raise Exception('Channels must have the same number of samples')
+                        if sig['data'].size == anas[-1].size:
+                            anas = np.append(anas, sig['data'][None, :], axis=0)
+                        else:
+                            raise Exception('Channels must have the same number of samples')
 
                 anas = np.array(anas)
                 nsamples = anas.shape[1]
                 timestamps = np.arange(nsamples) / self.sample_rate
                 self._analog_signals_dirty = False
+                print('Done!')
 
         if not self._analog_signals_dirty:
             self._analog_signals = AnalogSignals(
@@ -338,173 +331,6 @@ class File:
                 times=timestamps,
                 sample_rate=self.sample_rate
             )
-
-
-    def _read_analog_binary_signals(self, filehandle, numchan):
-
-        numchan=int(numchan)
-
-        nsamples = os.fstat(filehandle.fileno()).st_size / (numchan*2)
-        print('Estimated samples: ', int(nsamples))
-        sam = []
-
-        print('Reading all samples')
-        while filehandle.tell() < os.fstat(filehandle.fileno()).st_size:
-            sam = np.fromfile(filehandle, np.dtype('i2'))*0.195
-
-        nread = len(sam)/numchan
-        print('Read samples: ', int(nread))
-
-        print('Rearranging...')
-        samples = np.reshape(sam, (int(len(sam)/numchan), numchan))
-        samples = np.transpose(samples)
-
-        print('Done!')
-
-        return samples, nread
-
-    def _read_analog_continuous_signal(self, filepath, dtype=float, verbose=False,
-        start_record=None, stop_record=None, ignore_last_record=True):
-        """Load continuous data from a single channel in the file `filepath`.
-
-        This is intended to be mostly compatible with the previous version.
-        The differences are:
-        - Ability to specify start and stop records
-        - Converts numeric data in the header from string to numeric data types
-        - Does not rely on a predefined maximum data size
-        - Does not necessarily drop the last record, which is usually incomplete
-        - Uses the block length that is specified in the header, instead of
-            hardcoding it.
-        - Returns timestamps and recordNumbers as int instead of float
-        - Tests the record metadata (N and record marker) for internal consistency
-
-        The OpenEphys file format breaks the data stream into "records",
-        typically of length 1024 samples. There is only one timestamp per record.
-
-        Args:
-            filepath : string, path to file to load
-            dtype : float or np.int16
-                If float, then the data will be multiplied by bitVolts to convert
-                to microvolts. This increases the memory required by 4 times.
-            verbose : whether to print debugging messages
-            start_record, stop_record : indices that control how much data
-                is read and returned. Pythonic indexing is used,
-                so `stop_record` is not inclusive. If `start` is None, reading
-                begins at the beginning; if `stop` is None, reading continues
-                until the end.
-            ignore_last_record : The last record in the file is almost always
-                incomplete (padded with zeros). By default it is ignored, for
-                compatibility with the old version of this function.
-
-        Returns: dict, with following keys
-            data : array of samples of data
-            header : the header info, as returned by readHeader
-            timestamps : the timestamps of each record of data that was read
-            recordingNumber : the recording number of each record of data that
-                was read. The length is the same as `timestamps`.
-        """
-        if dtype not in [float, np.int16]:
-            raise ValueError("Invalid data type. Must be float or np.int16")
-
-        if verbose:
-            print("Loading continuous data from " + filepath)
-
-        """Here is the OpenEphys file format:
-        'each record contains one 64-bit timestamp, one 16-bit sample
-        count (N), 1 uint16 recordingNumber, N 16-bit samples, and
-        one 10-byte record marker (0 1 2 3 4 5 6 7 8 255)'
-        Thus each record has size 2*N + 22 bytes.
-        """
-        # This is what the record marker should look like
-        spec_record_marker = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 255])
-
-        # Lists for data that's read
-        timestamps = []
-        recordingNumbers = []
-        samples = []
-        samples_read = 0
-        records_read = 0
-
-        # Open the file
-        with file(filepath, 'rb') as f:
-            # Read header info, file length, and number of records
-            header = readHeader(f)
-            record_length_bytes = 2 * header['blockLength'] + 22
-            fileLength = os.fstat(f.fileno()).st_size
-            n_records = self.get_number_of_records(filepath)
-
-            # Use this to set start and stop records if not specified
-            if start_record is None:
-                start_record = 0
-            if stop_record is None:
-                stop_record = n_records
-
-            # We'll stop reading after this many records are read
-            n_records_to_read = stop_record - start_record
-
-            # Seek to the start location, relative to the current position
-            # right after the header.
-            f.seek(record_length_bytes * start_record, 1)
-
-            # Keep reading till the file is finished
-            while f.tell() < fileLength and records_read < n_records_to_read:
-                # Skip the last record if requested, which usually contains
-                # incomplete data
-                if ignore_last_record and f.tell() == (
-                    fileLength - record_length_bytes):
-                    break
-
-                # Read the timestamp for this record
-                # litte-endian 64-bit signed integer
-                timestamps.append(np.fromfile(f, np.dtype('<i8'), 1))
-
-                # Read the number of samples in this record
-                # little-endian 16-bit unsigned integer
-                N = np.fromfile(f, np.dtype('<u2'), 1).item()
-                if N != header['blockLength']:
-                    raise IOError('Found corrupted record in block')
-
-                # Read and store the recording numbers
-                # big-endian 16-bit unsigned integer
-                recordingNumbers.append(np.fromfile(f, np.dtype('>u2'), 1))
-
-                # Read the data
-                # big-endian 16-bit signed integer
-                data = np.fromfile(f, np.dtype('>i2'), N)
-                if len(data) != N:
-                    raise IOError("could not load the right number of samples")
-
-                # Optionally convert dtype
-                if dtype == float:
-                    data = data * header['bitVolts']
-
-                # Store the data
-                samples.append(data)
-
-                # Extract and test the record marker
-                record_marker = np.fromfile(f, np.dtype('<u1'), 10)
-                if np.any(record_marker != spec_record_marker):
-                    raise IOError("corrupted record marker at record %d" %
-                        records_read)
-
-                # Update the count
-                samples_read += len(samples)
-                records_read += 1
-
-        # Concatenate results, or empty arrays if no data read (which happens
-        # if start_sample is after the end of the data stream)
-        res = {'header': header}
-        if samples_read > 0:
-            res['timestamps'] = np.concatenate(timestamps)
-            res['data'] = np.concatenate(samples)
-            res['recordingNumber'] = np.concatenate(recordingNumbers)
-        else:
-            res['timestamps'] = np.array([], dtype=np.int)
-            res['data'] = np.array([], dtype=dtype)
-            res['recordingNumber'] = np.array([], dtype=np.int)
-
-        return res
-
 
 
     def _create_analog_timestamps(self, messagefile, nsamples):
@@ -519,70 +345,238 @@ class File:
             else:
                 raise Exception('eventsmessages file should be in the same folder')
 
-    '''from OpenEphys.py'''
-    def readHeader(fh):
-        """Read header information from the first 1024 bytes of an OpenEphys file.
 
-        Args:
-            f: An open file handle to an OpenEphys file
+def read_analog_binary_signals(filehandle, numchan):
 
-        Returns: dict with the following keys.
-            - bitVolts : float, scaling factor, microvolts per bit
-            - blockLength : int, e.g. 1024, length of each record (see
-                loadContinuous)
-            - bufferSize : int, e.g. 1024
-            - channel : the channel, eg "'CH1'"
-            - channelType : eg "'Continuous'"
-            - date_created : eg "'15-Jun-2016 21212'" (What are these numbers?)
-            - description : description of the file format
-            - format : "'Open Ephys Data Format'"
-            - header_bytes : int, e.g. 1024
-            - sampleRate : float, e.g. 30000.
-            - version: eg '0.4'
-            Note that every value is a string, even numeric data like bitVolts.
-            Some strings have extra, redundant single apostrophes.
-        """
-        header = {}
+    numchan=int(numchan)
 
-        # Read the data as a string
-        # Remove newlines and redundant "header." prefixes
-        # The result should be a series of "key = value" strings, separated
-        # by semicolons.
-        header_string = fh.read(1024).replace('\n','').replace('header.','')
+    nsamples = os.fstat(filehandle.fileno()).st_size / (numchan*2)
+    print('Estimated samples: ', int(nsamples))
+    sam = []
 
-        # Parse each key = value string separately
-        for pair in header_string.split(';'):
-            if '=' in pair:
-                # print pair
-                key, value = pair.split(' = ')
-                key = key.strip()
-                value = value.strip()
+    print('Reading all samples')
+    while filehandle.tell() < os.fstat(filehandle.fileno()).st_size:
+        sam = np.fromfile(filehandle, np.dtype('i2'))*0.195
 
-                # Convert some values to numeric
-                if key in ['bitVolts', 'sampleRate']:
-                    header[key] = float(value)
-                elif key in ['blockLength', 'bufferSize', 'header_bytes']:
-                    header[key] = int(value)
-                else:
-                    # Keep as string
-                    header[key] = value
+    nread = len(sam)/numchan
+    print('Read samples: ', int(nread))
 
-        return header
+    print('Rearranging...')
+    samples = np.reshape(sam, (int(len(sam)/numchan), numchan))
+    samples = np.transpose(samples)
 
-    def get_number_of_records(filepath):
-        # Open the file
-        with file(filepath, 'rb') as f:
-            # Read header info
-            header = readHeader(f)
+    print('Done!')
 
-            # Get file length
-            fileLength = os.fstat(f.fileno()).st_size
+    return samples, nread
 
-            # Determine the number of records
-            record_length_bytes = 2 * header['blockLength'] + 22
-            n_records = int((fileLength - 1024) / record_length_bytes)
-            if (n_records * record_length_bytes + 1024) != fileLength:
-                print("file does not divide evenly into full records")
-                # raise IOError("file does not divide evenly into full records")
+def read_analog_continuous_signal(filepath, dtype=float, verbose=False,
+    start_record=None, stop_record=None, ignore_last_record=True):
+    """Load continuous data from a single channel in the file `filepath`.
 
-        return n_records
+    This is intended to be mostly compatible with the previous version.
+    The differences are:
+    - Ability to specify start and stop records
+    - Converts numeric data in the header from string to numeric data types
+    - Does not rely on a predefined maximum data size
+    - Does not necessarily drop the last record, which is usually incomplete
+    - Uses the block length that is specified in the header, instead of
+        hardcoding it.
+    - Returns timestamps and recordNumbers as int instead of float
+    - Tests the record metadata (N and record marker) for internal consistency
+
+    The OpenEphys file format breaks the data stream into "records",
+    typically of length 1024 samples. There is only one timestamp per record.
+
+    Args:
+        filepath : string, path to file to load
+        dtype : float or np.int16
+            If float, then the data will be multiplied by bitVolts to convert
+            to microvolts. This increases the memory required by 4 times.
+        verbose : whether to print debugging messages
+        start_record, stop_record : indices that control how much data
+            is read and returned. Pythonic indexing is used,
+            so `stop_record` is not inclusive. If `start` is None, reading
+            begins at the beginning; if `stop` is None, reading continues
+            until the end.
+        ignore_last_record : The last record in the file is almost always
+            incomplete (padded with zeros). By default it is ignored, for
+            compatibility with the old version of this function.
+
+    Returns: dict, with following keys
+        data : array of samples of data
+        header : the header info, as returned by readHeader
+        timestamps : the timestamps of each record of data that was read
+        recordingNumber : the recording number of each record of data that
+            was read. The length is the same as `timestamps`.
+    """
+    if dtype not in [float, np.int16]:
+        raise ValueError("Invalid data type. Must be float or np.int16")
+
+    if verbose:
+        print("Loading continuous data from " + filepath)
+
+    """Here is the OpenEphys file format:
+    'each record contains one 64-bit timestamp, one 16-bit sample
+    count (N), 1 uint16 recordingNumber, N 16-bit samples, and
+    one 10-byte record marker (0 1 2 3 4 5 6 7 8 255)'
+    Thus each record has size 2*N + 22 bytes.
+    """
+    # This is what the record marker should look like
+    spec_record_marker = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 255])
+
+    # Lists for data that's read
+    timestamps = []
+    recordingNumbers = []
+    samples = []
+    samples_read = 0
+    records_read = 0
+
+    # Open the file
+    with file(filepath, 'rb') as f:
+        # Read header info, file length, and number of records
+        header = readHeader(f)
+        record_length_bytes = 2 * header['blockLength'] + 22
+        fileLength = os.fstat(f.fileno()).st_size
+        n_records = get_number_of_records(filepath)
+
+        # Use this to set start and stop records if not specified
+        if start_record is None:
+            start_record = 0
+        if stop_record is None:
+            stop_record = n_records
+
+        # We'll stop reading after this many records are read
+        n_records_to_read = stop_record - start_record
+
+        # Seek to the start location, relative to the current position
+        # right after the header.
+        f.seek(record_length_bytes * start_record, 1)
+
+        # Keep reading till the file is finished
+        while f.tell() < fileLength and records_read < n_records_to_read:
+            # Skip the last record if requested, which usually contains
+            # incomplete data
+            if ignore_last_record and f.tell() == (
+                fileLength - record_length_bytes):
+                break
+
+            # Read the timestamp for this record
+            # litte-endian 64-bit signed integer
+            timestamps.append(np.fromfile(f, np.dtype('<i8'), 1))
+
+            # Read the number of samples in this record
+            # little-endian 16-bit unsigned integer
+            N = np.fromfile(f, np.dtype('<u2'), 1).item()
+            if N != header['blockLength']:
+                raise IOError('Found corrupted record in block')
+
+            # Read and store the recording numbers
+            # big-endian 16-bit unsigned integer
+            recordingNumbers.append(np.fromfile(f, np.dtype('>u2'), 1))
+
+            # Read the data
+            # big-endian 16-bit signed integer
+            data = np.fromfile(f, np.dtype('>i2'), N)
+            if len(data) != N:
+                raise IOError("could not load the right number of samples")
+
+            # Optionally convert dtype
+            if dtype == float:
+                data = data * header['bitVolts']
+
+            # Store the data
+            samples.append(data)
+
+            # Extract and test the record marker
+            record_marker = np.fromfile(f, np.dtype('<u1'), 10)
+            if np.any(record_marker != spec_record_marker):
+                raise IOError("corrupted record marker at record %d" %
+                    records_read)
+
+            # Update the count
+            samples_read += len(samples)
+            records_read += 1
+
+    # Concatenate results, or empty arrays if no data read (which happens
+    # if start_sample is after the end of the data stream)
+    res = {'header': header}
+    if samples_read > 0:
+        res['timestamps'] = np.concatenate(timestamps)
+        res['data'] = np.concatenate(samples)
+        res['recordingNumber'] = np.concatenate(recordingNumbers)
+    else:
+        res['timestamps'] = np.array([], dtype=np.int)
+        res['data'] = np.array([], dtype=dtype)
+        res['recordingNumber'] = np.array([], dtype=np.int)
+
+    return res
+
+
+
+'''from OpenEphys.py'''
+def readHeader(fh):
+    """Read header information from the first 1024 bytes of an OpenEphys file.
+
+    Args:
+        f: An open file handle to an OpenEphys file
+
+    Returns: dict with the following keys.
+        - bitVolts : float, scaling factor, microvolts per bit
+        - blockLength : int, e.g. 1024, length of each record (see
+            loadContinuous)
+        - bufferSize : int, e.g. 1024
+        - channel : the channel, eg "'CH1'"
+        - channelType : eg "'Continuous'"
+        - date_created : eg "'15-Jun-2016 21212'" (What are these numbers?)
+        - description : description of the file format
+        - format : "'Open Ephys Data Format'"
+        - header_bytes : int, e.g. 1024
+        - sampleRate : float, e.g. 30000.
+        - version: eg '0.4'
+        Note that every value is a string, even numeric data like bitVolts.
+        Some strings have extra, redundant single apostrophes.
+    """
+    header = {}
+
+    # Read the data as a string
+    # Remove newlines and redundant "header." prefixes
+    # The result should be a series of "key = value" strings, separated
+    # by semicolons.
+    header_string = fh.read(1024).replace('\n','').replace('header.','')
+
+    # Parse each key = value string separately
+    for pair in header_string.split(';'):
+        if '=' in pair:
+            # print pair
+            key, value = pair.split(' = ')
+            key = key.strip()
+            value = value.strip()
+
+            # Convert some values to numeric
+            if key in ['bitVolts', 'sampleRate']:
+                header[key] = float(value)
+            elif key in ['blockLength', 'bufferSize', 'header_bytes']:
+                header[key] = int(value)
+            else:
+                # Keep as string
+                header[key] = value
+
+    return header
+
+def get_number_of_records(filepath):
+    # Open the file
+    with file(filepath, 'rb') as f:
+        # Read header info
+        header = readHeader(f)
+
+        # Get file length
+        fileLength = os.fstat(f.fileno()).st_size
+
+        # Determine the number of records
+        record_length_bytes = 2 * header['blockLength'] + 22
+        n_records = int((fileLength - 1024) / record_length_bytes)
+        # if (n_records * record_length_bytes + 1024) != fileLength:
+        #     print("file does not divide evenly into full records")
+        #     # raise IOError("file does not divide evenly into full records")
+
+    return n_records
