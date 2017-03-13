@@ -62,6 +62,12 @@ requirements:
 test:
   imports:
     - expipe
+  # requires:
+    # - sphinx
+  # commands:
+    # - pip install pyrebase && cd docs && make doctest
+  # files:
+    # - docs
 
 about:
   home: https://github.com/CINPLA/expipe/
