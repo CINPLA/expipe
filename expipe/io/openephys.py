@@ -26,8 +26,8 @@ def _prepare_exdir_file(exdir_file):
     return general, subject, processing, epochs
 
 
-def convert(openephys_directory, exdir_path):
-    openephys_file = pyopenephys.File(openephys_directory)
+def convert(openephys_directory, exdir_path, probefile):
+    openephys_file = pyopenephys.File(openephys_directory, probefile)
     exdir_file = exdir.File(exdir_path)
     dtime = openephys_file._start_datetime.strftime('%Y-%m-%dT%H:%M:%S')
     exdir_file.attrs['session_start_time'] = dtime
@@ -41,6 +41,7 @@ def convert(openephys_directory, exdir_path):
     acquisition.attrs["openephys_session"] = openephys_file.session
 
     shutil.copytree(openephys_file._absolute_foldername, target_folder)
+    shutil.copy(probefile, op.join(target_folder, 'openephys_channelmap.prb'))
 
     print("Copied", openephys_file.session, "to", target_folder)
 
@@ -49,7 +50,8 @@ def load_openephys_file(exdir_file):
     acquisition = exdir_file["acquisition"]
     openephys_session = acquisition.attrs["openephys_session"]
     openephys_directory = op.join(acquisition.directory, openephys_session)
-    return pyopenephys.File(openephys_directory)
+    probefile = op.join(openephys_directory, 'openephys_channelmap.prb')
+    return pyopenephys.File(openephys_directory, probefile)
 
 
 def make_channel_groups(exdir_path):
@@ -215,36 +217,17 @@ def generate_tracking(exdir_path):
     position.attrs['stop_time'] = openephys_file._duration
     tracking_data = openephys_file.tracking
     times, coords = tracking_data.times, tracking_data.positions
+    print(times.shape, coords.shape)
     tracked_spots = int(coords.shape[1] / 2)  # 2 coordinates per spot
     for n in range(tracked_spots):
         led = position.require_group("led_" + str(n))
-        data = coords[:, n * 2: n * 2 + 1 + 1]
+        data = coords[:, n * 2: n * 2 + 2]
         dset = led.require_dataset('data', data)
         dset.attrs['num_samples'] = len(data)
         dset = led.require_dataset("timestamps", times)
         dset.attrs['num_samples'] = len(times)
         led.attrs['start_time'] = 0 * pq.s
         led.attrs['stop_time'] = openephys_file._duration
-
-
-def generate_inp(exdir_path):
-    # TODO should we save duration as attr or use start-stop time?
-    exdir_file = exdir.File(exdir_path)
-    general, subject, processing, epochs = _prepare_exdir_file(exdir_file)
-    openephys_file = load_openephys_file(exdir_file=exdir_file)
-    inp = epochs.require_group("openephys_inp")
-
-    if not all(key in inp.attrs for key in ['start_time', 'stop_time']):
-        inp.attrs['start_time'] = 0 * pq.s
-        inp.attrs['stop_time'] = openephys_file._duration
-
-    inp_data = openephys_file.inp_data
-    times = inp.require_dataset('timestamps', inp_data.times)
-    times.attrs['num_samples'] = len(times[:])
-    types = inp.require_dataset('event_types', inp_data.event_types)
-    types.attrs['num_samples'] = len(types[:])
-    vals = inp.require_dataset('values', inp_data.values)
-    vals.attrs['num_samples'] = len(vals[:])
 
 
 class OpenEphysFilerecord(Filerecord):
@@ -276,11 +259,13 @@ class OpenEphysFilerecord(Filerecord):
 if __name__ == '__main__':
     openephys_directory = '/home/mikkel/apps/expipe-project/openephystest/1753_2017-03-07_18-40-14_ephys-trackred'
     exdir_path = '/home/mikkel/apps/expipe-project/openephystest.exdir'
+    probefile = '/home/mikkel/Dropbox/scripting/python/expipe/openephys_channelmap.prb'
     # convert(openephys_directory=openephys_directory,
-    #         exdir_path=exdir_path)
-    generate_tracking(exdir_path)
+    #         exdir_path=exdir_path,
+    #         probefile=probefile)
+    # generate_tracking(exdir_path)
     generate_analog_signals(exdir_path)
-    generate_spike_trains(exdir_path)
-    generate_inp(exdir_path)
-    generate_units(exdir_path)
-    generate_clusters(exdir_path)
+    # generate_spike_trains(exdir_path)
+    # generate_inp(exdir_path)
+    # generate_units(exdir_path)
+    # generate_clusters(exdir_path)

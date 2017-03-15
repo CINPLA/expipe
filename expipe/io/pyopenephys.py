@@ -35,6 +35,7 @@ from six import exec_
 # TODO ChannelGroup class - needs probe file
 # TODO Channel class
 
+
 def _read_python(path):
     path = op.realpath(op.expanduser(path))
     assert op.exists(path)
@@ -45,6 +46,7 @@ def _read_python(path):
     metadata = {k.lower(): v for (k, v) in metadata.items()}
     return metadata
 
+
 class Channel:
     def __init__(self, index, name, gain):
         self.index = index
@@ -53,7 +55,7 @@ class Channel:
 
 
 class ChannelGroup:
-    def __init__(self, channel_group_id, filename, channels, adc_fullscale, attrs):
+    def __init__(self, channel_group_id, filename, channels, attrs):
         self.attrs = attrs
         self.filename = filename
         self.channel_group_id = channel_group_id
@@ -69,10 +71,10 @@ class ChannelGroup:
         )
 
 
-class AnalogSignals:
-    def __init__(self, signals, times, sample_rate):
-        self.signals = signals
-        self.times = times
+class AnalogSignal:
+    def __init__(self, channel_id, signal, sample_rate):
+        self.channel_id = channel_id
+        self.signal = signal
         self.sample_rate = sample_rate
 
     def __str__(self):
@@ -111,7 +113,8 @@ class File:
         self.nchan = 0
         self.rhythm = False
         self.rhythmID = []
-        rhythmRates = np.array([1., 1.25, 1.5, 2, 2.5, 3, 3.33, 4., 5., 6.25, 8., 10., 12.5, 15., 20., 25., 30.])
+        rhythmRates = np.array([1., 1.25, 1.5, 2, 2.5, 3, 3.33, 4., 5., 6.25,
+                                8., 10., 12.5, 15., 20., 25., 30.])
         self.osc = False
         self.oscID = []
         self.oscPort = []
@@ -167,14 +170,14 @@ class File:
         self._duration = self.analog_signals.signals.shape[1] / self.analog_signals.sample_rate
 
         sort_idx = np.argsort(channel_info['channels'])
-        channel_info['channels'] = channel_info['channels'][sort_idx]
-        channel_info['gain'] = channel_info['gain'][sort_idx]
+        channel_info['channels'] = np.array(channel_info['channels'])[sort_idx]
+        channel_info['gain'] = np.array(channel_info['gain'])[sort_idx]
         self.channel_groups_prb = _read_python(probefile)['channel_groups']
         for group in self.channel_groups_prb.values():
             group['filemap'] = []
             group['gain'] = []
             for chan in group['channels']:
-                idx = channel_info['channels'].index(chan)
+                idx = channel_info['channels'].tolist().index(chan)
                 group['filemap'].append(idx)
                 group['gain'].append(channel_info['gain'][idx])
 
@@ -214,7 +217,7 @@ class File:
         self._channel_group_id_to_channel_group = {}
         self._channel_count = 0
         self._channel_groups = []
-        for channel_group_id, channel_group_content in self.channel_group_prb.items():
+        for channel_group_id, channel_group_content in self.channel_groups_prb.items():
             num_chans = len(channel_group_content['channels'])
             self._channel_count += num_chans
             channels = []
@@ -365,7 +368,7 @@ class File:
 
         tracking_data = TrackingData(
             times=ts_s,
-            positions=coord_s,
+            positions=coord_s.T,
             attrs=attrs
         )
 
@@ -376,7 +379,6 @@ class File:
         # Check and decode files
         filenames = [f for f in os.listdir(self._absolute_foldername)]
         anas = np.array([])
-        timestamps = np.array([])
         if self._format == 'binary':
             if self.rhythm is True:
                 if any('.dat' in f for f in filenames):
@@ -384,8 +386,6 @@ class File:
                     print('.dat: ', datfile)
                     with open(op.join(self._absolute_foldername, datfile), "rb") as fh:
                         anas, nsamples = read_analog_binary_signals(fh, self.nchan)
-                        timestamps = np.arange(nsamples) / self.sample_rate
-                        self._analog_signals_dirty = False
                 else:
                     raise ValueError("'.dat' should be in the folder")
             else:
@@ -409,18 +409,18 @@ class File:
 
                 anas = np.array(anas)
                 nsamples = anas.shape[1]
-                timestamps = np.arange(nsamples) / self.sample_rate
-                self._analog_signals_dirty = False
                 print('Done!')
 
-        if not self._analog_signals_dirty:
-            self._analog_signals = AnalogSignals(
-                signals=anas,
-                times=timestamps,
+        for idx, ana in enumerate(anas):
+            analog_signal = AnalogSignal(
+                channel_id=idx,
+                signal=ana,
                 sample_rate=self.sample_rate
-                #TODO channel group id and channel id
-            )
+            ) # TODO attrs
 
+            self._analog_signals.append(analog_signal)
+        
+        self._analog_signals_dirty = False
 
     def _create_analog_timestamps(self, messagefile, nsamples):
         with open(op.join(self._absolute_foldername, messagefile)) as fm:
