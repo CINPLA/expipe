@@ -54,24 +54,16 @@ def load_openephys_file(exdir_file):
     return pyopenephys.File(openephys_directory, probefile)
 
 
-def make_channel_groups(exdir_path):
+def _prepare_channel_groups(exdir_path):
     exdir_file = exdir.File(exdir_path)
     general, subject, processing, epochs = _prepare_exdir_file(exdir_file)
     openephys_file = load_openephys_file(exdir_file=exdir_file)
-    channel_groups = {}
+    exdir_channel_groups = []
     elphys = processing.require_group('electrophysiology')
     for openephys_channel_group in openephys_file.channel_groups:
         exdir_channel_group = elphys.require_group(
             "channel_group_{}".format(openephys_channel_group.channel_group_id))
-
-        channel_groups[openephys_channel_group.channel_group_id] = {
-            'channel_group': exdir_channel_group,
-            'openephys_file': openephys_file,
-            'openephys_channel_group': openephys_channel_group,
-            'start_time': 0 * pq.s,
-            'stop_time': openephys_file._duration
-        }
-
+        exdir_channel_groups.append(exdir_channel_group)
         channel_identities = np.array([ch.index for ch in openephys_channel_group.channels])
         exdir_channel_group.attrs['start_time'] = 0 * pq.s
         exdir_channel_group.attrs['stop_time'] = openephys_file._duration
@@ -79,51 +71,66 @@ def make_channel_groups(exdir_path):
         exdir_channel_group.attrs["electrode_idx"] = channel_identities - channel_identities[0]
         exdir_channel_group.attrs['electrode_group_id'] = openephys_channel_group.channel_group_id
         # TODO else: test if attrs are the same
-    return channel_groups
+    return exdir_channel_groups, openephys_file
 
 
-def generate_analog_signals(exdir_path):
-    channel_groups = make_channel_groups(exdir_path)
-    for channel_group_segment in channel_groups.values():
-        channel_group = channel_group_segment['channel_group']
-        openephys_file = channel_group_segment['openephys_file']
-        openephys_channel_group = channel_group_segment['openephys_channel_group']
-        start_time = channel_group_segment['start_time']
-        stop_time = channel_group_segment['stop_time']
-        lfp_index = 0
-        for analog_signal in openephys_file.analog_signals:
-            if openephys_channel_group == openephys_file.channel_group(analog_signal.channel_id):
-                lfp_index += 1
+def decimate(signal, sample_rate, target_rate, order=4):
+    assert len(signal.shape) == 1
+    from scipy.signal import butter, filtfilt, resample
+    sample_rate = sample_rate.rescale('Hz').magnitude
+    target_rate = target_rate.rescale('Hz').magnitude
+    fn = sample_rate / 2.
+    band = target_rate / fn
 
-                lfp = channel_group.require_group("LFP")
+    b, a = butter(order, band, 'lowpass')
 
+    if np.all(np.abs(np.roots(a)) < 1):
+        print('Filtering...')
+        out = filtfilt(b, a, signal, axis=1)
+    else:
+        raise ValueError('Filter stability problem, try reducing the order')
+
+    nsamples = target_rate * 2 * len(signal) / sample_rate
+    return resample(out, nsamples)
+
+
+def generate_lfp(exdir_path):
+    exdir_channel_groups, openephys_file = _prepare_channel_groups(exdir_path)
+    for channel_group, openephys_channel_group in zip(exdir_channel_groups,
+                                                      openephys_file.channel_groups):
+        lfp = channel_group.require_group("LFP")
+        analog_signals = openephys_channel_group.analog_signals
+        for lfp_index, analog_signal in enumerate(analog_signals):
                 lfp_timeseries = lfp.require_group("LFP_timeseries_{}".format(lfp_index))
-                spike_train = openephys_channel_group.spike_train
                 channel_identities = np.array([ch.index for ch in
                                                openephys_channel_group.channels])
-                # TODO analog signals have only one channel
-                lfp_timeseries.attrs["num_samples"] = len(analog_signal.signal)
-                lfp_timeseries.attrs["start_time"] = start_time
-                lfp_timeseries.attrs["stop_time"] = stop_time
-                lfp_timeseries.attrs["sample_rate"] = analog_signal.sample_rate
+                sample_rate = 500 * pq.Hz
+                signal = decimate(analog_signal.signal,
+                                  analog_signal.sample_rate,
+                                  sample_rate,
+                                  order=4)
+                lfp_timeseries.attrs["num_samples"] = len(signal)
+                lfp_timeseries.attrs["start_time"] = 0 * pq.s
+                lfp_timeseries.attrs["stop_time"] = openephys_file._duration
+                lfp_timeseries.attrs["sample_rate"] = sample_rate
                 lfp_timeseries.attrs["electrode_identity"] = analog_signal.channel_id
                 lfp_timeseries.attrs["electrode_idx"] = analog_signal.channel_id - openephys_channel_group.channel_group_id * 4
                 lfp_timeseries.attrs['electrode_group_id'] = openephys_channel_group.channel_group_id
-                data = lfp_timeseries.require_dataset("data", data=analog_signal.signal)
-                data.attrs["num_samples"] = len(analog_signal.signal)
+                data = lfp_timeseries.require_dataset("data", data=signal)
+                data.attrs["num_samples"] = len(signal)
                 # NOTE: In exdirio (python-neo) sample rate is required on dset #TODO
                 data.attrs["sample_rate"] = analog_signal.sample_rate
 
 
 def generate_clusters(exdir_path):
-    channel_groups = make_channel_groups(exdir_path)
-    for channel_group_segment in channel_groups.values():
-        channel_group = channel_group_segment['channel_group']
-        openephys_file = channel_group_segment['openephys_file']
-        openephys_channel_group = channel_group_segment['openephys_channel_group']
+    channel_groups = _prepare_channel_groups(exdir_path)
+    for channel_group_dict in channel_groups.values():
+        channel_group = channel_group_dict['channel_group']
+        openephys_file = channel_group_dict['openephys_file']
+        openephys_channel_group = channel_group_dict['openephys_channel_group']
         spike_train = openephys_channel_group.spike_train
-        start_time = channel_group_segment['start_time']
-        stop_time = channel_group_segment['stop_time']
+        start_time = channel_group_dict['start_time']
+        stop_time = channel_group_dict['stop_time']
         for cut in openephys_file.cuts:
             if(openephys_channel_group.channel_group_id == cut.channel_group_id):
                 units = np.unique(cut.indices)
@@ -141,14 +148,14 @@ def generate_clusters(exdir_path):
 
 
 def generate_units(exdir_path):
-    channel_groups = make_channel_groups(exdir_path)
-    for channel_group_segment in channel_groups.values():
-        channel_group = channel_group_segment['channel_group']
-        openephys_file = channel_group_segment['openephys_file']
-        openephys_channel_group = channel_group_segment['openephys_channel_group']
+    channel_groups = _prepare_channel_groups(exdir_path)
+    for channel_group_dict in channel_groups.values():
+        channel_group = channel_group_dict['channel_group']
+        openephys_file = channel_group_dict['openephys_file']
+        openephys_channel_group = channel_group_dict['openephys_channel_group']
         spike_train = openephys_channel_group.spike_train
-        start_time = channel_group_segment['start_time']
-        stop_time = channel_group_segment['stop_time']
+        start_time = channel_group_dict['start_time']
+        stop_time = channel_group_dict['stop_time']
 
         for cut in openephys_file.cuts:
             if(openephys_channel_group.channel_group_id == cut.channel_group_id):
@@ -172,13 +179,13 @@ def generate_units(exdir_path):
 
 
 def generate_spike_trains(exdir_path):
-    channel_groups = make_channel_groups(exdir_path)
-    for channel_group_segment in channel_groups.values():
-        channel_group = channel_group_segment['channel_group']
-        openephys_file = channel_group_segment['openephys_file']
-        openephys_channel_group = channel_group_segment['openephys_channel_group']
-        start_time = channel_group_segment['start_time']
-        stop_time = channel_group_segment['stop_time']
+    channel_groups = _prepare_channel_groups(exdir_path)
+    for channel_group_dict in channel_groups.values():
+        channel_group = channel_group_dict['channel_group']
+        openephys_file = channel_group_dict['openephys_file']
+        openephys_channel_group = channel_group_dict['openephys_channel_group']
+        start_time = channel_group_dict['start_time']
+        stop_time = channel_group_dict['stop_time']
 
         event_waveform = channel_group.require_group("EventWaveform")
         waveform_timeseries = event_waveform.require_group('waveform_timeseries')
@@ -241,7 +248,7 @@ class OpenEphysFilerecord(Filerecord):
     def generate_tracking(self):
         generate_tracking(self.local_path)
 
-    def generate_analog_signals(self):
+    def generate_lfp(self):
         generate_analog_signals(self.local_path)
 
     def generate_spike_trains(self):
@@ -264,7 +271,7 @@ if __name__ == '__main__':
     #         exdir_path=exdir_path,
     #         probefile=probefile)
     # generate_tracking(exdir_path)
-    generate_analog_signals(exdir_path)
+    generate_lfp(exdir_path)
     # generate_spike_trains(exdir_path)
     # generate_inp(exdir_path)
     # generate_units(exdir_path)

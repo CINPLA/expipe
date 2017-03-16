@@ -48,8 +48,9 @@ def _read_python(path):
 
 
 class Channel:
-    def __init__(self, index, name, gain):
+    def __init__(self, index, name, gain, channel_id):
         self.index = index
+        self.id = channel_id
         self.name = name
         self.gain = gain
 
@@ -61,10 +62,6 @@ class ChannelGroup:
         self.channel_group_id = channel_group_id
         self.channels = channels
 
-    @property
-    def analog_signals(self):
-        return self.analog_signals
-
     def __str__(self):
         return "<OpenEphys channel_group {}: channel_count: {}>".format(
             self.channel_group_id, len(self.channels)
@@ -73,13 +70,18 @@ class ChannelGroup:
 
 class AnalogSignal:
     def __init__(self, channel_id, signal, sample_rate):
-        self.channel_id = channel_id
         self.signal = signal
+        self.channel_id = channel_id
         self.sample_rate = sample_rate
 
+    @property
+    def times(self):
+        nsamples = self.signal.shape[1]
+        return np.arange(nsamples) / self.sample_rate
+
     def __str__(self):
-        return "<OpenEphys analog signals:shape: {}, sample_rate: {}>".format(
-            self.signals.shape, self.sample_rate
+        return "<OpenEphys analog signal:shape: {}, sample_rate: {}>".format(
+            self.signal.shape, self.sample_rate
         )
 
 
@@ -110,7 +112,6 @@ class File:
         if not any(sett == 'settings.xml' for sett in filenames):
             raise ValueError("'setting.xml' should be in the folder")
 
-        self.nchan = 0
         self.rhythm = False
         self.rhythmID = []
         rhythmRates = np.array([1., 1.25, 1.5, 2, 2.5, 3, 3.33, 4., 5., 6.25,
@@ -129,6 +130,7 @@ class File:
         self._start_datetime = datetime.strptime(self.settings['INFO']['DATE'],
                                                  '%d %b %Y %H:%M:%S')
         channel_info = {}
+        self.nchan = 0
         FPGA_count = 0
         for sigchain in self.settings['SIGNALCHAIN']:
             for processor in sigchain['PROCESSOR']:
@@ -167,7 +169,8 @@ class File:
             self._format = None
         print('Decoding data from ', self._format, ' format')
 
-        self._duration = self.analog_signals.signals.shape[1] / self.analog_signals.sample_rate
+        self._duration = (self.analog_signals[0].signal.shape[1] /
+                          self.analog_signals[0].sample_rate)
 
         sort_idx = np.argsort(channel_info['channels'])
         channel_info['channels'] = np.array(channel_info['channels'])[sort_idx]
@@ -221,20 +224,31 @@ class File:
             num_chans = len(channel_group_content['channels'])
             self._channel_count += num_chans
             channels = []
-            for idx, channel_id in enumerate(channel_group_content['channels']):
+            for idx, channel_id in enumerate(channel_group_content['filemap']):
                 channel = Channel(
-                    channel_id,
-                    name="channel_{}_channel_group_{}".format(channel_id, channel_group_id),
+                    index=idx,
+                    channel_id=channel_id,
+                    name="channel_{}_channel_group_{}".format(channel_id,
+                                                              channel_group_id),
                     gain=channel_group_content['gain'][idx]
                 )
                 channels.append(channel)
 
             channel_group = ChannelGroup(
-                channel_group_id,
+                channel_group_id=channel_group_id,
                 filename=None,#TODO,
                 channels=channels,
                 attrs=None #TODO
             )
+            ana = self.analog_signals[0]
+            analog_signals = []
+            for channel in channels:
+                print(channel.id)
+                analog_signals.append(AnalogSignal(signal=ana.signal[channel.id],
+                                                   channel_id=channel.id,
+                                                   sample_rate=ana.sample_rate))
+
+            channel_group.analog_signals = analog_signals
 
             self._channel_groups.append(channel_group)
             self._channel_group_id_to_channel_group[channel_group_id] = channel_group
@@ -365,7 +379,6 @@ class File:
             attrs['port'] = self.oscPort
             attrs['address'] = self.oscAddress
 
-
         tracking_data = TrackingData(
             times=ts_s,
             positions=coord_s.T,
@@ -379,6 +392,7 @@ class File:
         # Check and decode files
         filenames = [f for f in os.listdir(self._absolute_foldername)]
         anas = np.array([])
+        timestamps = np.array([])
         if self._format == 'binary':
             if self.rhythm is True:
                 if any('.dat' in f for f in filenames):
@@ -408,18 +422,13 @@ class File:
                             raise Exception('Channels must have the same number of samples')
 
                 anas = np.array(anas)
-                nsamples = anas.shape[1]
                 print('Done!')
 
-        for idx, ana in enumerate(anas):
-            analog_signal = AnalogSignal(
-                channel_id=idx,
-                signal=ana,
-                sample_rate=self.sample_rate
-            ) # TODO attrs
-
-            self._analog_signals.append(analog_signal)
-        
+        self._analog_signals = [AnalogSignal(
+            channel_id=range(anas.shape[0]),
+            signal=anas,
+            sample_rate=self.sample_rate
+        )]
         self._analog_signals_dirty = False
 
     def _create_analog_timestamps(self, messagefile, nsamples):
