@@ -129,7 +129,7 @@ class File:
             self.settings = yh.data(ET.fromstring(xmldata))['SETTINGS']
         self._start_datetime = datetime.strptime(self.settings['INFO']['DATE'],
                                                  '%d %b %Y %H:%M:%S')
-        channel_info = {}
+        self._channel_info = {}
         self.nchan = 0
         FPGA_count = 0
         for sigchain in self.settings['SIGNALCHAIN']:
@@ -138,8 +138,8 @@ class File:
                     assert FPGA_count == 0
                     FPGA_count += 1
                     # TODO can there be multiple FPGAs ?
-                    channel_info['channels'] = []
-                    channel_info['gain'] = []
+                    self._channel_info['channels'] = []
+                    self._channel_info['gain'] = []
                     self.rhythm = True
                     self.rhythmID = processor['NodeId']
                     gain = {ch['number']: ch['gain']
@@ -149,8 +149,8 @@ class File:
                         if chan['SELECTIONSTATE']['record'] == '1':
                             self.nchan += 1
                             chnum = chan['number']
-                            channel_info['channels'].append(int(chnum))
-                            channel_info['gain'].append(gain[chnum])
+                            self._channel_info['channels'].append(int(chnum))
+                            self._channel_info['gain'].append(float(gain[chnum]))
                         sampleIdx = int(processor['EDITOR']['SampleRate'])-1
                         self.sample_rate = rhythmRates[sampleIdx] * 1000. * pq.Hz
                     print('RhythmFPGA with ', self.nchan, ' channels. NodeId: ', self.rhythmID)
@@ -172,17 +172,17 @@ class File:
         self._duration = (self.analog_signals[0].signal.shape[1] /
                           self.analog_signals[0].sample_rate)
 
-        sort_idx = np.argsort(channel_info['channels'])
-        channel_info['channels'] = np.array(channel_info['channels'])[sort_idx]
-        channel_info['gain'] = np.array(channel_info['gain'])[sort_idx]
-        self.channel_groups_prb = _read_python(probefile)['channel_groups']
-        for group in self.channel_groups_prb.values():
+        sort_idx = np.argsort(self._channel_info['channels'])
+        self._channel_info['channels'] = np.array(self._channel_info['channels'])[sort_idx]
+        self._channel_info['gain'] = np.array(self._channel_info['gain'])[sort_idx]
+        self._channel_group_info = _read_python(probefile)['channel_groups']
+        for group in self._channel_group_info.values():
             group['filemap'] = []
             group['gain'] = []
             for chan in group['channels']:
-                idx = channel_info['channels'].tolist().index(chan)
+                idx = self._channel_info['channels'].tolist().index(chan)
                 group['filemap'].append(idx)
-                group['gain'].append(channel_info['gain'][idx])
+                group['gain'].append(self._channel_info['gain'][idx])
 
     @property
     def session(self):
@@ -220,7 +220,7 @@ class File:
         self._channel_group_id_to_channel_group = {}
         self._channel_count = 0
         self._channel_groups = []
-        for channel_group_id, channel_group_content in self.channel_groups_prb.items():
+        for channel_group_id, channel_group_content in self._channel_group_info.items():
             num_chans = len(channel_group_content['channels'])
             self._channel_count += num_chans
             channels = []
@@ -243,7 +243,6 @@ class File:
             ana = self.analog_signals[0]
             analog_signals = []
             for channel in channels:
-                print(channel.id)
                 analog_signals.append(AnalogSignal(signal=ana.signal[channel.id],
                                                    channel_id=channel.id,
                                                    sample_rate=ana.sample_rate))
