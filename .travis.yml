@@ -12,18 +12,14 @@ script:
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
-  # TODO add back when --use-local works
-  # - bash -ex libs/travis-conda-scripts/scripts/install_package.sh expipe
-  # - pip install pyrebase # TODO get rid of this dependency -> create conda package or use own code
-  # - bash -ex libs/travis-conda-scripts/scripts/doctest.sh
 deploy:
   - provider: script
     skip_cleanup: true
-    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla main
     on:
       tags: true
   - provider: script
     skip_cleanup: true
-    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla #-unstable
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla dev
     on:
       branch: dev
