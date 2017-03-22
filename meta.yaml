@@ -33,7 +33,6 @@ requirements:
     - seaborn
     - quantities
     - exdir
-    - pyxona
 
   run:
     - python
@@ -57,7 +56,6 @@ requirements:
     - seaborn
     - quantities
     - exdir
-    - pyxona
 
 test:
   imports:
