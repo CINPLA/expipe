@@ -93,7 +93,7 @@ class Module:
     def __init__(self, action, module_id):
         self.action = action
         self.id = module_id
-        path = "/".join(["modules", self.action.project.id, self.action.id, self.id])
+        path = "/".join(["action_modules", self.action.project.id, self.action.id, self.id])
         self._firebase = FirebaseBackend(path)
 
     def to_dict(self):
@@ -115,7 +115,7 @@ class ModuleManager:
         return name in self.keys()
 
     def keys(self):
-        result = db.child("modules").child(self.action.project.id).child(self.action.id).get(user["idToken"]).val()
+        result = db.child("action_modules").child(self.action.project.id).child(self.action.id).get(user["idToken"]).val()
         return result or list()
 
 
@@ -210,26 +210,25 @@ class Action:
             name = template_object["identifier"]
         if template is None and name is None:
             raise ValueError('name and template cannot both be None')
+        if contents is not None and template is not None:
+            raise ValueError('Cannot set contents if a template' +
+                             'is required')
+        if contents is not None:
+            if not isinstance(contents, dict):
+                raise ValueError('Contents must be of type: dict')
+
         module = Module(action=self, module_id=name)
-        if not module._firebase.exists() and template is not None:
+        if module._firebase.exists():
+            if template is not None or contents is not None:
+                if not overwrite:
+                    raise ValueError('Set overwrite to true if you want to ' +
+                                     'overwrite the contents of the module')
+
+        if template is not None:
             template_contents = db.child("/".join(["templates_contents", template])).get(user["idToken"]).val()
-            if contents is not None:
-                raise NotImplementedError('we do not support require_module with contents')
-            contents = template_contents
+            module._firebase.set(template_contents)
+        if contents is not None:
             module._firebase.set(contents)
-        if not module._firebase.exists() and template is None:
-            if contents is not None:
-                if not isinstance(contents, dict):
-                    raise ValueError('contents must be of type: dict')
-                module._firebase.set(contents)
-        if module._firebase.exists() and template is None:
-            if contents is not None and overwrite:
-                if not isinstance(contents, dict):
-                    raise ValueError('contents must be of type: dict')
-                module._firebase.set(contents)
-            if contents is not None and not overwrite:
-                raise ValueError('Set overwrite to true if you want to ' +
-                                 'overwrite the contents on the database')
         return module
 
     def require_filerecord(self, class_type=None, name=None):
