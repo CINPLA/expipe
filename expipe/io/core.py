@@ -10,6 +10,7 @@ from expipe import settings
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 
+
 class ActionManager:
     def __init__(self, project):
         self.project = project
@@ -36,6 +37,7 @@ class Project:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
             result = db.child("actions").child(self.id).child(name).update({"registered": dtime}, user["idToken"])
         return Action(self, name)
+
 
 class Datafile:
     def __init__(self, action):
