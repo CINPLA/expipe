@@ -69,7 +69,7 @@ class FirebaseBackend:
             value = db.child(self.path).get(user["idToken"]).val()
         else:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
-        value = exdir.core.convert_back_quantities(value)
+        # value = exdir.core.convert_back_quantities(value) # TODO this should probably be updated or removed completely?
         return value
 
     def set(self, name, value=None):
@@ -95,11 +95,24 @@ class Module:
     def __init__(self, action, module_id):
         self.action = action
         self.id = module_id
-        path = "/".join(["action_modules", self.action.project.id, self.action.id, self.id])
+        path = "/".join(["action_modules", self.action.project.id,
+                        self.action.id, self.id])
         self._firebase = FirebaseBackend(path)
 
     def to_dict(self):
         return self._firebase.get()
+
+    def to_json(self, fname=None):
+        import json
+        fname = fname or self.id
+        if not fname.endswith('.json'):
+            fname = fname + '.json'
+        if os.path.exists(fname):
+            raise FileExistsError('The filename "' + fname +
+                                  '" exists, choose another')
+        with open(fname, 'w') as outfile:
+            json.dump(module.to_dict(), outfile,
+                      sort_keys=True, indent=4)
 
 
 class ModuleManager:
