@@ -69,7 +69,7 @@ class FirebaseBackend:
             value = db.child(self.path).get(user["idToken"]).val()
         else:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
-        # value = exdir.core.convert_back_quantities(value) # TODO this should probably be updated or removed completely?
+        value = exdir.core.convert_back_quantities(value) # TODO this should probably be updated
         return value
 
     def set(self, name, value=None):
@@ -221,26 +221,30 @@ class Action:
     def require_module(self, name=None, template=None, contents=None,
                        overwrite=False):
         if name is None and template is not None:
-            template_object = db.child("/".join(["templates", template])).get(user["idToken"]).val()
+            template_object = db.child("/".join(["templates",
+                                                template])).get(
+                                                    user["idToken"]).val()
             name = template_object["identifier"]
         if template is None and name is None:
-            raise ValueError('name and template cannot both be None')
+            raise ValueError('name and template cannot both be None.')
         if contents is not None and template is not None:
             raise ValueError('Cannot set contents if a template' +
-                             'is required')
+                             'is required.')
         if contents is not None:
             if not isinstance(contents, dict):
-                raise ValueError('Contents must be of type: dict')
+                raise ValueError('Contents must be of type: dict.')
 
         module = Module(action=self, module_id=name)
         if module._firebase.exists():
             if template is not None or contents is not None:
                 if not overwrite:
                     raise ValueError('Set overwrite to true if you want to ' +
-                                     'overwrite the contents of the module')
-
+                                     'overwrite the contents of the module.')
         if template is not None:
-            template_contents = db.child("/".join(["templates_contents", template])).get(user["idToken"]).val()
+            template_contents = db.child("/".join(["templates_contents",
+                                                  template])).get(
+                                                      user["idToken"]).val()
+            # TODO give error if template does not exist
             module._firebase.set(template_contents)
         if contents is not None:
             module._firebase.set(contents)
@@ -252,7 +256,8 @@ class Action:
 
 
 def get_project(project_id):
-    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    existing = db.child("/".join(["projects",
+                                  project_id])).get(user["idToken"]).val()
     if not existing:
         raise NameError("Project " + project_id + " does not exist.")
     return Project(project_id)
@@ -260,10 +265,13 @@ def get_project(project_id):
 
 def require_project(project_id):
     """Creates a new project with the provided id."""
-    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    existing = db.child("/".join(["projects",
+                                  project_id])).get(user["idToken"]).val()
     registered = datetime.datetime.today().strftime(datetime_format)
     if not existing:
-        db.child("/".join(["projects", project_id])).set({"registered": registered}, user["idToken"])
+        db.child("/".join(["projects",
+                           project_id])).set({"registered":
+                                              registered}, user["idToken"])
     return Project(project_id)
 
 
