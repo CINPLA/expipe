@@ -21,6 +21,26 @@ class ActionManager:
             raise KeyError("Action '" + name + "' does not exist.")
         return Action(project=self.project, action_id=name)
 
+    def __iter__(self):
+        for key in self.keys():
+            yield self[key]
+
+    def keys(self):
+        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
+        return result.keys() or list()
+
+    def to_dict(self):
+        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
+        return result or dict()
+
+    def items(self):
+        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
+        return result.items() or tuple()
+
+    def values(self):
+        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
+        return result.values() or list()
+
 
 class Project:
     def __init__(self, project_id):
@@ -212,6 +232,16 @@ class Action:
         if not isinstance(value, dict):
             raise ValueError('Users requires dict e.g. "{"Kristian": "true"}"')
         db.child(self._firebase.path).child('users').set(value, user['idToken'])
+
+    @property
+    def tags(self):
+        return db.child(self._firebase.path).child('tags').get(user['idToken']).val()
+
+    @tags.setter
+    def tags(self, value):
+        if not isinstance(value, dict):
+            raise ValueError('Tags requires dict e.g. "{"Grid cell": "true"}"')
+        db.child(self._firebase.path).child('tags').set(value, user['idToken'])
 
     @property
     def modules(self):
