@@ -25,21 +25,34 @@ class ActionManager:
         for key in self.keys():
             yield self[key]
 
+    def __contains__(self, name):
+        return name in self.keys()
+
     def keys(self):
-        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
-        return result.keys() or list()
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.keys()
 
     def to_dict(self):
-        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
         return result or dict()
 
     def items(self):
-        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
-        return result.items() or tuple()
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.items()
 
     def values(self):
-        result = db.child("actions").child(self.project.id).get(user["idToken"]).val()
-        return result.values() or list()
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.values()
 
 
 class Project:
@@ -52,10 +65,11 @@ class Project:
         return ActionManager(self)
 
     def require_action(self, name):
-        result = db.child("actions").child(self.id).child(name).get(user["idToken"]).val()
-        if not result:
+        actions = db.child("actions").child(self.id).child(name)
+        result = actions.get(user["idToken"]).val()
+        if result is None:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
-            result = db.child("actions").child(self.id).child(name).update({"registered": dtime}, user["idToken"])
+            result = actions.update({"registered": dtime}, user["idToken"])
         return Action(self, name)
 
 
@@ -70,7 +84,8 @@ class Datafile:
             "type": "exdir",
             "exdir_path": self.exdir_path
         }
-        db.child("datafiles").child(self.action.project.id).child(self.action.id).child("main").set(data, user["idToken"])
+        dfiles = db.child("datafiles").child(self.action.project.id)
+        dfiles.child(self.action.id).child("main").set(data, user["idToken"])
 
 
 class FirebaseBackend:
@@ -89,7 +104,7 @@ class FirebaseBackend:
             value = db.child(self.path).get(user["idToken"]).val()
         else:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
-        value = exdir.core.convert_back_quantities(value) # TODO this should probably be updated
+        value = exdir.core.convert_back_quantities(value)
         return value
 
     def set(self, name, value=None):
@@ -132,7 +147,7 @@ class Module:
         if os.path.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
-      print('Saving module "' + self.id + '" to "' + fname + '"')
+        print('Saving module "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
             json.dump(module.to_dict(), outfile,
                       sort_keys=True, indent=4)
@@ -153,8 +168,28 @@ class ModuleManager:
         return name in self.keys()
 
     def keys(self):
-        result = db.child("action_modules").child(self.action.project.id).child(self.action.id).get(user["idToken"]).val()
-        return result or list()
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.keys()
+
+    def items(self):
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.items()
+
+    def values(self):
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.values()
 
 
 class Filerecord:
