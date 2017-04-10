@@ -10,6 +10,7 @@ from expipe import settings
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 
+
 class ActionManager:
     def __init__(self, project):
         self.project = project
@@ -19,6 +20,39 @@ class ActionManager:
         if not result:
             raise KeyError("Action '" + name + "' does not exist.")
         return Action(project=self.project, action_id=name)
+
+    def __iter__(self):
+        for key in self.keys():
+            yield self[key]
+
+    def __contains__(self, name):
+        return name in self.keys()
+
+    def keys(self):
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.keys()
+
+    def to_dict(self):
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        return result or dict()
+
+    def items(self):
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.items()
+
+    def values(self):
+        actions = db.child("actions")
+        result = actions.child(self.project.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.values()
 
 
 class Project:
@@ -31,11 +65,13 @@ class Project:
         return ActionManager(self)
 
     def require_action(self, name):
-        result = db.child("actions").child(self.id).child(name).get(user["idToken"]).val()
-        if not result:
+        actions = db.child("actions").child(self.id).child(name)
+        result = actions.get(user["idToken"]).val()
+        if result is None:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
-            result = db.child("actions").child(self.id).child(name).update({"registered": dtime}, user["idToken"])
+            result = actions.update({"registered": dtime}, user["idToken"])
         return Action(self, name)
+
 
 class Datafile:
     def __init__(self, action):
@@ -48,7 +84,8 @@ class Datafile:
             "type": "exdir",
             "exdir_path": self.exdir_path
         }
-        db.child("datafiles").child(self.action.project.id).child(self.action.id).child("main").set(data, user["idToken"])
+        dfiles = db.child("datafiles").child(self.action.project.id)
+        dfiles.child(self.action.id).child("main").set(data, user["idToken"])
 
 
 class FirebaseBackend:
@@ -93,11 +130,27 @@ class Module:
     def __init__(self, action, module_id):
         self.action = action
         self.id = module_id
-        path = "/".join(["modules", self.action.project.id, self.action.id, self.id])
+        path = "/".join(["action_modules", self.action.project.id,
+                        self.action.id, self.id])
         self._firebase = FirebaseBackend(path)
+
+    # TODO module reference id
 
     def to_dict(self):
         return self._firebase.get()
+
+    def to_json(self, fname=None):
+        import json
+        fname = fname or self.id
+        if not fname.endswith('.json'):
+            fname = fname + '.json'
+        if os.path.exists(fname):
+            raise FileExistsError('The filename "' + fname +
+                                  '" exists, choose another')
+        print('Saving module "' + self.id + '" to "' + fname + '"')
+        with open(fname, 'w') as outfile:
+            json.dump(module.to_dict(), outfile,
+                      sort_keys=True, indent=4)
 
 
 class ModuleManager:
@@ -109,14 +162,34 @@ class ModuleManager:
 
     def __iter__(self):
         for name in self.keys():
-            yield name
+            yield self[name]
 
     def __contains__(self, name):
         return name in self.keys()
 
     def keys(self):
-        result = db.child("modules").child(self.action.project.id).child(self.action.id).get(user["idToken"]).val()
-        return result or list()
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.keys()
+
+    def items(self):
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.items()
+
+    def values(self):
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if result is None:
+            result = dict()
+        return result.values()
 
 
 class Filerecord:
@@ -199,6 +272,16 @@ class Action:
         db.child(self._firebase.path).child('users').set(value, user['idToken'])
 
     @property
+    def tags(self):
+        return db.child(self._firebase.path).child('tags').get(user['idToken']).val()
+
+    @tags.setter
+    def tags(self, value):
+        if not isinstance(value, dict):
+            raise ValueError('Tags requires dict e.g. "{"Grid cell": "true"}"')
+        db.child(self._firebase.path).child('tags').set(value, user['idToken'])
+
+    @property
     def modules(self):
         # TODO consider adding support for non-shallow fetching
         return ModuleManager(self)
@@ -206,30 +289,33 @@ class Action:
     def require_module(self, name=None, template=None, contents=None,
                        overwrite=False):
         if name is None and template is not None:
-            template_object = db.child("/".join(["templates", template])).get(user["idToken"]).val()
+            template_object = db.child("/".join(["templates",
+                                                template])).get(
+                                                    user["idToken"]).val()
             name = template_object["identifier"]
         if template is None and name is None:
-            raise ValueError('name and template cannot both be None')
+            raise ValueError('name and template cannot both be None.')
+        if contents is not None and template is not None:
+            raise ValueError('Cannot set contents if a template' +
+                             'is required.')
+        if contents is not None:
+            if not isinstance(contents, dict):
+                raise ValueError('Contents must be of type: dict.')
+
         module = Module(action=self, module_id=name)
-        if not module._firebase.exists() and template is not None:
-            template_contents = db.child("/".join(["templates_contents", template])).get(user["idToken"]).val()
-            if contents is not None:
-                raise NotImplementedError('we do not support require_module with contents')
-            contents = template_contents
+        if module._firebase.exists():
+            if template is not None or contents is not None:
+                if not overwrite:
+                    raise ValueError('Set overwrite to true if you want to ' +
+                                     'overwrite the contents of the module.')
+        if template is not None:
+            template_contents = db.child("/".join(["templates_contents",
+                                                  template])).get(
+                                                      user["idToken"]).val()
+            # TODO give error if template does not exist
+            module._firebase.set(template_contents)
+        if contents is not None:
             module._firebase.set(contents)
-        if not module._firebase.exists() and template is None:
-            if contents is not None:
-                if not isinstance(contents, dict):
-                    raise ValueError('contents must be of type: dict')
-                module._firebase.set(contents)
-        if module._firebase.exists() and template is None:
-            if contents is not None and overwrite:
-                if not isinstance(contents, dict):
-                    raise ValueError('contents must be of type: dict')
-                module._firebase.set(contents)
-            if contents is not None and not overwrite:
-                raise ValueError('Set overwrite to true if you want to ' +
-                                 'overwrite the contents on the database')
         return module
 
     def require_filerecord(self, class_type=None, name=None):
@@ -238,7 +324,8 @@ class Action:
 
 
 def get_project(project_id):
-    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    existing = db.child("/".join(["projects",
+                                  project_id])).get(user["idToken"]).val()
     if not existing:
         raise NameError("Project " + project_id + " does not exist.")
     return Project(project_id)
@@ -246,10 +333,13 @@ def get_project(project_id):
 
 def require_project(project_id):
     """Creates a new project with the provided id."""
-    existing = db.child("/".join(["projects", project_id])).get(user["idToken"]).val()
+    existing = db.child("/".join(["projects",
+                                  project_id])).get(user["idToken"]).val()
     registered = datetime.datetime.today().strftime(datetime_format)
     if not existing:
-        db.child("/".join(["projects", project_id])).set({"registered": registered}, user["idToken"])
+        db.child("/".join(["projects",
+                           project_id])).set({"registered":
+                                              registered}, user["idToken"])
     return Project(project_id)
 
 

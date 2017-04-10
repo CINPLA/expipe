@@ -70,13 +70,9 @@ for foldername in os.listdir(root_path):
 
             template = {
                 "identifier": name,
-                "name": result["name"],
-                "definition": result["definition"],
             }
             template_contents = result
             del(template_contents["name"])
-            del(template_contents["definition"])
-            template["contents"] = result
             
             # upload to Firebase (WARNING: this overwrites any changes made on the server!)
             expipe.io.core.db.child("templates").child(name).set(template, expipe.io.core.user["idToken"])
