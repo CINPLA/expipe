@@ -119,6 +119,8 @@ class Module:
                         self.action.id, self.id])
         self._firebase = FirebaseBackend(path)
 
+    # TODO module reference id
+
     def to_dict(self):
         return self._firebase.get()
 
@@ -130,6 +132,7 @@ class Module:
         if os.path.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
+      print('Saving module "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
             json.dump(module.to_dict(), outfile,
                       sort_keys=True, indent=4)
@@ -144,7 +147,7 @@ class ModuleManager:
 
     def __iter__(self):
         for name in self.keys():
-            yield name
+            yield self[name]
 
     def __contains__(self, name):
         return name in self.keys()
