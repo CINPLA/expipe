@@ -2,8 +2,9 @@ import yaml
 import os
 import sys
 
-settings_file_path = os.path.join(os.path.expanduser('~'), '.config', 'expipe', 'config.yaml')
-test_settings_file_path = os.path.join(os.path.expanduser('~'), '.config', 'expipe', 'test-config.yaml')
+config_dir = os.path.join(os.path.expanduser('~'), '.config', 'expipe')
+settings_file_path = os.path.join(config_dir, 'config.yaml')
+test_settings_file_path = os.path.join(config_dir, 'test-config.yaml')
 
 default_settings = {
     'data_path': os.path.join(os.path.join(os.path.expanduser('~'), 'expipe_data')),

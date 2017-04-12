@@ -5,10 +5,100 @@ import uuid
 import pyrebase
 import configparser
 from expipe import settings
+import quantities as pq
+import numpy as np
+import warnings
 
 # TODO add attribute managers to allow changing values of modules and actions
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
+
+
+def convert_back_quantities(value):
+    """
+    Converts quantities back from dictionary
+    """
+    result = value
+    if isinstance(value, dict):
+        if 'units' in value:
+            warnings.warn('name "units" is not supported use "unit" in stead')
+        if ("unit" in value or "units" in value) and "value" in value:
+            if isinstance(value['value'], str):
+                val = []
+                for stuff in value['value'].split(','):
+                    if len(stuff) == 0:
+                        continue
+                    try:
+                        if stuff.isdigit():
+                            val.append(float(stuff))
+                        else:
+                            val.append(stuff)
+                    except Exception as e:
+                        print('Could not convert value of type:' +
+                              ' "{}" to float'.format(type(stuff)))
+                        raise e
+            else:
+                val = value['value']
+            if "uncertainty" in value:
+                try:
+                    result = pq.UncertainQuantity(val,
+                                                  value["unit"],
+                                                  value["uncertainty"])
+                except Exception:
+                    pass
+            else:
+                try:
+                    result = pq.Quantity(val, value["unit"])
+                except Exception:
+                    pass
+        else:
+            try:
+                for key, value in result.items():
+                    result[key] = convert_back_quantities(value)
+            except AttributeError:
+                pass
+
+    return result
+
+
+def convert_quantities(value):
+    """
+    Converts quantities to dictionary
+    """
+    result = value
+    if isinstance(value, pq.Quantity):
+        if value.shape in ((), (1, )):  # is scalar
+            val = value.magnitude.tolist()
+        else:
+            val = ', '.join([str(val) for val in value.magnitude.tolist()])
+        result = {
+            "value": val,
+            "unit": value.dimensionality.string
+        }
+        if isinstance(value, pq.UncertainQuantity):
+            assert(value.dimensionality == value.uncertainty.dimensionality)
+            result["uncertainty"] = value.uncertainty.magnitude.tolist()
+    elif isinstance(value, np.ndarray):
+        result = value.tolist()
+    elif isinstance(value, np.integer):
+        result = int(value)
+    elif isinstance(value, np.float):
+        result = float(value)
+    else:
+        # try if dictionary like objects can be converted if not return the
+        # original object
+        # Note, this might fail if .items() returns a strange combination of
+        # objects
+        try:
+            new_result = {}
+            for key, val in value.items():
+                new_key = convert_quantities(key)
+                new_result[new_key] = convert_quantities(val)
+            result = new_result
+        except AttributeError:
+            pass
+
+    return result
 
 
 class ActionManager:
@@ -104,31 +194,33 @@ class FirebaseBackend:
             value = db.child(self.path).get(user["idToken"]).val()
         else:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
-        value = exdir.core.convert_back_quantities(value)
+        value = convert_back_quantities(value)
         return value
 
     def set(self, name, value=None):
         if value is None:
             value = name
-            value = exdir.core.convert_quantities(value)
+            value = convert_quantities(value)
             db.child(self.path).set(value, user["idToken"])
         else:
-            value = exdir.core.convert_quantities(value)
+            value = convert_quantities(value)
             db.child(self.path).child(name).set(value, user["idToken"])
 
     def update(self, name, value=None):
         if value is None:
             value = name
-            value = exdir.core.convert_quantities(value)
+            value = convert_quantities(value)
             db.child(self.path).update(value, user["idToken"])
         else:
-            value = exdir.core.convert_quantities(value)
+            value = convert_quantities(value)
             db.child(self.path).child(name).update(value, user["idToken"])
 
 
 class Module:
     def __init__(self, action, module_id):
         self.action = action
+        if not isinstance(module_id, str):
+            raise ValueError('Module name must be string')
         self.id = module_id
         path = "/".join(["action_modules", self.action.project.id,
                         self.action.id, self.id])
@@ -167,29 +259,39 @@ class ModuleManager:
     def __contains__(self, name):
         return name in self.keys()
 
+    def to_dict(self):
+        d = {}
+        for name in self.keys():
+            d[name] = self[name].to_dict()
+        return d
+
     def keys(self):
-        modules = db.child("action_modules")
-        project = modules.child(self.action.project.id)
-        result = project.child(self.action.id).get(user["idToken"]).val()
+        result = self._get_modules()
         if result is None:
             result = dict()
         return result.keys()
 
     def items(self):
-        modules = db.child("action_modules")
-        project = modules.child(self.action.project.id)
-        result = project.child(self.action.id).get(user["idToken"]).val()
+        result = self._get_modules()
         if result is None:
             result = dict()
         return result.items()
 
     def values(self):
-        modules = db.child("action_modules")
-        project = modules.child(self.action.project.id)
-        result = project.child(self.action.id).get(user["idToken"]).val()
+        result = self._get_modules()
         if result is None:
             result = dict()
         return result.values()
+
+    def _get_modules(self):
+        modules = db.child("action_modules")
+        project = modules.child(self.action.project.id)
+        result = project.child(self.action.id).get(user["idToken"]).val()
+        if isinstance(result, list):
+            if len(result) > 0:
+                raise ValueError('Got nonempty list, expected dict')
+            result = None
+        return result
 
 
 class Filerecord:
