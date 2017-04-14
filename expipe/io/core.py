@@ -21,22 +21,21 @@ def convert_back_quantities(value):
     result = value
     if isinstance(value, dict):
         if 'units' in value:
-            warnings.warn('name "units" is not supported use "unit" in stead')
-        if ("unit" in value or "units" in value) and "value" in value:
+            value['unit'] = value['units']
+            value.pop('units')
+            # raise ValueError('Key "units" is not supported use "unit" in stead')
+        if "unit" in value and "value" in value:
             if isinstance(value['value'], str):
                 val = []
                 for stuff in value['value'].split(','):
-                    if len(stuff) == 0:
+                    if stuff == '':
                         continue
                     try:
-                        if stuff.isdigit():
-                            val.append(float(stuff))
-                        else:
-                            val.append(stuff)
-                    except Exception as e:
-                        print('Could not convert value of type:' +
-                              ' "{}" to float'.format(type(stuff)))
-                        raise e
+                        val.append(float(stuff))
+                    except Exception:
+                        val.append(stuff)
+                        warnings.warn('Could not convert value of type:' +
+                                      ' "{}" to float'.format(type(stuff)))
             else:
                 val = value['value']
             if "uncertainty" in value:
@@ -160,6 +159,13 @@ class Project:
         if result is None:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
             result = actions.update({"registered": dtime}, user["idToken"])
+        return Action(self, name)
+
+    def get_action(self, name):
+        actions = db.child("actions").child(self.id).child(name)
+        result = actions.get(user["idToken"]).val()
+        if result is None:
+            raise IOError('Action "' + name + '" does not exist')
         return Action(self, name)
 
 
