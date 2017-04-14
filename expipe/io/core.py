@@ -20,10 +20,10 @@ def convert_back_quantities(value):
     """
     result = value
     if isinstance(value, dict):
-        if 'units' in value:
+        if 'units' in value and "value" in value:
             value['unit'] = value['units']
-            value.pop('units')
-            # raise ValueError('Key "units" is not supported use "unit" in stead')
+            del(value['units'])
+            warnings.warn('Keyword "units" is not supported, use "unit" in stead')
         if "unit" in value and "value" in value:
             if isinstance(value['value'], str):
                 val = []
