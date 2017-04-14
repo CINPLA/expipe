@@ -33,6 +33,7 @@ requirements:
     - seaborn
     - quantities
     - exdir
+    - gitpython
 
   run:
     - python
@@ -56,6 +57,7 @@ requirements:
     - seaborn
     - quantities
     - exdir
+    - gitpython
 
 test:
   imports:
