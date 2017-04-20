@@ -14,6 +14,40 @@ import warnings
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 
 
+class DictDiffer(object):
+    """
+    A dictionary difference calculator
+    Originally posted as:
+    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
+
+    Calculate the difference between two dictionaries as:
+    (1) items added
+    (2) items removed
+    (3) keys same in both but changed values
+    (4) keys same in both and unchanged values
+    """
+    def __init__(self, current_dict, past_dict):
+        self.current_dict, self.past_dict = current_dict, past_dict
+        self.current_keys, self.past_keys = [
+            set(d.keys()) for d in (current_dict, past_dict)
+        ]
+        self.intersect = self.current_keys.intersection(self.past_keys)
+
+    def added(self):
+        return self.current_keys - self.intersect
+
+    def removed(self):
+        return self.past_keys - self.intersect
+
+    def changed(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] != self.current_dict[o])
+
+    def unchanged(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] == self.current_dict[o])
+
+
 def convert_back_quantities(value):
     """
     Converts quantities back from dictionary
@@ -235,7 +269,10 @@ class Module:
     # TODO module reference id
 
     def to_dict(self):
-        return self._firebase.get()
+        d = self._firebase.get()
+        if '_inherits' in d:
+            d.update(FirebaseBackend(d['_inherits']).get())
+        return d
 
     def to_json(self, fname=None):
         import json
@@ -277,7 +314,7 @@ class ModuleManager:
             result = dict()
         return result.keys()
 
-    def items(self):
+    def items(self): # TODO does not work with _inherits
         result = self._get_modules()
         if result is None:
             result = dict()
@@ -423,7 +460,14 @@ class Action:
             # TODO give error if template does not exist
             module._firebase.set(template_contents)
         if contents is not None:
-            module._firebase.set(contents)
+            if '_inherits' in contents:
+                heritage = FirebaseBackend(contents['_inherits']).get()
+                d = DictDiffer(contents, heritage)
+                keys = [key for key in list(d.added()) + list(d.changed())]
+                diffcont = {key: contents[key] for key in keys}
+                module._firebase.set(diffcont)
+            else:
+                module._firebase.set(contents)
         return module
 
     def require_filerecord(self, class_type=None, name=None):
