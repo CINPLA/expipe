@@ -301,7 +301,7 @@ class ModuleManager:
 
 
 class Filerecord:
-    def __init__(self, action, filerecord_id=None):
+    def __init__(self, action, filerecord_id=None, create=False):
         self.id = filerecord_id or "main"  # oneliner hack by Mikkel
         self.action = action
 
@@ -310,7 +310,7 @@ class Filerecord:
         self.local_path = os.path.join(settings["data_path"], self.exdir_path)
         path_split = self.local_path.split("/")
         directory = "/".join(path_split[:-1])
-        if not os.path.exists(directory):
+        if not os.path.exists(directory) and create:
             print("MAKING DIRECTORY", self.local_path)
             os.makedirs(directory)
 
