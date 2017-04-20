@@ -462,6 +462,8 @@ class Action:
         if contents is not None:
             if '_inherits' in contents:
                 heritage = FirebaseBackend(contents['_inherits']).get()
+                if heritage is None:
+                    raise ValueError('Can not inherit {}'.format(contents['_inherits']))
                 d = DictDiffer(contents, heritage)
                 keys = [key for key in list(d.added()) + list(d.changed())]
                 diffcont = {key: contents[key] for key in keys}
