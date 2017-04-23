@@ -270,6 +270,8 @@ class Module:
 
     def to_dict(self):
         d = self._firebase.get()
+        if d is None:
+            return {}
         if '_inherits' in d:
             d.update(FirebaseBackend(d['_inherits']).get())
         return d
