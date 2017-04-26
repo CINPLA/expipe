@@ -1,10 +1,10 @@
 package:
   name: expipe
   version: {{ environ.get("GIT_TAG", "0.0.0_custom")|replace("v", "")|replace("-", "_") }}
-  
+
 source:
   git_url: ..
- 
+
 build:
     # noarch: python  # TODO Add back noarch when it works properly on Windows,
                       # we are converting packages manually now
@@ -33,7 +33,6 @@ requirements:
     - seaborn
     - quantities
     - exdir
-    - gitpython
 
   run:
     - python
@@ -57,7 +56,6 @@ requirements:
     - seaborn
     - quantities
     - exdir
-    - gitpython
 
 test:
   imports:

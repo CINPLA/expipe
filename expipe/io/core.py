@@ -273,7 +273,9 @@ class Module:
         if d is None:
             return {}
         if '_inherits' in d:
-            d.update(FirebaseBackend(d['_inherits']).get())
+            inherit = FirebaseBackend(d['_inherits']).get()
+            inherit.update(d)
+            d = inherit
         return d
 
     def to_json(self, fname=None):
