@@ -1,4 +1,6 @@
 import os
-from expipe.version import version as __version__
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 from .config import settings, configure, ensure_testing
