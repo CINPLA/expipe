@@ -20,8 +20,8 @@ Expipe is a python module for neuroscientific data analysis.
 Getting started
 ---------------
 
-To get started with Expipe, a Firebase_ database needs to be set up.
-Furhter, a shared storage space should be configured and mounted on all
+To get started with Expipe, a Firebase_ database needs to be set up
+and a shared storage space should be configured and mounted on all
 computers using Expipe.
 However, while debugging, a local folder can be used for storage.
 
