@@ -1,6 +1,7 @@
 import datetime
 import exdir
 import os
+import posixpath as op
 import uuid
 import pyrebase
 import configparser
@@ -206,9 +207,9 @@ class Project:
 class Datafile:
     def __init__(self, action):
         self.action = action
-        action_datafile_directory = os.path.join(settings["data_path"], action.project)
+        action_datafile_directory = op.join(settings["data_path"], action.project)
         os.makedirs(action_datafile_directory, exist_ok=True)
-        self.exdir_path = os.path.join(action_datafile_directory, action.id + ".exdir")
+        self.exdir_path = op.join(action_datafile_directory, action.id + ".exdir")
         self.exdir_file = exdir.File(self.exdir_path)
         data = {
             "type": "exdir",
@@ -283,7 +284,7 @@ class Module:
         fname = fname or self.id
         if not fname.endswith('.json'):
             fname = fname + '.json'
-        if os.path.exists(fname):
+        if op.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
         print('Saving module "' + self.id + '" to "' + fname + '"')
@@ -347,10 +348,11 @@ class Filerecord:
         self.action = action
 
         # TODO make into properties/functions in case settings change
-        self.exdir_path = action.project.id + "/" + action.id + "/" + self.id + ".exdir"
-        self.local_path = os.path.join(settings["data_path"], self.exdir_path)
+        self.exdir_path = op.join(action.project.id, action.id,
+                                  self.id + ".exdir")
+        self.local_path = op.join(settings["data_path"], self.exdir_path)
         if 'server_path' in settings:
-            self.server_path = os.path.join(settings['server']["data_path"],
+            self.server_path = op.join(settings['server']["data_path"],
                                             self.exdir_path)
         else:
             self.server_path = None
@@ -552,12 +554,12 @@ _init_module()
 #     year_folder_name = '{:%Y}'.format(registration_datetime)
 #     month_folder_name = '{:%Y-%m}'.format(registration_datetime)
 #     exdir_folder_name = '{:%Y-%m-%d-%H%M%S}_{}.exdir'.format(registration_datetime, unique_id_short)
-#     parent_path = os.path.join(settings["data_path"],
+#     parent_path = op.join(settings["data_path"],
 #                                year_folder_name,
 #                                month_folder_name)
-#     if not os.path.exists(parent_path):
+#     if not op.exists(parent_path):
 #         os.makedirs(parent_path)
-#     exdir_folder_path = os.path.join(parent_path,
+#     exdir_folder_path = op.join(parent_path,
 #                                      exdir_folder_name)
 #     f = exdir.File(exdir_folder_path)
 #     f.attrs["identifier"] = str(unique_id)
