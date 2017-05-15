@@ -349,6 +349,11 @@ class Filerecord:
         # TODO make into properties/functions in case settings change
         self.exdir_path = action.project.id + "/" + action.id + "/" + self.id + ".exdir"
         self.local_path = os.path.join(settings["data_path"], self.exdir_path)
+        if 'server_path' in settings:
+            self.server_path = os.path.join(settings['server']["data_path"],
+                                            self.exdir_path)
+        else:
+            self.server_path = None
 
         # TODO if not exists and not required, return error
         ref_path = "/".join(["files", action.project.id, action.id, self.id])
