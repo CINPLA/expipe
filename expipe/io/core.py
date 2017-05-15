@@ -350,10 +350,14 @@ class Filerecord:
         # TODO make into properties/functions in case settings change
         self.exdir_path = op.join(action.project.id, action.id,
                                   self.id + ".exdir")
-        self.local_path = op.join(settings["data_path"], self.exdir_path)
+        if 'data_path' in settings:
+            self.local_path = op.join(settings["data_path"],
+                                      self.exdir_path)
+        else:
+            self.local_path = None
         if 'server_path' in settings:
             self.server_path = op.join(settings['server']["data_path"],
-                                            self.exdir_path)
+                                       self.exdir_path)
         else:
             self.server_path = None
 
