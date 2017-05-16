@@ -401,8 +401,14 @@ class Action:
 
     @subjects.setter
     def subjects(self, value):
+        if isinstance(value, list):
+            value = {val: 'true' for val in value}
         if not isinstance(value, dict):
-            raise ValueError('Users requires dict e.g. "{"1685": "true"}"')
+            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
+        else:
+            if not all(val == 'true' for val in value.values()):
+                raise ValueError('Users requires a list or a dict formated ' +
+                                 'like "{"value": "true"}"')
         db.child(self._firebase.path).child('subjects').set(value, user['idToken'])
 
     @property
@@ -412,7 +418,7 @@ class Action:
     @datetime.setter
     def datetime(self, value):
         if not isinstance(value, datetime.datetime):
-            raise ValueError('Datetime requires a datetime object with format')
+            raise ValueError('Datetime requires a datetime object.')
         dtime = value.strftime(self.project.datetime_format)
         db.child(self._firebase.path).child('datetime').set(dtime, user['idToken'])
 
@@ -422,8 +428,14 @@ class Action:
 
     @users.setter
     def users(self, value):
+        if isinstance(value, list):
+            value = {val: 'true' for val in value}
         if not isinstance(value, dict):
-            raise ValueError('Users requires dict e.g. "{"Kristian": "true"}"')
+            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
+        else:
+            if not all(val == 'true' for val in value.values()):
+                raise ValueError('Users requires a list or a dict formated ' +
+                                 'like "{"value": "true"}"')
         db.child(self._firebase.path).child('users').set(value, user['idToken'])
 
     @property
@@ -432,8 +444,14 @@ class Action:
 
     @tags.setter
     def tags(self, value):
+        if isinstance(value, list):
+            value = {val: 'true' for val in value}
         if not isinstance(value, dict):
-            raise ValueError('Tags requires dict e.g. "{"Grid cell": "true"}"')
+            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
+        else:
+            if not all(val == 'true' for val in value.values()):
+                raise ValueError('Users requires a list or a dict formated ' +
+                                 'like "{"value": "true"}"')
         db.child(self._firebase.path).child('tags').set(value, user['idToken'])
 
     @property
@@ -473,7 +491,8 @@ class Action:
             if '_inherits' in contents:
                 heritage = FirebaseBackend(contents['_inherits']).get()
                 if heritage is None:
-                    raise ValueError('Can not inherit {}'.format(contents['_inherits']))
+                    raise ValueError(
+                        'Can not inherit {}'.format(contents['_inherits']))
                 d = DictDiffer(contents, heritage)
                 keys = [key for key in list(d.added()) + list(d.changed())]
                 diffcont = {key: contents[key] for key in keys}
