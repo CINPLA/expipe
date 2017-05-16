@@ -10,38 +10,39 @@ In order to make a plugin for the comman line interface you need to make a
 python package.
 
 Begin by making a folder named `my_plugin` with a module, let's call it
-`my_module.py` containing
+`my_module.py` containing::
 
-.. highlight:: python
-
-    class MyPlugin(IPlugin):
-        """Create the `expipe do-incredible-stuff` command."""
-        def attach_to_cli(self, cli):
-            @cli.command('do-incredible-stuff')
-            @click.argument('stuff', type=click.STRING)
-            def incredible(stuff):
-                '''
-                Do incredible stuff
-
-                COMMAND: stuff
-                '''
-                print('incredible ', stuff)
+  from expipecli.utils import IPlugin
+  import click
 
 
-The folder `my_plugin` must also contain a file `__init__.py` containing
+  class MyPlugin(IPlugin):
+      """Create the `expipe do-incredible-stuff` command."""
+      def attach_to_cli(self, cli):
+          @cli.command('do-incredible-stuff')
+          @click.argument('stuff', type=click.STRING)
+          def incredible(stuff):
+              '''
+              Do incredible stuff
 
-.. highlight:: python
+              COMMAND: stuff
+              '''
 
-    from .my_module import MyPlugin
+              print('incredible', stuff)
+
+
+The folder `my_plugin` must also contain a file `__init__.py` containing::
+
+
+  from .my_module import MyPlugin
 
 
 Finally in `my_plugin` make a module called `my_plugin_loader` with the
-following content.
-
-.. highlight:: python
+following content.::
 
   # This imports all plugins when loading expipe.
   import my_plugin
+
 
   def reveal():
       import os.path as op
@@ -49,27 +50,24 @@ following content.
 
 In the root directory you need a `setup.py` file with the
 following minimum contents, note that the entry point must begin with the word
-plugin.
+plugin.::
 
-.. highlight:: python
+  from setuptools import setup
 
-    from setuptools import setup
+  from setuptools import setup, find_packages
 
-    from setuptools import setup, find_packages
+  setup(
+      name="my-plugin",
+      packages=find_packages(),
+      include_package_data=True,
+      entry_points={
+          'console_scripts': [
+              'plugin-expipe-superduper = my_plugin.my_plugin_loader:reveal'
+          ]
+      }
+  )
 
-    setup(
-        name="my-plugin",
-        packages=find_packages(),
-        include_package_data=True,
-        entry_points={
-            'console_scripts': [
-                'plugin-superduper = my_plugin.my_plugin_loader:reveal'
-            ],
-        },
-    )
+You are good to go, you should now be able to::
 
-You are good to go, you should now be able to
-
-.. higlight::
-
-    $ expipe do-incredible-stuff "is my incredible stuff"
+  $ python setup.py develop
+  $ expipe do-incredible-stuff "is my incredible stuff"

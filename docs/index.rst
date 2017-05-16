@@ -9,6 +9,7 @@ Expipe is a python module for neuroscientific data analysis.
 
    installation
    developers_guide
+   making_plugin
    authors
    expipe
 
@@ -44,9 +45,8 @@ If you are involved in CINPLA, please see the
     ... )
 
 If you install the `expipe-cli` package you can configure expipe using the
-command line
+command line::
 
-.. highlight::
     $ expipe configure --data-path /path/to/data --email my@email.com ...
 
 Create a new project if it does not exist with `require_project`:
