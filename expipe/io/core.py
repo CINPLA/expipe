@@ -1,7 +1,7 @@
 import datetime
 import exdir
 import os
-import posixpath as op
+import os.path as op
 import uuid
 import pyrebase
 import configparser
