@@ -5,12 +5,13 @@ Making a plugin
 ****************
 
 This section describes how to make a plugin for the expipe-cli package.
+For the complete example; see https://github.com/CINPLA/expipe-plugin-example.
 
 In order to make a plugin for the comman line interface you need to make a
 python package.
 
-Begin by making a folder named `my_plugin` with a module, let's call it
-`my_module.py` containing::
+Begin by making a folder named ``my_plugin`` with a module, let's call it
+``my_module.py`` containing::
 
   from expipecli.utils import IPlugin
   import click
@@ -31,13 +32,13 @@ Begin by making a folder named `my_plugin` with a module, let's call it
               print('incredible', stuff)
 
 
-The folder `my_plugin` must also contain a file `__init__.py` containing::
+The folder ``my_plugin`` must also contain a file ``__init__.py`` containing::
 
 
   from .my_module import MyPlugin
 
 
-Finally in `my_plugin` make a module called `my_plugin_loader` with the
+Finally in ``my_plugin`` make a module called ``my_plugin_loader`` with the
 following content.::
 
   # This imports all plugins when loading expipe.
@@ -48,9 +49,9 @@ following content.::
       import os.path as op
       print(__file__)
 
-In the root directory you need a `setup.py` file with the
-following minimum contents, note that the entry point must begin with the word
-plugin.::
+In the root directory you need a ``setup.py`` file with the
+following minimum contents, note that the entry point must begin with
+``plugin-expipe`` which is absolutely necesessary.::
 
   from setuptools import setup
 
