@@ -46,6 +46,7 @@ If you are involved in CINPLA, please see the
 If you install the `expipe-cli` package you can configure expipe using the
 command line
 
+.. highlight::
     $ expipe configure --data-path /path/to/data --email my@email.com ...
 
 Create a new project if it does not exist with `require_project`:
