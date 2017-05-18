@@ -465,7 +465,9 @@ class Action:
             template_object = db.child("/".join(["templates",
                                                 template])).get(
                                                     user["idToken"]).val()
-            name = template_object["identifier"]
+            name = template_object.get('identifier')
+            if name is None:
+                raise ValueError('Template "' + template + '" has no identifier.')
         if template is None and name is None:
             raise ValueError('name and template cannot both be None.')
         if contents is not None and template is not None:
