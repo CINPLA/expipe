@@ -406,7 +406,7 @@ class Action:
         if not isinstance(value, dict):
             raise ValueError('Users requires dict e.g. "{"value": "true"}"')
         else:
-            if not all(val == 'true' for val in value.values()):
+            if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
         db.child(self._firebase.path).child('subjects').set(value, user['idToken'])
@@ -433,7 +433,7 @@ class Action:
         if not isinstance(value, dict):
             raise ValueError('Users requires dict e.g. "{"value": "true"}"')
         else:
-            if not all(val == 'true' for val in value.values()):
+            if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
         db.child(self._firebase.path).child('users').set(value, user['idToken'])
@@ -449,7 +449,7 @@ class Action:
         if not isinstance(value, dict):
             raise ValueError('Users requires dict e.g. "{"value": "true"}"')
         else:
-            if not all(val == 'true' for val in value.values()):
+            if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
         db.child(self._firebase.path).child('tags').set(value, user['idToken'])
