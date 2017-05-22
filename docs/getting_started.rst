@@ -134,7 +134,7 @@ From template to module
 -----------------------
 
 In order to use a template and add it as a module to an `action` use
-``action.require_module``::
+``action.require_module``:
 
 .. doctest::
 
@@ -142,7 +142,7 @@ In order to use a template and add it as a module to an `action` use
 
 Now, the template `hardware_dac` is added to your action as a module and you
 also have it locally stored in the variable ``dac``. To retrieve ``dac`` keys
-and values use ``to_dict``::
+and values use ``to_dict``:
 
 .. doctest::
 
@@ -150,13 +150,13 @@ and values use ``to_dict``::
   >>> print(dac_dict.keys())
   >>> print(dac_dict.values())
 
-You may also view the module as ``.json`` by using the command ``to_json``
+You may also view the module as ``.json`` by using the command ``to_json``:
 
 .. doctest::
 
   >>> dac.to_json()
 
-To furter change its values and upload them to Firebase::
+To furter change its values and upload them to Firebase:
 
 .. doctest::
 
