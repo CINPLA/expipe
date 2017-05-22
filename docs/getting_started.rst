@@ -29,14 +29,14 @@ command line::
 
     $ expipe configure --data-path /path/to/data --email my@email.com ...
 
-Create a new project if it does not exist with `require_project`:
+Create a new project if it does not exist with ``require_project``:
 
 .. doctest::
 
     >>> import expipe.io
     >>> project = expipe.io.require_project("test")
 
-A project can contain a number of actions and subjects.
+A project can contain a number of actions and modules.
 
 Actions
 -------
@@ -45,7 +45,7 @@ Actions are events that are performed during a project.
 An action can be an experiment or any preparation for an experiment.
 
 To create an action on the project or return an existing action if it already
-exists, use `project.require_action`:
+exists, use ``project.require_action``:
 
 .. doctest::
 
