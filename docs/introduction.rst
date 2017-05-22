@@ -3,7 +3,7 @@ Introduction
 
 In neuroscience today, due to technological advances, we are witnessing a
 revolution in methodology. The vast collection of recording setups used on a
-variety of experimental subjects puts high demands on data organization.
+variety of experimental subjects puts high demands on flexible data organization.
 
 We introduce an organization tool named `expipe` which aims to organize
 metadata in a way such that they are:
@@ -24,7 +24,7 @@ root object during communication with expipe and contain modules and actions.
 Actions are individual, well actions, of interaction with experimental assets
 or expipe such recordings or analysis respectively. Actions also contain
 modules which are specific to this particular action in contrast to project
-modules which are more general. 
+modules which are more general.
 
 We encourage users from neuroscience to base templates on the
 `odML terminologies <http://www.g-node.org/projects/odml/terminologies>`_ which
