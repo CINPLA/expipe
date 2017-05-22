@@ -29,6 +29,18 @@ command line::
 
     $ expipe configure --data-path /path/to/data --email my@email.com ...
 
+
+Templates
+---------
+
+In order to prime your metadatabase you can begin with adding templates. If
+you are using `expipe` for neuroscience you can add
+`odML terminologies <http://www.g-node.org/projects/odml/terminologies>`_
+with the sript found in utils ``convert_odml_terminologies.py``. 
+
+Project
+--------
+
 Create a new project if it does not exist with ``require_project``:
 
 .. doctest::
