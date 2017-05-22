@@ -111,7 +111,7 @@ If you are not using templates you may also create modules using dictionaries
 
     >>> import quantities
     >>> tracking = {'box_shape': {'value': 'square'}}
-    >>> action.require_module(name="tracking", contents=contents)
+    >>> action.require_module(name="tracking", contents=tracking)
     >>> elphys = {'depth': 2 * pq.um, }
     >>> action.require_module(name="electrophysiology", contents=elphys)
 
