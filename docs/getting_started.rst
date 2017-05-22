@@ -35,8 +35,13 @@ Templates
 
 In order to prime your metadatabase you can begin with adding templates. If
 you are using `expipe` for neuroscience you can add
-`odML terminologies <http://www.g-node.org/projects/odml/terminologies>`_
-with the sript found in utils ``convert_odml_terminologies.py``. 
+`odML terminologies <https://github.com/G-Node/odml-terminologies>`_
+with the sript found in utils ``convert_odml_terminologies.py``. Clone the
+repository and give the script it's path::
+
+  $ convert_odml_terminologies.py path/to/odml_repo
+
+To view the templates we encourage you to use the ``expipe-browser``.
 
 Project
 --------
@@ -76,7 +81,7 @@ To give actions easily searchable properties you can add `Tags`, `Users`,
     >>> action.datetime = datetime.now()
     >>> users = action.users
     {}
-    >>> users.update('Peter')
+    >>> users.update({'Peter': 'true'})
     >>> action.users = users
 
 Modules
@@ -124,3 +129,36 @@ To further retrieve and edit the values of a module, you can use `module.to_dict
     >>> tracking = action.require_module(name="tracking")
     >>> print(tracking.to_dict())
     {'box_shape': {'value': 'square'}}
+
+From template to module
+-----------------------
+
+In order to use a template and add it as a module to an `action` use
+``action.require_module``::
+
+.. doctest::
+
+  >>> dac = action.require_module(template='hardware_dac')
+
+Now, the template `hardware_dac` is added to your action as a module and you
+also have it locally stored in the variable ``dac``. To retrieve ``dac`` keys
+and values use ``to_dict``::
+
+.. doctest::
+
+  >>> dac_dict = dac.to_dict()
+  >>> print(dac_dict.keys())
+  >>> print(dac_dict.values())
+
+You may also view the module as ``.json`` by using the command ``to_json``
+
+.. doctest::
+
+  >>> dac.to_json()
+
+To furter change its values and upload them to Firebase::
+
+.. doctest::
+
+  >>> dac_dict['gain'] = {'value': 20}
+  >>> action.require_module(name='hardware_dac', contents=dac_dict)
