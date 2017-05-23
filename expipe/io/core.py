@@ -513,28 +513,33 @@ def _init_module():
     """
     Helper function, which can abort if loading fails.
     """
-    global auth, user, db
+    global db
+
     config = settings['firebase']['config']
-
     firebase = pyrebase.initialize_app(config)
-
-    try:
-        email = settings['firebase']['email']
-        password = settings['firebase']['password']
-        auth = firebase.auth()
-        user = None
-        if email and password:
-            user = auth.sign_in_with_email_and_password(email, password)
-        db = firebase.database()
-    except KeyError:
-        print("Could not find email and password in configuration.\n"
-              "Try running expipe.configure() again.\n"
-              "For more info see:\n\n"
-              "\texpipe.configure?\n\n")
-        # raise ImportError("Configuration not complete. See details in output.")
+    refresh_token()
+    db = firebase.database()
 
     return True
+    
+    
+def refresh_token():
+        global auth, user
 
+        try:
+            email = settings['firebase']['email']
+            password = settings['firebase']['password']
+            auth = firebase.auth()
+            user = None
+            if email and password:
+                user = auth.sign_in_with_email_and_password(email, password)
+        except KeyError:
+            print("Could not find email and password in configuration.\n"
+                  "Try running expipe.configure() again.\n"
+                  "For more info see:\n\n"
+                  "\texpipe.configure?\n\n")
+                  
+                  
 _init_module()
 
 # def create_experiment(session_id, session_start_time, experimenter, session_description="", notes=""):
