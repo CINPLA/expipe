@@ -5,10 +5,11 @@ import os.path as op
 import uuid
 import pyrebase
 import configparser
-from expipe import settings
 import quantities as pq
 import numpy as np
 import warnings
+from expipe import settings
+
 
 # TODO add attribute managers to allow changing values of modules and actions
 
@@ -138,9 +139,10 @@ def convert_quantities(value):
 class ActionManager:
     def __init__(self, project):
         self.project = project
+        self._db = FirebaseBackend('/actions/' + project.id)
 
     def __getitem__(self, name):
-        result = db.child("actions").child(self.project.id).child(name).get(user["idToken"]).val()
+        result = self._db.get(name)
         if not result:
             raise KeyError("Action '" + name + "' does not exist.")
         return Action(project=self.project, action_id=name)
@@ -153,27 +155,23 @@ class ActionManager:
         return name in self.keys()
 
     def keys(self):
-        actions = db.child("actions")
-        result = actions.child(self.project.id).get(user["idToken"]).val()
+        result = self._db.get()
         if result is None:
             result = dict()
         return result.keys()
 
     def to_dict(self):
-        actions = db.child("actions")
-        result = actions.child(self.project.id).get(user["idToken"]).val()
+        result = self._db.get()
         return result or dict()
 
     def items(self):
-        actions = db.child("actions")
-        result = actions.child(self.project.id).get(user["idToken"]).val()
+        result = self._db.get()
         if result is None:
             result = dict()
         return result.items()
 
     def values(self):
-        actions = db.child("actions")
-        result = actions.child(self.project.id).get(user["idToken"]).val()
+        result = self._db.get()
         if result is None:
             result = dict()
         return result.values()
@@ -183,25 +181,51 @@ class Project:
     def __init__(self, project_id):
         self.id = project_id
         self.datetime_format = '%Y-%m-%dT%H:%M:%S'
+        self._db_actions = FirebaseBackend('/actions/' + project_id)
+        self._db_modules = FirebaseBackend('/project_modules/' + project_id)
 
     @property
     def actions(self):
         return ActionManager(self)
 
     def require_action(self, name):
-        actions = db.child("actions").child(self.id).child(name)
-        result = actions.get(user["idToken"]).val()
+        result = self._db_actions.get(name)
         if result is None:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
-            result = actions.update({"registered": dtime}, user["idToken"])
+            result = self._db_actions.update(name, {"registered": dtime})
         return Action(self, name)
 
     def get_action(self, name):
-        actions = db.child("actions").child(self.id).child(name)
-        result = actions.get(user["idToken"]).val()
+        result = self._db_actions.get(name)
         if result is None:
             raise IOError('Action "' + name + '" does not exist')
         return Action(self, name)
+
+    def delete_action(self, name):
+        result = self._db_actions.get(name)
+        if result is None:
+            raise IOError('Action "' + self.id + '" does not exist.')
+        self._db_actions.set(name, {})
+
+    @property
+    def modules(self):
+        return ModuleManager(self)
+
+    def require_module(self, name):
+        result = self._db_modules.get(name)
+        return Module(self, name)
+
+    def get_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise IOError('Action "' + name + '" does not exist')
+        return Module(self, name)
+
+    def delete_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise IOError('Action "' + self.id + '" does not exist.')
+        self._db_modules.set(name, {})
 
 
 class Datafile:
@@ -255,22 +279,30 @@ class FirebaseBackend:
         else:
             value = convert_quantities(value)
             db.child(self.path).child(name).update(value, user["idToken"])
+        value = convert_back_quantities(value)
+        return value
 
 
 class Module:
-    def __init__(self, action, module_id):
-        self.action = action
+    def __init__(self, parent, module_id):
+        self.parent = parent
         if not isinstance(module_id, str):
             raise ValueError('Module name must be string')
         self.id = module_id
-        path = "/".join(["action_modules", self.action.project.id,
-                        self.action.id, self.id])
-        self._firebase = FirebaseBackend(path)
+        if isinstance(parent, Action):
+            path = '/'.join(['action_modules', parent.project.id,
+                             parent.id, self.id])
+        elif isinstance(parent, Project):
+            path = '/'.join(['project_modules', parent.id, self.id])
+        else:
+            raise IOError('Parent of type "' + type(parent) +
+                          '" cannot have modules.')
+        self._db = FirebaseBackend(path)
 
     # TODO module reference id
 
     def to_dict(self):
-        d = self._firebase.get()
+        d = self._db.get()
         if d is None:
             return {}
         if '_inherits' in d:
@@ -294,11 +326,20 @@ class Module:
 
 
 class ModuleManager:
-    def __init__(self, action):
-        self.action = action
+    def __init__(self, parent):
+        if isinstance(parent, Action):
+            module_path = '/'.join(['action_modules', parent.project.id,
+                                    parent.id])
+        elif isinstance(parent, Project):
+            module_path = '/'.join(['project_modules', parent.id])
+        else:
+            raise IOError('Parent of type "' + type(parent) +
+                          '" cannot have modules.')
+        self.parent = parent
+        self._db = FirebaseBackend(module_path)
 
     def __getitem__(self, name):
-        return Module(self.action, name)
+        return Module(self.parent, name)
 
     def __iter__(self):
         for name in self.keys():
@@ -332,9 +373,7 @@ class ModuleManager:
         return result.values()
 
     def _get_modules(self):
-        modules = db.child("action_modules")
-        project = modules.child(self.action.project.id)
-        result = project.child(self.action.id).get(user["idToken"]).val()
+        result = self._db.get()
         if isinstance(result, list):
             if len(result) > 0:
                 raise ValueError('Got nonempty list, expected dict')
@@ -362,10 +401,10 @@ class Filerecord:
             self.server_path = None
 
         # TODO if not exists and not required, return error
-        ref_path = "/".join(["files", action.project.id, action.id, self.id])
-
-        if not db.child(ref_path).get(user["idToken"]).val():
-            db.child(ref_path).update({"path": self.exdir_path}, user["idToken"])
+        ref_path = "/".join(["files", action.project.id, action.id])
+        self._db = FirebaseBackend(ref_path)
+        if not self._db.get(self.id):
+            self._db.update(self.id, {"path": self.exdir_path})
 
 
 class Action:
@@ -373,31 +412,31 @@ class Action:
         self.project = project
         self.id = action_id
         path = "/".join(["actions", self.project.id, self.id])
-        self._firebase = FirebaseBackend(path)
+        self._db = FirebaseBackend(path)
 
     @property
     def location(self):
-        return db.child(self._firebase.path).child('location').get(user['idToken']).val()
+        return self._db.get('location')
 
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
             raise ValueError('Location requires string')
-        db.child(self._firebase.path).child('location').set(value, user['idToken'])
+        self._db.set('location', value)
 
     @property
     def type(self):
-        return db.child(self._firebase.path).child('type').get(user['idToken']).val()
+        return self._db.get('type')
 
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
             raise ValueError('Type requires string')
-        db.child(self._firebase.path).child('type').set(value, user['idToken'])
+        self._db.set('type', value)
 
     @property
     def subjects(self):
-        return db.child(self._firebase.path).child('subjects').get(user['idToken']).val()
+        return self._db.get('subjects')
 
     @subjects.setter
     def subjects(self, value):
@@ -409,22 +448,22 @@ class Action:
             if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
-        db.child(self._firebase.path).child('subjects').set(value, user['idToken'])
+        self._db.set('subjects', value)
 
     @property
     def datetime(self):
-        return db.child(self._firebase.path).child('datetime').get(user['idToken']).val()
+        return self._db.get('datetime')
 
     @datetime.setter
     def datetime(self, value):
         if not isinstance(value, datetime.datetime):
             raise ValueError('Datetime requires a datetime object.')
         dtime = value.strftime(self.project.datetime_format)
-        db.child(self._firebase.path).child('datetime').set(dtime, user['idToken'])
+        self._db.set('datetime', dtime)
 
     @property
     def users(self):
-        return db.child(self._firebase.path).child('users').get(user['idToken']).val()
+        return self._db.get('users')
 
     @users.setter
     def users(self, value):
@@ -436,11 +475,11 @@ class Action:
             if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
-        db.child(self._firebase.path).child('users').set(value, user['idToken'])
+        self._db.set('users', value)
 
     @property
     def tags(self):
-        return db.child(self._firebase.path).child('tags').get(user['idToken']).val()
+        return self._db.get('tags')
 
     @tags.setter
     def tags(self, value):
@@ -452,7 +491,7 @@ class Action:
             if not all(val == 'true' or val is True for val in value.values()):
                 raise ValueError('Users requires a list or a dict formated ' +
                                  'like "{"value": "true"}"')
-        db.child(self._firebase.path).child('tags').set(value, user['idToken'])
+        self._db.set('tags', value)
 
     @property
     def modules(self):
@@ -477,8 +516,8 @@ class Action:
             if not isinstance(contents, dict):
                 raise ValueError('Contents must be of type: dict.')
 
-        module = Module(action=self, module_id=name)
-        if module._firebase.exists():
+        module = Module(parent=self, module_id=name)
+        if module._db.exists():
             if template is not None or contents is not None:
                 if not overwrite:
                     raise ValueError('Set overwrite to true if you want to ' +
@@ -488,7 +527,7 @@ class Action:
                                                   template])).get(
                                                       user["idToken"]).val()
             # TODO give error if template does not exist
-            module._firebase.set(template_contents)
+            module._db.set(template_contents)
         if contents is not None:
             if '_inherits' in contents:
                 heritage = FirebaseBackend(contents['_inherits']).get()
@@ -498,9 +537,9 @@ class Action:
                 d = DictDiffer(contents, heritage)
                 keys = [key for key in list(d.added()) + list(d.changed())]
                 diffcont = {key: contents[key] for key in keys}
-                module._firebase.set(diffcont)
+                module._db.set(diffcont)
             else:
-                module._firebase.set(contents)
+                module._db.set(contents)
         return module
 
     def require_filerecord(self, class_type=None, name=None):
@@ -526,6 +565,23 @@ def require_project(project_id):
                            project_id])).set({"registered":
                                               registered}, user["idToken"])
     return Project(project_id)
+
+
+def delete_project(project_id, remove_all_childs=False):
+    """Deletes a project named after the provided id."""
+    existing = db.child("/".join(["projects",
+                                  project_id])).get(user["idToken"]).val()
+    if not existing:
+        raise IOError('Project "' + project_id + '" does not exist.')
+    else:
+        if remove_all_childs:
+            project = Project(project_id)
+            for action in project.actions.keys():
+                project.delete_action(action)
+            for module in project.modules.keys():
+                project.delete_module(module)
+        db.child("/".join(["projects",
+                           project_id])).set({}, user["idToken"])
 
 
 def create_datafile(action):

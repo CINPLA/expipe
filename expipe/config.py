@@ -1,6 +1,7 @@
 import yaml
 import os
 import sys
+import builtins
 
 config_dir = os.path.join(os.path.expanduser('~'), '.config', 'expipe')
 settings_file_path = os.path.join(config_dir, 'config.yaml')
@@ -19,14 +20,29 @@ default_settings = {
         }
     }
 }
-    
+
+debug_settings = {
+    'allow_tests': 'true',
+    'data_path': '/tmp/expipe_data',
+    'firebase': {
+        'email': 'debug-bot@cinpla.com',
+        'password': 'noneed',
+        'config': {
+            'apiKey': 'AIzaSyBnbsraKxrO8zv1qVZeAvJR4fEWzExQhOM',
+            'authDomain': 'expipe-debug.firebaseapp.com',
+            'databaseURL': 'https://expipe-debug.firebaseio.com',
+            'storageBucket': 'expipe-debug.appspot.com',
+        }
+    }
+}
+
 
 def deep_verification(default, current, path=""):
     for key in default:
         next_path = key
         if path:
             next_path = path + "." + key
-            
+
         if key not in current:
             print("WARNING: '{}' not found in settings.".format(next_path),
                   "Please rerun expipe.configure().")
@@ -43,7 +59,7 @@ def configure(data_path, email, password, url_prefix, api_key):
     """
     The configure function creates a configuration file if it does not yet exist.
     Ask your expipe administrator about the correct values for the parameters.
-    
+
     Parameters
     ----------
     data_path :
@@ -58,7 +74,7 @@ def configure(data_path, email, password, url_prefix, api_key):
         Firebase API key
     """
     settings_directory = os.path.dirname(settings_file_path)
-    
+
     if not os.path.exists(settings_directory):
         os.makedirs(settings_directory)
     current_settings = {}
@@ -84,26 +100,29 @@ def configure(data_path, email, password, url_prefix, api_key):
 
 def ensure_testing():
     global settings
-    if not os.path.exists(test_settings_file_path):
-        raise FileNotFoundError(
-            "ERROR: Test config does not exist. " +
-            "Please create ~/.config/expipe/test-config.yaml and point it to a testing server."
-        )
-    with open(test_settings_file_path) as settings_file:
-        settings = yaml.load(settings_file)
-        deep_verification(default_settings, settings)
+    if os.path.exists(test_settings_file_path):
+        with open(test_settings_file_path) as settings_file:
+            settings = yaml.load(settings_file)
+            deep_verification(default_settings, settings)
+    else:
+        settings = debug_settings
+    settings['testing'] = True
     assert("allow_tests" in settings and settings["allow_tests"])
 
-try:
-    with open(settings_file_path) as settings_file:
-        settings = yaml.load(settings_file)
-        deep_verification(default_settings, settings)
-except FileNotFoundError:
-    print("WARNING: No expipe configuration file found. Using default settings.",
-          "Type the following for more information about creating a config file:\n\n",
-          "\texpipe.configure?\n\n")
-    settings = default_settings
 
-# if "unittest" in sys.modules.keys() or "_pytest" in sys.modules.keys() or "doctest" in sys.argv:
+if 'testing' not in settings:
+    try:
+        with open(settings_file_path) as settings_file:
+            settings = yaml.load(settings_file)
+            deep_verification(default_settings, settings)
+    except FileNotFoundError:
+        print("WARNING: No expipe configuration file found. Using default settings.",
+              "Type the following for more information about creating a config file:\n\n",
+              "\texpipe.configure?\n\n")
+        settings = default_settings
+
+# if ("unittest" in sys.modules.keys() or
+#         "_pytest" in sys.modules.keys() or
+#         "doctest" in sys.argv):
 #     print("Test module has been loaded. Using test config.")
 #     ensure_testing()
