@@ -536,6 +536,7 @@ def create_datafile(action):
     datafile.exdir_file.create_group("test")
     return datafile.exdir_file
 
+
 def find_action(project, user=None, subject=None):
     print("Looking for action by user")
     return None
@@ -545,11 +546,20 @@ def _init_module():
     """
     Helper function, which can abort if loading fails.
     """
-    global auth, user, db
+    global db
+
     config = settings['firebase']['config']
-
     firebase = pyrebase.initialize_app(config)
+    refresh_token()
+    db = firebase.database()
 
+    return True
+
+
+def refresh_token():
+    global auth, user
+    config = settings['firebase']['config']
+    firebase = pyrebase.initialize_app(config)
     try:
         email = settings['firebase']['email']
         password = settings['firebase']['password']
@@ -557,15 +567,12 @@ def _init_module():
         user = None
         if email and password:
             user = auth.sign_in_with_email_and_password(email, password)
-        db = firebase.database()
     except KeyError:
         print("Could not find email and password in configuration.\n"
               "Try running expipe.configure() again.\n"
               "For more info see:\n\n"
               "\texpipe.configure?\n\n")
-        # raise ImportError("Configuration not complete. See details in output.")
 
-    return True
 
 _init_module()
 
