@@ -504,6 +504,7 @@ def create_datafile(action):
     datafile.exdir_file.create_group("test")
     return datafile.exdir_file
 
+
 def find_action(project, user=None, subject=None):
     print("Looking for action by user")
     return None
@@ -521,25 +522,26 @@ def _init_module():
     db = firebase.database()
 
     return True
-    
-    
-def refresh_token():
-        global auth, user
 
-        try:
-            email = settings['firebase']['email']
-            password = settings['firebase']['password']
-            auth = firebase.auth()
-            user = None
-            if email and password:
-                user = auth.sign_in_with_email_and_password(email, password)
-        except KeyError:
-            print("Could not find email and password in configuration.\n"
-                  "Try running expipe.configure() again.\n"
-                  "For more info see:\n\n"
-                  "\texpipe.configure?\n\n")
-                  
-                  
+
+def refresh_token():
+    global auth, user
+    config = settings['firebase']['config']
+    firebase = pyrebase.initialize_app(config)
+    try:
+        email = settings['firebase']['email']
+        password = settings['firebase']['password']
+        auth = firebase.auth()
+        user = None
+        if email and password:
+            user = auth.sign_in_with_email_and_password(email, password)
+    except KeyError:
+        print("Could not find email and password in configuration.\n"
+              "Try running expipe.configure() again.\n"
+              "For more info see:\n\n"
+              "\texpipe.configure?\n\n")
+
+
 _init_module()
 
 # def create_experiment(session_id, session_start_time, experimenter, session_description="", notes=""):
