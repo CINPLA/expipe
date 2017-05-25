@@ -58,31 +58,17 @@ def convert_back_quantities(value):
         if 'units' in value and "value" in value:
             value['unit'] = value['units']
             del(value['units'])
-            warnings.warn('Keyword "units" is not supported, use "unit" in stead')
         if "unit" in value and "value" in value:
-            if isinstance(value['value'], str):
-                val = []
-                for stuff in value['value'].split(','):
-                    if stuff == '':
-                        continue
-                    try:
-                        val.append(float(stuff))
-                    except Exception:
-                        val.append(stuff)
-                        warnings.warn('Could not convert value of type:' +
-                                      ' "{}" to float'.format(type(stuff)))
-            else:
-                val = value['value']
             if "uncertainty" in value:
                 try:
-                    result = pq.UncertainQuantity(val,
+                    result = pq.UncertainQuantity(value["value"],
                                                   value["unit"],
                                                   value["uncertainty"])
                 except Exception:
                     pass
             else:
                 try:
-                    result = pq.Quantity(val, value["unit"])
+                    result = pq.Quantity(value["value"], value["unit"])
                 except Exception:
                     pass
         else:
@@ -101,14 +87,8 @@ def convert_quantities(value):
     """
     result = value
     if isinstance(value, pq.Quantity):
-        if value.shape in ((), (1, )):  # is scalar
-            val = value.magnitude.tolist()
-        else:
-            val = ', '.join([str(val) for val in value.magnitude.tolist()])
-        result = {
-            "value": val,
-            "unit": value.dimensionality.string
-        }
+        result = {"value": value.magnitude.tolist(),
+                  "unit": value.dimensionality.string}
         if isinstance(value, pq.UncertainQuantity):
             assert(value.dimensionality == value.uncertainty.dimensionality)
             result["uncertainty"] = value.uncertainty.magnitude.tolist()
@@ -212,8 +192,8 @@ class Project:
 
     def require_module(self, name=None, template=None, contents=None,
                        overwrite=False):
-        _require_module(name=name, template=template, contents=contents,
-                        overwrite=overwrite, parent=self)
+        return _require_module(name=name, template=template, contents=contents,
+                               overwrite=overwrite, parent=self)
 
     def get_module(self, name):
         result = self._db_modules.get(name)
@@ -408,6 +388,49 @@ class Filerecord:
             self._db.update(self.id, {"path": self.exdir_path})
 
 
+class ProperyList:
+    def __init__(self, db_instance, name):
+        self._db = db_instance
+        self.name = name
+
+    @property
+    def data(self):
+        return self._db.get(self.name)
+
+    def __getitem__(self, args):
+        data = self.data or []
+        return data[args]
+
+    def __iter__(self):
+        data = self.data or []
+        for d in data:
+            yield d
+
+    def __setitem__(self, args, value):
+        data = self.data
+        data[args] = value
+        self._db.set(self.name, data)
+
+    def __contains__(self, value):
+        return value in self.data
+
+    def __str__(self):
+        return self.data.__str__()
+
+    def __repr__(self):
+        return self.data.__repr__()
+
+    def append(self, value):
+        data = self.data
+        data.append(value)
+        self._db.set(self.name, data)
+
+    def extend(self, value):
+        data = self.data
+        data.extend(value)
+        self._db.set(self.name, data)
+
+
 class Action:
     def __init__(self, project, action_id):
         self.project = project
@@ -416,6 +439,18 @@ class Action:
         self._db = FirebaseBackend(path)
         modules_path = "/".join(["action_modules", self.project.id, self.id])
         self._db_modules = FirebaseBackend(modules_path)
+        messages_path = "/".join(["action_messages", self.project.id, self.id])
+        self._db_messages = FirebaseBackend(messages_path)
+
+    @property
+    def messages(self):
+        return ProperyList(self._db_messages, 'messages')
+
+    @messages.setter
+    def messages(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Messages expected "list", got "' + type(value) + '"')
+        self._db_messages.set('messages', value)
 
     @property
     def location(self):
@@ -424,7 +459,7 @@ class Action:
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
-            raise ValueError('Location requires string')
+            raise TypeError('Location requires string')
         self._db.set('location', value)
 
     @property
@@ -434,23 +469,17 @@ class Action:
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
-            raise ValueError('Type requires string')
+            raise TypeError('Type requires string')
         self._db.set('type', value)
 
     @property
     def subjects(self):
-        return self._db.get('subjects')
+        return ProperyList(self._db, 'subjects')
 
     @subjects.setter
     def subjects(self, value):
-        if isinstance(value, list):
-            value = {val: 'true' for val in value}
-        if not isinstance(value, dict):
-            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
-        else:
-            if not all(val == 'true' or val is True for val in value.values()):
-                raise ValueError('Users requires a list or a dict formated ' +
-                                 'like "{"value": "true"}"')
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
         self._db.set('subjects', value)
 
     @property
@@ -460,40 +489,28 @@ class Action:
     @datetime.setter
     def datetime(self, value):
         if not isinstance(value, datetime.datetime):
-            raise ValueError('Datetime requires a datetime object.')
+            raise TypeError('Expected "datetime" got "' + type(value) + '".')
         dtime = value.strftime(self.project.datetime_format)
         self._db.set('datetime', dtime)
 
     @property
     def users(self):
-        return self._db.get('users')
+        return ProperyList(self._db, 'users')
 
     @users.setter
     def users(self, value):
-        if isinstance(value, list):
-            value = {val: 'true' for val in value}
-        if not isinstance(value, dict):
-            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
-        else:
-            if not all(val == 'true' or val is True for val in value.values()):
-                raise ValueError('Users requires a list or a dict formated ' +
-                                 'like "{"value": "true"}"')
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
         self._db.set('users', value)
 
     @property
     def tags(self):
-        return self._db.get('tags')
+        return ProperyList(self._db, 'tags')
 
     @tags.setter
     def tags(self, value):
-        if isinstance(value, list):
-            value = {val: 'true' for val in value}
-        if not isinstance(value, dict):
-            raise ValueError('Users requires dict e.g. "{"value": "true"}"')
-        else:
-            if not all(val == 'true' or val is True for val in value.values()):
-                raise ValueError('Users requires a list or a dict formated ' +
-                                 'like "{"value": "true"}"')
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
         self._db.set('tags', value)
 
     @property
@@ -503,8 +520,8 @@ class Action:
 
     def require_module(self, name=None, template=None, contents=None,
                        overwrite=False):
-        _require_module(name=name, template=template, contents=contents,
-                        overwrite=overwrite, parent=self)
+        return _require_module(name=name, template=template, contents=contents,
+                               overwrite=overwrite, parent=self)
 
     def get_module(self, name):
         result = self._db_modules.get(name)
