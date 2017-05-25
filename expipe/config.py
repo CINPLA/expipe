@@ -1,7 +1,7 @@
 import yaml
 import os
 import sys
-import builtins
+import expipe
 
 config_dir = os.path.join(os.path.expanduser('~'), '.config', 'expipe')
 settings_file_path = os.path.join(config_dir, 'config.yaml')
@@ -99,27 +99,28 @@ def configure(data_path, email, password, url_prefix, api_key):
 
 
 def ensure_testing():
-    global settings
     if os.path.exists(test_settings_file_path):
         with open(test_settings_file_path) as settings_file:
             settings = yaml.load(settings_file)
             deep_verification(default_settings, settings)
     else:
         settings = debug_settings
-    settings['testing'] = True
     assert("allow_tests" in settings and settings["allow_tests"])
+    expipe.settings = settings
+    expipe.io.core._init_module()
 
 
-if 'testing' not in settings:
-    try:
-        with open(settings_file_path) as settings_file:
-            settings = yaml.load(settings_file)
-            deep_verification(default_settings, settings)
-    except FileNotFoundError:
-        print("WARNING: No expipe configuration file found. Using default settings.",
-              "Type the following for more information about creating a config file:\n\n",
-              "\texpipe.configure?\n\n")
-        settings = default_settings
+try:
+    with open(settings_file_path) as settings_file:
+        settings = yaml.load(settings_file)
+        deep_verification(default_settings, settings)
+        expipe.settings = settings
+except FileNotFoundError:
+    print("WARNING: No expipe configuration file found. Using default settings.",
+          "Type the following for more information about creating a config file:\n\n",
+          "\texpipe.configure?\n\n")
+    settings = default_settings
+    expipe.settings = settings
 
 # if ("unittest" in sys.modules.keys() or
 #         "_pytest" in sys.modules.keys() or

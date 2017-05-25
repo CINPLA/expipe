@@ -8,8 +8,7 @@ import configparser
 import quantities as pq
 import numpy as np
 import warnings
-from expipe import settings
-
+import expipe
 
 # TODO add attribute managers to allow changing values of modules and actions
 
@@ -198,40 +197,42 @@ class Project:
     def get_action(self, name):
         result = self._db_actions.get(name)
         if result is None:
-            raise IOError('Action "' + name + '" does not exist')
+            raise NameError('Action "' + name + '" does not exist')
         return Action(self, name)
 
     def delete_action(self, name):
         result = self._db_actions.get(name)
         if result is None:
-            raise IOError('Action "' + self.id + '" does not exist.')
+            raise NameError('Action "' + self.id + '" does not exist.')
         self._db_actions.set(name, {})
 
     @property
     def modules(self):
         return ModuleManager(self)
 
-    def require_module(self, name):
-        result = self._db_modules.get(name)
-        return Module(self, name)
+    def require_module(self, name=None, template=None, contents=None,
+                       overwrite=False):
+        _require_module(name=name, template=template, contents=contents,
+                        overwrite=overwrite, parent=self)
 
     def get_module(self, name):
         result = self._db_modules.get(name)
         if result is None:
-            raise IOError('Action "' + name + '" does not exist')
+            raise NameError('Module "' + name + '" does not exist')
         return Module(self, name)
 
     def delete_module(self, name):
         result = self._db_modules.get(name)
         if result is None:
-            raise IOError('Action "' + self.id + '" does not exist.')
+            raise NameError('Module "' + self.id + '" does not exist.')
         self._db_modules.set(name, {})
 
 
 class Datafile:
     def __init__(self, action):
         self.action = action
-        action_datafile_directory = op.join(settings["data_path"], action.project)
+        action_datafile_directory = op.join(expipe.settings["data_path"],
+                                            action.project)
         os.makedirs(action_datafile_directory, exist_ok=True)
         self.exdir_path = op.join(action_datafile_directory, action.id + ".exdir")
         self.exdir_file = exdir.File(self.exdir_path)
@@ -389,13 +390,13 @@ class Filerecord:
         # TODO make into properties/functions in case settings change
         self.exdir_path = op.join(action.project.id, action.id,
                                   self.id + ".exdir")
-        if 'data_path' in settings:
-            self.local_path = op.join(settings["data_path"],
+        if 'data_path' in expipe.settings:
+            self.local_path = op.join(expipe.settings["data_path"],
                                       self.exdir_path)
         else:
             self.local_path = None
-        if 'server_path' in settings:
-            self.server_path = op.join(settings['server']["data_path"],
+        if 'server_path' in expipe.settings:
+            self.server_path = op.join(expipe.settings['server']["data_path"],
                                        self.exdir_path)
         else:
             self.server_path = None
@@ -413,6 +414,8 @@ class Action:
         self.id = action_id
         path = "/".join(["actions", self.project.id, self.id])
         self._db = FirebaseBackend(path)
+        modules_path = "/".join(["action_modules", self.project.id, self.id])
+        self._db_modules = FirebaseBackend(modules_path)
 
     @property
     def location(self):
@@ -500,51 +503,68 @@ class Action:
 
     def require_module(self, name=None, template=None, contents=None,
                        overwrite=False):
-        if name is None and template is not None:
-            template_object = db.child("/".join(["templates",
-                                                template])).get(
-                                                    user["idToken"]).val()
-            name = template_object.get('identifier')
-            if name is None:
-                raise ValueError('Template "' + template + '" has no identifier.')
-        if template is None and name is None:
-            raise ValueError('name and template cannot both be None.')
-        if contents is not None and template is not None:
-            raise ValueError('Cannot set contents if a template' +
-                             'is required.')
-        if contents is not None:
-            if not isinstance(contents, dict):
-                raise ValueError('Contents must be of type: dict.')
+        _require_module(name=name, template=template, contents=contents,
+                        overwrite=overwrite, parent=self)
 
-        module = Module(parent=self, module_id=name)
-        if module._db.exists():
-            if template is not None or contents is not None:
-                if not overwrite:
-                    raise ValueError('Set overwrite to true if you want to ' +
-                                     'overwrite the contents of the module.')
-        if template is not None:
-            template_contents = db.child("/".join(["templates_contents",
-                                                  template])).get(
-                                                      user["idToken"]).val()
-            # TODO give error if template does not exist
-            module._db.set(template_contents)
-        if contents is not None:
-            if '_inherits' in contents:
-                heritage = FirebaseBackend(contents['_inherits']).get()
-                if heritage is None:
-                    raise ValueError(
-                        'Can not inherit {}'.format(contents['_inherits']))
-                d = DictDiffer(contents, heritage)
-                keys = [key for key in list(d.added()) + list(d.changed())]
-                diffcont = {key: contents[key] for key in keys}
-                module._db.set(diffcont)
-            else:
-                module._db.set(contents)
-        return module
+    def get_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise NameError('Module "' + name + '" does not exist')
+        return Module(self, name)
+
+    def delete_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise NameError('Module "' + self.id + '" does not exist.')
+        self._db_modules.set(name, {})
 
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
         return class_type(self, name)
+
+
+def _require_module(name=None, template=None, contents=None,
+                    overwrite=False, parent=None):
+    assert parent is not None
+    if name is None and template is not None:
+        template_path = "/".join(["templates", template])
+        name = FirebaseBackend(template_path).get('identifier')
+        if name is None:
+            raise ValueError('Template "' + template + '" has no identifier.')
+    if template is None and name is None:
+        raise ValueError('name and template cannot both be None.')
+    if contents is not None and template is not None:
+        raise ValueError('Cannot set contents if a template' +
+                         'is required.')
+    if contents is not None:
+        if not isinstance(contents, dict):
+            raise ValueError('Contents must be of type: dict.')
+
+    module = Module(parent=parent, module_id=name)
+    if module._db.exists():
+        if template is not None or contents is not None:
+            if not overwrite:
+                raise ValueError('Set overwrite to true if you want to ' +
+                                 'overwrite the contents of the module.')
+
+    if template is not None:
+        template_cont_path = "/".join(["templates_contents", template])
+        template_contents = FirebaseBackend(template_cont_path).get()
+        # TODO give error if template does not exist
+        module._db.set(template_contents)
+    if contents is not None:
+        if '_inherits' in contents:
+            heritage = FirebaseBackend(contents['_inherits']).get()
+            if heritage is None:
+                raise ValueError(
+                    'Can not inherit {}'.format(contents['_inherits']))
+            d = DictDiffer(contents, heritage)
+            keys = [key for key in list(d.added()) + list(d.changed())]
+            diffcont = {key: contents[key] for key in keys}
+            module._db.set(diffcont)
+        else:
+            module._db.set(contents)
+    return module
 
 
 def get_project(project_id):
@@ -572,10 +592,13 @@ def delete_project(project_id, remove_all_childs=False):
     existing = db.child("/".join(["projects",
                                   project_id])).get(user["idToken"]).val()
     if not existing:
-        raise IOError('Project "' + project_id + '" does not exist.')
+        raise NameError('Project "' + project_id + '" does not exist.')
     else:
         if remove_all_childs:
             project = Project(project_id)
+            for action in project.actions:
+                for module in action.modules.keys():
+                    action.delete_module(module)
             for action in project.actions.keys():
                 project.delete_action(action)
             for module in project.modules.keys():
@@ -604,7 +627,7 @@ def _init_module():
     """
     global db
 
-    config = settings['firebase']['config']
+    config = expipe.settings['firebase']['config']
     firebase = pyrebase.initialize_app(config)
     refresh_token()
     db = firebase.database()
@@ -614,11 +637,11 @@ def _init_module():
 
 def refresh_token():
     global auth, user
-    config = settings['firebase']['config']
+    config = expipe.settings['firebase']['config']
     firebase = pyrebase.initialize_app(config)
     try:
-        email = settings['firebase']['email']
-        password = settings['firebase']['password']
+        email = expipe.settings['firebase']['email']
+        password = expipe.settings['firebase']['password']
         auth = firebase.auth()
         user = None
         if email and password:
@@ -634,7 +657,7 @@ _init_module()
 
 # def create_experiment(session_id, session_start_time, experimenter, session_description="", notes=""):
 #     # TODO do we need to require session_id?
-#     print(settings)
+#     print(expipe.settings)
 #
 #     unique_id = str(uuid.uuid4())
 #     unique_id_short = unique_id.split("-")[0]
@@ -642,7 +665,7 @@ _init_module()
 #     year_folder_name = '{:%Y}'.format(registration_datetime)
 #     month_folder_name = '{:%Y-%m}'.format(registration_datetime)
 #     exdir_folder_name = '{:%Y-%m-%d-%H%M%S}_{}.exdir'.format(registration_datetime, unique_id_short)
-#     parent_path = op.join(settings["data_path"],
+#     parent_path = op.join(expipe.settings["data_path"],
 #                                year_folder_name,
 #                                month_folder_name)
 #     if not op.exists(parent_path):
