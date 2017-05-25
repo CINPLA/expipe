@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/CINPLA/expipe.svg?token=oLKxdB9do3q7nZzTrDLQ&branch=travis-test)](https://travis-ci.com/CINPLA/expipe)
+[![Build Status](https://travis-ci.org/CINPLA/expipe.svg)](https://travis-ci.org/CINPLA/expipe)
 [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
 
 # Expipe
