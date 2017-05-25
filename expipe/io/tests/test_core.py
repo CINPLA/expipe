@@ -140,3 +140,72 @@ def test_propertylist(teardown_project):
             assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
             assert prop_list[2] == orig_list[2]
             orig_list = ['sub1', 'sub2']
+
+
+def test_module_list(teardown_project):
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    list_cont = ['list I am', 1]
+    with pytest.raises(TypeError):
+        project_module = project.require_module(pytest.MODULE_ID,
+                                                contents=list_cont)
+
+    module_contents = {'list': list_cont}
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=module_contents)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+
+
+def test_module_quantities(teardown_project):
+    import quantities as pq
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    quan = [1, 2] * pq.s
+    module_contents = {'quan': quan}
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=module_contents)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+
+
+def test_module_array(teardown_project):
+    import numpy as np
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    quan = np.array([1, 2])
+    module_contents = {'quan': quan}
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=module_contents)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict['quan'], list)
+    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+
+
+def test_delete_action(teardown_project):
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    module_contents = {'test': {'value': 'youyo'}}
+    action_module = action.require_module(pytest.MODULE_ID,
+                                          contents=module_contents)
+    orig_list = ['sub1', 'sub2']
+    for attr in ['subjects', 'messages', 'users', 'tags']:
+        setattr(action, attr, orig_list)
+    project.delete_action(action.id)
+    assert len(list(action.modules.keys())) == 0
+    assert len(list(action_module.keys())) == 0
+    with pytest.raises(NameError):
+        project.get_action(pytest.ACTION_ID)
+    # remake and assert that all is deleted
+    action = project.require_action(pytest.ACTION_ID)
+    for attr in ['subjects', 'messages', 'users', 'tags']:
+        a = getattr(action, attr).data
+        assert a is None
+
+# TODO test delete project var and on delete
+# TODO test messages and deletion
+# TODO test to_json
+# TODO test filerecord and Datafile and whatever it is for?
+# TODO measure coverage

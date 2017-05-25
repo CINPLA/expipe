@@ -168,23 +168,28 @@ class Project:
         return ActionManager(self)
 
     def require_action(self, name):
-        result = self._db_actions.get(name)
-        if result is None:
+        action_data = self._db_actions.get(name)
+        if action_data is None:
             dtime = datetime.datetime.today().strftime(self.datetime_format)
-            result = self._db_actions.update(name, {"registered": dtime})
+            self._db_actions.update(name, {"registered": dtime})
         return Action(self, name)
 
     def get_action(self, name):
-        result = self._db_actions.get(name)
-        if result is None:
+        action_data = self._db_actions.get(name)
+        if action_data is None:
             raise NameError('Action "' + name + '" does not exist')
         return Action(self, name)
 
     def delete_action(self, name):
-        result = self._db_actions.get(name)
-        if result is None:
-            raise NameError('Action "' + self.id + '" does not exist.')
+        action_data = self._db_actions.get(name)
+        if action_data is None:
+            raise NameError('Action "' + name + '" does not exist.')
+        action = Action(self, name)
+        for module in action.modules.keys():
+            action.delete_module(module)
+        action.messages = []
         self._db_actions.set(name, {})
+        del action
 
     @property
     def modules(self):
@@ -305,6 +310,28 @@ class Module:
             json.dump(module.to_dict(), outfile,
                       sort_keys=True, indent=4)
 
+    def keys(self):
+        result = self._get_module_content() or {}
+        return result.keys()
+
+    def items(self):
+        result = self._get_module_content() or {}
+        return result.items()
+
+    def values(self):
+        result = self._get_module_content()
+        if result is None:
+            result = dict()
+        return result.values()
+
+    def _get_module_content(self):
+        result = self._db.get()
+        if isinstance(result, list):
+            if len(result) > 0:
+                raise ValueError('Got nonempty list, expected dict')
+            result = None
+        return result
+
 
 class ModuleManager:
     def __init__(self, parent):
@@ -335,29 +362,36 @@ class ModuleManager:
             d[name] = self[name].to_dict()
         return d
 
+    def to_json(self, fname=None):
+        import json
+        fname = fname or self.parent.id
+        if not fname.endswith('.json'):
+            fname = fname + '.json'
+        if op.exists(fname):
+            raise FileExistsError('The filename "' + fname +
+                                  '" exists, choose another')
+        print('Saving module "' + self.parent.id + '" to "' + fname + '"')
+        with open(fname, 'w') as outfile:
+            json.dump(module.to_dict(), outfile,
+                      sort_keys=True, indent=4)
+
     def keys(self):
-        result = self._get_modules()
-        if result is None:
-            result = dict()
+        result = self._get_modules() or {}
         return result.keys()
 
     def items(self): # TODO does not work with _inherits
-        result = self._get_modules()
-        if result is None:
-            result = dict()
+        result = self._get_modules() or {}
         return result.items()
 
     def values(self):
-        result = self._get_modules()
-        if result is None:
-            result = dict()
+        result = self._get_modules() or {}
         return result.values()
 
     def _get_modules(self):
         result = self._db.get()
         if isinstance(result, list):
             if len(result) > 0:
-                raise ValueError('Got nonempty list, expected dict')
+                raise TypeError('Got nonempty list, expected dict')
             result = None
         return result
 
@@ -552,10 +586,11 @@ def _require_module(name=None, template=None, contents=None,
         raise ValueError('name and template cannot both be None.')
     if contents is not None and template is not None:
         raise ValueError('Cannot set contents if a template' +
-                         'is required.')
+                         'is requested.')
     if contents is not None:
         if not isinstance(contents, dict):
-            raise ValueError('Contents must be of type: dict.')
+            raise TypeError('Contents expected "dict", got "' +
+                            type(contents) + '".')
 
     module = Module(parent=parent, module_id=name)
     if module._db.exists():
@@ -613,9 +648,6 @@ def delete_project(project_id, remove_all_childs=False):
     else:
         if remove_all_childs:
             project = Project(project_id)
-            for action in project.actions:
-                for module in action.modules.keys():
-                    action.delete_module(module)
             for action in project.actions.keys():
                 project.delete_action(action)
             for module in project.modules.keys():
