@@ -619,6 +619,43 @@ def _require_module(name=None, template=None, contents=None,
     return module
 
 
+def require_template(template, contents=None, overwrite=False):
+    template_db = FirebaseBackend("/".join(["templates", template]))
+    contents_db = FirebaseBackend("/".join(["templates_contents", template]))
+    template_contents = contents_db.get()
+    result = template_db.get()
+    if contents is None and result is None:
+        raise ValueError('Template does not exist, please give contents' +
+                         'in order to generate a template.')
+    elif contents is None and result is not None:
+        if template_contents is not None:
+            result.update(template_contents)
+        return result
+
+    if not isinstance(contents, dict):
+        raise TypeError('Expected "dict", got "' + type(contents) + '".')
+    if not overwrite and template_contents is not None:
+        raise ValueError('Set overwrite to true if you want to ' +
+                         'overwrite the contents of the template.')
+    template_db.set(template, {'identifier': template})
+    contents_db.set(template, contents)
+
+
+def get_template(template):
+    template_db = FirebaseBackend("/".join(["templates", template]))
+    contents_db = FirebaseBackend("/".join(["templates_contents", template]))
+    template_contents = contents_db.get()
+    result = template_db.get()
+    if result is None:
+        raise NameError('Template "' + template + '" does not exist.')
+    name = template_db.get('identifier')
+    if name is None:
+        raise ValueError('Template "' + template + '" has no identifier.')
+    if template_contents is not None:
+        result.update(template_contents)
+    return result
+
+
 def get_project(project_id):
     existing = db.child("/".join(["projects",
                                   project_id])).get(user["idToken"]).val()
