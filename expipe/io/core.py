@@ -423,9 +423,10 @@ class Filerecord:
 
 
 class ProperyList:
-    def __init__(self, db_instance, name):
+    def __init__(self, db_instance, name, dtype=None):
         self._db = db_instance
         self.name = name
+        self.dtype = dtype
 
     @property
     def data(self):
@@ -441,6 +442,10 @@ class ProperyList:
             yield d
 
     def __setitem__(self, args, value):
+        if self.dtype is not None:
+            if not isinstance(value, self.dtype):
+                raise ValueError('Expected "' + self.dtype + '" got ' +
+                                 type(value))
         data = self.data
         data[args] = value
         self._db.set(self.name, data)
@@ -455,14 +460,67 @@ class ProperyList:
         return self.data.__repr__()
 
     def append(self, value):
+        if self.dtype is not None:
+            if not isinstance(value, self.dtype):
+                raise ValueError('Expected "' + self.dtype + '" got ' +
+                                 type(value))
         data = self.data
         data.append(value)
         self._db.set(self.name, data)
 
     def extend(self, value):
+        if self.dtype is not None:
+            if not all(isinstance(v, self.dtype) for v in value):
+                raise ValueError('Expected "' + self.dtype + '" got ' +
+                                 type(value))
         data = self.data
         data.extend(value)
         self._db.set(self.name, data)
+
+
+class MessageManager:
+    def __init__(self, action):
+        path = "/".join(["action_messages", action.project.id, action.id])
+        self._db = FirebaseBackend(path)
+
+    @property
+    def messages(self):
+        return ProperyList(self._db, 'messages', dtype=str)
+
+    @messages.setter
+    def messages(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise ValueError('Expected contents to be "str" got ' +
+                             str(type(v) for v in value))
+        self._db.set('messages', value)
+
+    @property
+    def datetimes(self):
+        return ProperyList(self._db, 'datetimes', dtype=datetime.datetime)
+
+    @datetimes.setter
+    def datetimes(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, datetime.datetime) for v in value):
+            raise ValueError('Expected contents to be "datetime.datetime" got' +
+                             str(type(v) for v in value))
+        self._db.set('datetimes', value)
+
+    @property
+    def users(self):
+        return ProperyList(self._db, 'users', dtype=str)
+
+    @users.setter
+    def users(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise ValueError('Expected contents to be "str" got ' +
+                             str(type(v) for v in value))
+        self._db.set('users', value)
 
 
 class Action:
@@ -473,18 +531,11 @@ class Action:
         self._db = FirebaseBackend(path)
         modules_path = "/".join(["action_modules", self.project.id, self.id])
         self._db_modules = FirebaseBackend(modules_path)
-        messages_path = "/".join(["action_messages", self.project.id, self.id])
-        self._db_messages = FirebaseBackend(messages_path)
+
 
     @property
     def messages(self):
-        return ProperyList(self._db_messages, 'messages')
-
-    @messages.setter
-    def messages(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Messages expected "list", got "' + type(value) + '"')
-        self._db_messages.set('messages', value)
+        return MessageManager(self)
 
     @property
     def location(self):
@@ -493,7 +544,7 @@ class Action:
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
-            raise TypeError('Location requires string')
+            raise TypeError('Expected "str" got "' + type(value) + '"')
         self._db.set('location', value)
 
     @property
@@ -503,17 +554,20 @@ class Action:
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
-            raise TypeError('Type requires string')
+            raise TypeError('Expected "str" got "' + type(value) + '"')
         self._db.set('type', value)
 
     @property
     def subjects(self):
-        return ProperyList(self._db, 'subjects')
+        return ProperyList(self._db, 'subjects', dtype=str)
 
     @subjects.setter
     def subjects(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise ValueError('Expected contents to be "str" got ' +
+                             str(type(v) for v in value))
         self._db.set('subjects', value)
 
     @property
@@ -523,28 +577,35 @@ class Action:
     @datetime.setter
     def datetime(self, value):
         if not isinstance(value, datetime.datetime):
-            raise TypeError('Expected "datetime" got "' + type(value) + '".')
+            raise TypeError('Expected "datetime.datetime" got "' + type(value) +
+                            '".')
         dtime = value.strftime(self.project.datetime_format)
         self._db.set('datetime', dtime)
 
     @property
     def users(self):
-        return ProperyList(self._db, 'users')
+        return ProperyList(self._db, 'users', dtype=str)
 
     @users.setter
     def users(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise ValueError('Expected contents to be "str" got ' +
+                             str(type(v) for v in value))
         self._db.set('users', value)
 
     @property
     def tags(self):
-        return ProperyList(self._db, 'tags')
+        return ProperyList(self._db, 'tags', dtype=str)
 
     @tags.setter
     def tags(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + type(value) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise ValueError('Expected contents to be "str" got ' +
+                             str(type(v) for v in value))
         self._db.set('tags', value)
 
     @property
