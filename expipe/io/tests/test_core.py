@@ -211,3 +211,5 @@ def test_propertylist(teardown_project):
 # TODO measure coverage
 # TODO test how lists are identified and read e.g. can you give {1:'d', 2: 'd', 'd':2}
 # TODO test if you can give template identifier which si not unique
+# TODO test propertylist type testing
+# TODO test MessageManager
