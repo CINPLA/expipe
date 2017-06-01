@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 import expipe
 expipe.ensure_testing()
 
@@ -99,63 +99,46 @@ expipe.ensure_testing()
 #         assert d.added() == set()
 #         assert d.removed() == set()
 #
-# def test_action_attr(teardown_project):
-#         project = expipe.require_project(pytest.PROJECT_ID)
-#         action = project.require_action(pytest.ACTION_ID)
-#         for attr in ['subjects', 'messages', 'users', 'tags']:
-#             with pytest.raises(TypeError):
-#                 setattr(action, attr, {'dict': 'I am'})
-#                 setattr(action, attr, 'string I am')
-#         for attr in ['type', 'location']:
-#             setattr(action, attr, 'string I am')
-#             with pytest.raises(TypeError):
-#                 setattr(action, attr, {'dict': 'I am'})
-#                 setattr(action, attr, ['list I am'])
-#         from datetime import datetime
-#         action.datetime = datetime.now()
-#         with pytest.raises(TypeError):
-#             action.datetime = 'now I am'
-
-
-def test_propertylist(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
-        orig_list = ['sub1', 'sub2']
-        for attr in ['subjects', 'users', 'tags']:
-            setattr(action, attr, orig_list)
-            prop_list = getattr(action, attr)
-            assert isinstance(prop_list, expipe.io.core.ProperyList)
-            assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-            prop_list.append('sub3')
-            orig_list.append('sub3')
-            prop_list = getattr(action, attr)
-            assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-            prop_list.extend(['sub3'])
-            orig_list.extend(['sub3'])
-            prop_list = getattr(action, attr)
-            assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-            prop_list[2] = 'subsub'
-            orig_list[2] = 'subsub'
-            prop_list = getattr(action, attr)
-            assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-            assert prop_list[2] == orig_list[2]
-            orig_list = ['sub1', 'sub2']
-
-
-# def test_module_list(teardown_project):
-#     project = expipe.require_project(pytest.PROJECT_ID)
-#     action = project.require_action(pytest.ACTION_ID)
-#     list_cont = ['list I am', 1]
-#     with pytest.raises(TypeError):
-#         project_module = project.require_module(pytest.MODULE_ID,
-#                                                 contents=list_cont)
 #
-#     module_contents = {'list': list_cont}
-#     project_module = project.require_module(pytest.MODULE_ID,
-#                                             contents=module_contents)
-#     mod_dict = project_module.to_dict()
-#     assert isinstance(mod_dict['list'], list)
-#     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+def test_module_list(teardown_project):
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    list_cont = ['list I am', 1]
+    with pytest.raises(TypeError):
+        project_module = project.require_module(pytest.MODULE_ID,
+                                                contents=list_cont)
+
+    module_contents = {'list': list_cont}
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=module_contents)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+
+    module_contents = {'is_list': {'1': 'df', '2': 'd', '3': 's'}}
+    action_module = action.require_module(pytest.MODULE_ID,
+                                            contents=module_contents)
+    mod_dict = action_module.to_dict()
+    assert isinstance(mod_dict['is_list'], list)
+
+    module_contents = {'almost_list1': {'1': 'df', '2': 'd', 'd': 's'}}
+    action_module = action.require_module(pytest.MODULE_ID,
+                                            contents=module_contents,
+                                            overwrite=True)
+    mod_dict = action_module.to_dict()
+    assert isinstance(mod_dict['almost_list1'], dict)
+    diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
+    assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
+
+    # TODO make this go through
+    # module_contents = {'almost_list2': {'1': 'df', '2': 'd', '5': 's'}}
+    # action_module = action.require_module(pytest.MODULE_ID,
+    #                                         contents=module_contents,
+    #                                         overwrite=True)
+    # mod_dict = action_module.to_dict()
+    # assert isinstance(mod_dict['almost_list2'], dict)
+    # diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
+    # assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
 #
 #
 # def test_module_quantities(teardown_project):
@@ -190,19 +173,182 @@ def test_propertylist(teardown_project):
 #     module_contents = {'test': {'value': 'youyo'}}
 #     action_module = action.require_module(pytest.MODULE_ID,
 #                                           contents=module_contents)
-#     orig_list = ['sub1', 'sub2']
-#     for attr in ['subjects', 'messages', 'users', 'tags']:
-#         setattr(action, attr, orig_list)
+#     mes = action.messages
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#     mes.datetimes = [time, time - timedelta(minutes=1)]
+#     mes.users = ['us1', 'us2']
+#     mes.messages = ['mes1', 'mes2']
+#
+#     for attr in ['subjects', 'users', 'tags']:
+#         setattr(action, attr, ['sub1', 'sub2'])
 #     project.delete_action(action.id)
-#     assert len(list(action.modules.keys())) == 0
-#     assert len(list(action_module.keys())) == 0
 #     with pytest.raises(NameError):
 #         project.get_action(pytest.ACTION_ID)
 #     # remake and assert that all is deleted
 #     action = project.require_action(pytest.ACTION_ID)
-#     for attr in ['subjects', 'messages', 'users', 'tags']:
+#     assert len(list(action.modules.keys())) == 0
+#     assert len(list(action_module.keys())) == 0
+#     for attr in ['subjects', 'users', 'tags']:
 #         a = getattr(action, attr).data
 #         assert a is None
+#     assert len(action.messages.messages) == 0
+#     assert len(action.messages.datetimes) == 0
+#     assert len(action.messages.users) == 0
+
+
+# def test_action_attr(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         for attr in ['subjects', 'users', 'tags']:
+#             with pytest.raises(TypeError):
+#                 setattr(action, attr, {'dict': 'I am'})
+#                 setattr(action, attr, 'string I am')
+#         for attr in ['type', 'location']:
+#             setattr(action, attr, 'string I am')
+#             with pytest.raises(TypeError):
+#                 setattr(action, attr, {'dict': 'I am'})
+#                 setattr(action, attr, ['list I am'])
+#         action.datetime = datetime.now()
+#         with pytest.raises(TypeError):
+#             action.datetime = 'now I am'
+
+
+# def test_action_attr_list(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         orig_list = ['sub1', 'sub2']
+#         for attr in ['subjects', 'users', 'tags']:
+#             setattr(action, attr, orig_list)
+#             prop_list = getattr(action, attr)
+#             assert isinstance(prop_list, expipe.io.core.ProperyList)
+#             assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
+#             prop_list.append('sub3')
+#             orig_list.append('sub3')
+#             prop_list = getattr(action, attr)
+#             assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
+#             prop_list.extend(['sub3'])
+#             orig_list.extend(['sub3'])
+#             prop_list = getattr(action, attr)
+#             assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
+#             prop_list[2] = 'subsub'
+#             orig_list[2] = 'subsub'
+#             prop_list = getattr(action, attr)
+#             assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
+#             assert prop_list[2] == orig_list[2]
+#             orig_list = ['sub1', 'sub2']
+
+
+# def test_action_attr_list_dtype(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         for attr in ['subjects', 'users', 'tags']:
+#             with pytest.raises(TypeError):
+#                 setattr(action, attr, ['sub1', 'sub2', 1])
+#             with pytest.raises(TypeError):
+#                 setattr(action, attr, ['sub1', 'sub2', ['s']])
+#             setattr(action, attr, ['sub1', 'sub2'])
+#             prop_list = getattr(action, attr)
+#             with pytest.raises(TypeError):
+#                 prop_list.append(1)
+#             with pytest.raises(TypeError):
+#                 prop_list.extend([1])
+#             with pytest.raises(TypeError):
+#                 prop_list[2] = 1
+
+
+# def test_action_messages_list_setter(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         mes = action.messages
+#         messages = ['mes1', 'mes2']
+#         time = datetime(2017, 6, 1, 21, 42, 20)
+#         datetimes = [time, time - timedelta(minutes=1)]
+#         users = ['us1', 'us2']
+#         mes.datetimes = datetimes
+#         mes.users = users
+#         mes.messages = messages
+#         assert isinstance(mes.messages, expipe.io.core.ProperyList)
+#         assert isinstance(mes.users, expipe.io.core.ProperyList)
+#         assert isinstance(mes.datetimes, expipe.io.core.ProperyList)
+#         mes.messages.append('sub3')
+#         messages.append('sub3')
+#         mes.messages.extend(['sub3'])
+#         messages.extend(['sub3'])
+#         mes.messages[2] = 'subsub'
+#         messages[2] = 'subsub'
+#
+#         mes.datetimes.append(time - timedelta(minutes=3))
+#         datetimes.append(time - timedelta(minutes=3))
+#         mes.datetimes.extend([time - timedelta(minutes=2)])
+#         datetimes.extend([time - timedelta(minutes=2)])
+#         mes.datetimes[2] = time - timedelta(minutes=11)
+#         datetimes[2] = time - timedelta(minutes=11)
+#
+#         mes.users.append('sub3')
+#         users.append('sub3')
+#         mes.users.extend(['sub3'])
+#         users.extend(['sub3'])
+#         mes.users[2] = 'subsub'
+#         users[2] = 'subsub'
+#         assert all(s1 == s2 for s1, s2 in zip(messages, mes.messages))
+#         assert all(s1 == s2 for s1, s2 in zip(datetimes, mes.datetimes))
+#         assert all(s1 == s2 for s1, s2 in zip(users, mes.users))
+#
+#
+# def test_action_messages_list_no_setter(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         mes = action.messages
+#         messages = []
+#         time = datetime(2017, 6, 1, 21, 42, 20)
+#         datetimes = []
+#         users = []
+#         mes.messages.append('sub3')
+#         messages.append('sub3')
+#         mes.messages.extend(['sub3'])
+#         messages.extend(['sub3'])
+#         mes.messages[1] = 'subsub'
+#         messages[1] = 'subsub'
+#         mes.datetimes.append(time - timedelta(minutes=3))
+#         datetimes.append(time - timedelta(minutes=3))
+#         mes.datetimes.extend([time - timedelta(minutes=2)])
+#         datetimes.extend([time - timedelta(minutes=2)])
+#         mes.datetimes[1] = time - timedelta(minutes=11)
+#         datetimes[1] = time - timedelta(minutes=11)
+#
+#         mes.users.append('sub3')
+#         users.append('sub3')
+#         mes.users.extend(['sub3'])
+#         users.extend(['sub3'])
+#         mes.users[1] = 'subsub'
+#         users[1] = 'subsub'
+#         assert all(s1 == s2 for s1, s2 in zip(messages, mes.messages))
+#         assert all(s1 == s2 for s1, s2 in zip(datetimes, mes.datetimes)), '{}, {}'.format(datetimes, mes.datetimes)
+#         assert all(s1 == s2 for s1, s2 in zip(users, mes.users))
+#
+#
+# def test_action_messages_dtype(teardown_project):
+#         project = expipe.require_project(pytest.PROJECT_ID)
+#         action = project.require_action(pytest.ACTION_ID)
+#         mes = action.messages
+#         time = datetime(2017, 6, 1, 21, 42, 20)
+#         with pytest.raises(TypeError):
+#             mes.datetimes = [1, time - timedelta(minutes=1)]
+#             mes.users = ['us1', 1]
+#             mes.messages = ['mes1', 1]
+#         with pytest.raises(TypeError):
+#             mes.messages.append(1)
+#             mes.messages.extend([1])
+#             mes.messages[2] = 1
+#
+#             mes.datetimes.append('time - timedelta(minutes=3)')
+#             mes.datetimes.extend(['time - timedelta(minutes=2)'])
+#             mes.datetimes[2] = 'time - timedelta(minutes=11)'
+#
+#             mes.users.append(1)
+#             mes.users.extend([1])
+#             mes.users[2] = 1
+
 
 # TODO test delete project var and on delete
 # TODO test messages and deletion
@@ -211,5 +357,3 @@ def test_propertylist(teardown_project):
 # TODO measure coverage
 # TODO test how lists are identified and read e.g. can you give {1:'d', 2: 'd', 'd':2}
 # TODO test if you can give template identifier which si not unique
-# TODO test propertylist type testing
-# TODO test MessageManager

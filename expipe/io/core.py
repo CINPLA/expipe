@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import exdir
 import os
 import os.path as op
@@ -13,7 +13,6 @@ import expipe
 # TODO add attribute managers to allow changing values of modules and actions
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
-
 
 class DictDiffer(object):
     """
@@ -159,7 +158,6 @@ class ActionManager:
 class Project:
     def __init__(self, project_id):
         self.id = project_id
-        self.datetime_format = '%Y-%m-%dT%H:%M:%S'
         self._db_actions = FirebaseBackend('/actions/' + project_id)
         self._db_modules = FirebaseBackend('/project_modules/' + project_id)
 
@@ -170,7 +168,7 @@ class Project:
     def require_action(self, name):
         action_data = self._db_actions.get(name)
         if action_data is None:
-            dtime = datetime.datetime.today().strftime(self.datetime_format)
+            dtime = datetime.today().strftime(datetime_format)
             self._db_actions.update(name, {"registered": dtime})
         return Action(self, name)
 
@@ -187,7 +185,9 @@ class Project:
         action = Action(self, name)
         for module in action.modules.keys():
             action.delete_module(module)
-        action.messages = []
+        action.messages.messages = []
+        action.messages.datetimes = []
+        action.messages.users = []
         self._db_actions.set(name, {})
         del action
 
@@ -273,7 +273,7 @@ class Module:
     def __init__(self, parent, module_id):
         self.parent = parent
         if not isinstance(module_id, str):
-            raise ValueError('Module name must be string')
+            raise TypeError('Module name must be string')
         self.id = module_id
         if isinstance(parent, Action):
             path = '/'.join(['action_modules', parent.project.id,
@@ -430,7 +430,8 @@ class ProperyList:
 
     @property
     def data(self):
-        return self._db.get(self.name)
+        result = self._db.get(self.name)
+        return self.dtype_manager(result, iter_value=True, retrieve=True)
 
     def __getitem__(self, args):
         data = self.data or []
@@ -441,16 +442,19 @@ class ProperyList:
         for d in data:
             yield d
 
+    def __len__(self):
+        data = self.data or []
+        return len(data)
+
     def __setitem__(self, args, value):
-        if self.dtype is not None:
-            if not isinstance(value, self.dtype):
-                raise ValueError('Expected "' + self.dtype + '" got ' +
-                                 type(value))
-        data = self.data
-        data[args] = value
+        data = self.data or []
+        result = self.dtype_manager(value)
+        data = self.dtype_manager(data, iter_value=True)
+        data[args] = result
         self._db.set(self.name, data)
 
     def __contains__(self, value):
+        value = self.dtype_manager(value)
         return value in self.data
 
     def __str__(self):
@@ -460,28 +464,51 @@ class ProperyList:
         return self.data.__repr__()
 
     def append(self, value):
-        if self.dtype is not None:
-            if not isinstance(value, self.dtype):
-                raise ValueError('Expected "' + self.dtype + '" got ' +
-                                 type(value))
-        data = self.data
-        data.append(value)
+        data = self.data or []
+        result = self.dtype_manager(value)
+        data = self.dtype_manager(data, iter_value=True)
+        data.append(result)
         self._db.set(self.name, data)
 
     def extend(self, value):
-        if self.dtype is not None:
-            if not all(isinstance(v, self.dtype) for v in value):
-                raise ValueError('Expected "' + self.dtype + '" got ' +
-                                 type(value))
-        data = self.data
-        data.extend(value)
+        data = self.data or []
+        result = self.dtype_manager(value, iter_value=True)
+        data = self.dtype_manager(data, iter_value=True)
+        data.extend(result)
         self._db.set(self.name, data)
+
+    def dtype_manager(self, value, iter_value=False, retrieve=False):
+        if value is None or self.dtype is None:
+            return
+        if not retrieve:
+            if iter_value:
+                if not all(isinstance(v, self.dtype) for v in value):
+                    raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                                     str([type(v) for v in value]))
+            else:
+                if not isinstance(value, self.dtype):
+                    raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                                 str(type(value)))
+        if self.dtype == datetime:
+            if iter_value:
+                if all(isinstance(v, str) for v in value):
+                    return [datetime.strptime(v, datetime_format) for v in value]
+                else:
+                    return [v.strftime(datetime_format) for v in value]
+            else:
+                if isinstance(value, str):
+                    return datetime.strptime(value, datetime_format)
+                else:
+                    return value.strftime(datetime_format)
+        else:
+            return value
 
 
 class MessageManager:
     def __init__(self, action):
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)
+        self.action = action
 
     @property
     def messages(self):
@@ -490,24 +517,25 @@ class MessageManager:
     @messages.setter
     def messages(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
-            raise ValueError('Expected contents to be "str" got ' +
-                             str(type(v) for v in value))
+            raise TypeError('Expected contents to be "str" got ' +
+                             str([type(v) for v in value]))
         self._db.set('messages', value)
 
     @property
     def datetimes(self):
-        return ProperyList(self._db, 'datetimes', dtype=datetime.datetime)
+        return ProperyList(self._db, 'datetimes', dtype=datetime)
 
     @datetimes.setter
     def datetimes(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
-        if not all(isinstance(v, datetime.datetime) for v in value):
-            raise ValueError('Expected contents to be "datetime.datetime" got' +
-                             str(type(v) for v in value))
-        self._db.set('datetimes', value)
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
+        if not all(isinstance(v, datetime) for v in value):
+            raise TypeError('Expected contents to be "datetime" got' +
+                             str([type(v) for v in value]))
+        self._db.set('datetimes', [v.strftime(datetime_format)
+                                   for v in value])
 
     @property
     def users(self):
@@ -516,10 +544,10 @@ class MessageManager:
     @users.setter
     def users(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
-            raise ValueError('Expected contents to be "str" got ' +
-                             str(type(v) for v in value))
+            raise TypeError('Expected contents to be "str" got ' +
+                             str([type(v) for v in value]))
         self._db.set('users', value)
 
 
@@ -544,7 +572,7 @@ class Action:
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
-            raise TypeError('Expected "str" got "' + type(value) + '"')
+            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
         self._db.set('location', value)
 
     @property
@@ -554,7 +582,7 @@ class Action:
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
-            raise TypeError('Expected "str" got "' + type(value) + '"')
+            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
         self._db.set('type', value)
 
     @property
@@ -564,10 +592,10 @@ class Action:
     @subjects.setter
     def subjects(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
-            raise ValueError('Expected contents to be "str" got ' +
-                             str(type(v) for v in value))
+            raise TypeError('Expected contents to be "str" got ' +
+                             str([type(v) for v in value]))
         self._db.set('subjects', value)
 
     @property
@@ -576,10 +604,10 @@ class Action:
 
     @datetime.setter
     def datetime(self, value):
-        if not isinstance(value, datetime.datetime):
-            raise TypeError('Expected "datetime.datetime" got "' + type(value) +
+        if not isinstance(value, datetime):
+            raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
-        dtime = value.strftime(self.project.datetime_format)
+        dtime = value.strftime(datetime_format)
         self._db.set('datetime', dtime)
 
     @property
@@ -589,10 +617,10 @@ class Action:
     @users.setter
     def users(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
-            raise ValueError('Expected contents to be "str" got ' +
-                             str(type(v) for v in value))
+            raise TypeError('Expected contents to be "str" got ' +
+                             str([type(v) for v in value]))
         self._db.set('users', value)
 
     @property
@@ -602,10 +630,10 @@ class Action:
     @tags.setter
     def tags(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + type(value) + '"')
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
-            raise ValueError('Expected contents to be "str" got ' +
-                             str(type(v) for v in value))
+            raise TypeError('Expected contents to be "str" got ' +
+                             str([type(v) for v in value]))
         self._db.set('tags', value)
 
     @property
@@ -729,7 +757,7 @@ def require_project(project_id):
     """Creates a new project with the provided id."""
     existing = db.child("/".join(["projects",
                                   project_id])).get(user["idToken"]).val()
-    registered = datetime.datetime.today().strftime(datetime_format)
+    registered = datetime.today().strftime(datetime_format)
     if not existing:
         db.child("/".join(["projects",
                            project_id])).set({"registered":
@@ -808,7 +836,7 @@ _init_module()
 #
 #     unique_id = str(uuid.uuid4())
 #     unique_id_short = unique_id.split("-")[0]
-#     registration_datetime = datetime.datetime.now()
+#     registration_datetime = datetime.now()
 #     year_folder_name = '{:%Y}'.format(registration_datetime)
 #     month_folder_name = '{:%Y-%m}'.format(registration_datetime)
 #     exdir_folder_name = '{:%Y-%m-%d-%H%M%S}_{}.exdir'.format(registration_datetime, unique_id_short)
@@ -822,7 +850,7 @@ _init_module()
 #     f = exdir.File(exdir_folder_path)
 #     f.attrs["identifier"] = str(unique_id)
 #     f.attrs["nwb_version"] = "NWB-1.0.3"
-#     f.attrs["file_create_date"] = datetime.datetime.now().isoformat()
+#     f.attrs["file_create_date"] = datetime.now().isoformat()
 #     f.attrs["session_start_time"] = session_start_time
 #     f.attrs["session_description"] = session_description
 #
