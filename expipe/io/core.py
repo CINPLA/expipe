@@ -504,51 +504,58 @@ class ProperyList:
             return value
 
 
-class MessageManager:
+class Messages:
     def __init__(self, action):
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)
         self.action = action
+        self._messages = ProperyList(self._db, 'messages', dtype=str)
+        self._datetimes = ProperyList(self._db, 'datetimes', dtype=datetime)
+        self._users = ProperyList(self._db, 'users', dtype=str)
 
     @property
     def messages(self):
-        return ProperyList(self._db, 'messages', dtype=str)
+        return [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(self._messages, self._datetimes, self._users)]
 
     @messages.setter
     def messages(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                             str([type(v) for v in value]))
-        self._db.set('messages', value)
+        self._db.set({})
+        for message in value:
+            self.append(message)
 
-    @property
-    def datetimes(self):
-        return ProperyList(self._db, 'datetimes', dtype=datetime)
 
-    @datetimes.setter
-    def datetimes(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, datetime) for v in value):
-            raise TypeError('Expected contents to be "datetime" got' +
-                             str([type(v) for v in value]))
-        self._db.set('datetimes', [v.strftime(datetime_format)
-                                   for v in value])
+    def __getitem__(self, arg):
+        message = {
+            'message': self._messages[arg],
+            'user': self._users[arg],
+            'datetime': self._datetimes[arg]
+        }
+        return message
 
-    @property
-    def users(self):
-        return ProperyList(self._db, 'users', dtype=str)
+    def __setitem__(self, arg, message):
+        if not isinstance(message, dict):
+            raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
+        if not 'message' in message and 'user' in message and 'datetime' in message:
+            raise ValueError('Message must be formated as ' +
+                             'dict(message="message", user="user", ' +
+                             'datetime="datetime"')
+        self._messages[arg] = message['message']
+        self._datetimes[arg] = message['datetime']
+        self._users[arg] = message['user']
 
-    @users.setter
-    def users(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                             str([type(v) for v in value]))
-        self._db.set('users', value)
+    def append(self, message):
+        if not isinstance(message, dict):
+            raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
+        if not 'message' in message and 'user' in message and 'datetime' in message:
+            raise ValueError('Message must be formated as ' +
+                             'dict(message="message", user="user", ' +
+                             'datetime="datetime"')
+        self._messages.append(message['message'])
+        self._datetimes.append(message['datetime'])
+        self._users.append(message['user'])
 
 
 class Action:
@@ -560,10 +567,14 @@ class Action:
         modules_path = "/".join(["action_modules", self.project.id, self.id])
         self._db_modules = FirebaseBackend(modules_path)
 
-
     @property
     def messages(self):
-        return MessageManager(self)
+        return Messages(self)
+
+    @messages.setter
+    def messages(self, value):
+        mes = Messages(self)
+        mes.messages = value
 
     @property
     def location(self):
@@ -600,7 +611,7 @@ class Action:
 
     @property
     def datetime(self):
-        return self._db.get('datetime')
+        return datetime.strptime(self._db.get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
