@@ -10,7 +10,6 @@ import numpy as np
 import warnings
 import expipe
 
-# TODO add attribute managers to allow changing values of modules and actions
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 
@@ -85,6 +84,24 @@ def convert_quantities(value):
     Converts quantities to dictionary
     """
     result = value
+    if isinstance(value, dict):
+        isnumeric_keys = False
+        if (any(isinstance(key, str) for key in value) and
+            any(isinstance(key, int) for key in value)):
+            raise ValueError('Combination of both "str" and "int" in keys is ' +
+                             'not allowed.')
+        if all(isinstance(key, int) for key in value):
+            isnumeric_keys = True
+        elif all(isinstance(key, str) for key in value):
+            if all(key.isnumeric() for key in value):
+                isnumeric_keys = True
+        if isnumeric_keys:
+            if not all(int(x) == int(y) + 1
+                       for x, y in zip(sorted(value.keys())[1:],
+                                       sorted(value.keys()))):
+                raise ValueError('Dict keys are numeric, but not monotonously' +
+                                 ' increasing by unity when sorted, thus not ' +
+                                 'recognized as a list.')
     if isinstance(value, pq.Quantity):
         result = {"value": value.magnitude.tolist(),
                   "unit": value.dimensionality.string}
