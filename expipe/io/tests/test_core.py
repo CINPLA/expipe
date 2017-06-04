@@ -115,13 +115,13 @@ def test_module_list(teardown_project):
     assert isinstance(mod_dict['list'], list)
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
-    module_contents = {'is_list': {'1': 'df', '2': 'd', '3': 's'}}
+    module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
     action_module = action.require_module(pytest.MODULE_ID,
                                             contents=module_contents)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], list)
 
-    module_contents = {'almost_list1': {'1': 'df', '2': 'd', 'd': 's'}}
+    module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
     action_module = action.require_module(pytest.MODULE_ID,
                                             contents=module_contents,
                                             overwrite=True)
@@ -130,25 +130,31 @@ def test_module_list(teardown_project):
     diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
     assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
 
-    module_contents = {'almost_list2': {'1': 'df', '2': 'd', '5': 's'}}
+    module_contents = {'almost_list2': {'0': 'df', '1': 'd', '5': 's'}}
     with pytest.raises(ValueError):
         action_module = action.require_module(pytest.MODULE_ID,
                                                 contents=module_contents,
                                                 overwrite=True)
 
-    module_contents = {'not_list': {'1': 'df', '2': 'd', 5: 's'}}
+    module_contents = {'not_list': {'0': 'df', '1': 'd', 5: 's'}}
     with pytest.raises(ValueError):
         action_module = action.require_module(pytest.MODULE_ID,
                                                 contents=module_contents,
                                                 overwrite=True)
 
-    module_contents = {'not_list': {1: 'df', 2: 'd', 5: 's'}}
+    module_contents = {'not_list': {'1': 'df', '2': 'd', '3': 's'}}
     with pytest.raises(ValueError):
         action_module = action.require_module(pytest.MODULE_ID,
                                                 contents=module_contents,
                                                 overwrite=True)
 
-    module_contents = {'is_list': {1: 'df', 2: 'd', 3: 's'}}
+    module_contents = {'not_list': {0: 'df', 1: 'd', 5: 's'}}
+    with pytest.raises(ValueError):
+        action_module = action.require_module(pytest.MODULE_ID,
+                                                contents=module_contents,
+                                                overwrite=True)
+
+    module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
     action_module = action.require_module(pytest.MODULE_ID,
                                           contents=module_contents,
                                           overwrite=True)

@@ -101,6 +101,9 @@ def convert_quantities(value):
                 raise ValueError('Dict keys are numeric, but not monotonously' +
                                  ' increasing by unity when sorted, thus not ' +
                                  'recognized as a list.')
+            if not min(int(key) for key in value) != 0:
+                raise ValueError('Dict keys are numeric, but not starting ' +
+                                 'from 0, thus not recognized as a list.')
     if isinstance(value, pq.Quantity):
         result = {"value": value.magnitude.tolist(),
                   "unit": value.dimensionality.string}
