@@ -8,8 +8,7 @@ source:
 build:
     # noarch: python  # TODO Add back noarch when it works properly on Windows,
                       # we are converting packages manually now
-    commands: pip install pyrebase
-    script: python setup.py install
+    script: pip install pyrebase && python setup.py install
 
 requirements:
   build:
@@ -17,12 +16,14 @@ requirements:
     - setuptools
     - pyyaml
     - pip
+    - quantities
 
   run:
     - python
     - setuptools
     - pip
     - pyyaml
+    - quantities
 
 test:
   imports:
