@@ -17,8 +17,6 @@ requirements:
     - pip
     - quantities
     - exdir
-  # pip:
-  #   - pyrebase
 
   run:
     - python
@@ -26,16 +24,14 @@ requirements:
     - pip
     - quantities
     - exdir
-  # pip:
-  #   - pyrebase
 
 test:
+  commands:
+    - pip install pyrebase
   imports:
     - expipe
   requires:
     - sphinx
-  commands:
-    - pip install pyrebase
 
 about:
   home: https://github.com/CINPLA/expipe/
