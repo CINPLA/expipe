@@ -2,7 +2,6 @@ from datetime import datetime
 import os
 import os.path as op
 import pyrebase
-import configparser
 import quantities as pq
 import numpy as np
 import warnings
