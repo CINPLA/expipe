@@ -12,6 +12,9 @@ script:
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
+  - py.test -s --doctest-modules --pep8 coveralls -v --cov coveralls --cov-report term-missing
+after_success:
+  - coveralls
 deploy:
   - provider: script
     skip_cleanup: true
