@@ -14,20 +14,16 @@ requirements:
   build:
     - python
     - setuptools
+    - pyyaml
     - pip
-    - quantities
-    - exdir
 
   run:
     - python
     - setuptools
     - pip
-    - quantities
-    - exdir
+    - pyyaml 
 
 test:
-  commands:
-    - pip install pyrebase
   imports:
     - expipe
   requires:

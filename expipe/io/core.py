@@ -1,8 +1,6 @@
 from datetime import datetime
-import exdir
 import os
 import os.path as op
-import uuid
 import pyrebase
 import configparser
 import quantities as pq
@@ -12,6 +10,7 @@ import expipe
 
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
+
 
 class DictDiffer(object):
     """
@@ -228,22 +227,6 @@ class Project:
         if result is None:
             raise NameError('Module "' + self.id + '" does not exist.')
         self._db_modules.set(name, {})
-
-
-class Datafile:
-    def __init__(self, action):
-        self.action = action
-        action_datafile_directory = op.join(expipe.settings["data_path"],
-                                            action.project)
-        os.makedirs(action_datafile_directory, exist_ok=True)
-        self.exdir_path = op.join(action_datafile_directory, action.id + ".exdir")
-        self.exdir_file = exdir.File(self.exdir_path)
-        data = {
-            "type": "exdir",
-            "exdir_path": self.exdir_path
-        }
-        dfiles = db.child("datafiles").child(self.action.project.id)
-        dfiles.child(self.action.id).child("main").set(data, user["idToken"])
 
 
 class FirebaseBackend:
@@ -829,20 +812,6 @@ def delete_project(project_id, remove_all_childs=False):
                            project_id])).set({}, user["idToken"])
 
 
-def create_datafile(action):
-    """
-    Creates a new dataset on disk and registers it on the action.
-    """
-    datafile = Datafile(action)
-    datafile.exdir_file.create_group("test")
-    return datafile.exdir_file
-
-
-def find_action(project, user=None, subject=None):
-    print("Looking for action by user")
-    return None
-
-
 def _init_module():
     """
     Helper function, which can abort if loading fails.
@@ -876,45 +845,3 @@ def refresh_token():
 
 
 _init_module()
-
-# def create_experiment(session_id, session_start_time, experimenter, session_description="", notes=""):
-#     # TODO do we need to require session_id?
-#     print(expipe.settings)
-#
-#     unique_id = str(uuid.uuid4())
-#     unique_id_short = unique_id.split("-")[0]
-#     registration_datetime = datetime.now()
-#     year_folder_name = '{:%Y}'.format(registration_datetime)
-#     month_folder_name = '{:%Y-%m}'.format(registration_datetime)
-#     exdir_folder_name = '{:%Y-%m-%d-%H%M%S}_{}.exdir'.format(registration_datetime, unique_id_short)
-#     parent_path = op.join(expipe.settings["data_path"],
-#                                year_folder_name,
-#                                month_folder_name)
-#     if not op.exists(parent_path):
-#         os.makedirs(parent_path)
-#     exdir_folder_path = op.join(parent_path,
-#                                      exdir_folder_name)
-#     f = exdir.File(exdir_folder_path)
-#     f.attrs["identifier"] = str(unique_id)
-#     f.attrs["nwb_version"] = "NWB-1.0.3"
-#     f.attrs["file_create_date"] = datetime.now().isoformat()
-#     f.attrs["session_start_time"] = session_start_time
-#     f.attrs["session_description"] = session_description
-#
-#     general = f.create_group("general")
-#     general.attrs["session_id"] = session_id
-#     general.attrs["experimenter"] = experimenter
-#     general.attrs["notes"] = notes
-#     # TODO add all /general info from NWB
-#
-#     f.create_group("acquisition")
-#     f.create_group("stimulus")
-#     f.create_group("epochs")
-#     f.create_group("processing")
-#     f.create_group("analysis")
-#
-#     # TODO add record to database
-#
-#     # TODO return both ID and file?
-#
-#     return f
