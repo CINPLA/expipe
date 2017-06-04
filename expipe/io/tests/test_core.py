@@ -156,8 +156,6 @@ def test_module_list(teardown_project):
     assert isinstance(mod_dict['is_list'], list)
 
 
-
-
 def test_module_quantities(teardown_project):
     import quantities as pq
     project = expipe.require_project(pytest.PROJECT_ID)
@@ -215,86 +213,86 @@ def test_delete_action(teardown_project):
 
 
 def test_action_attr(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
-        for attr in ['subjects', 'users', 'tags']:
-            with pytest.raises(TypeError):
-                setattr(action, attr, {'dict': 'I am'})
-                setattr(action, attr, 'string I am')
-        for attr in ['type', 'location']:
-            setattr(action, attr, 'string I am')
-            with pytest.raises(TypeError):
-                setattr(action, attr, {'dict': 'I am'})
-                setattr(action, attr, ['list I am'])
-        action.datetime = datetime.now()
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    for attr in ['subjects', 'users', 'tags']:
         with pytest.raises(TypeError):
-            action.datetime = 'now I am'
+            setattr(action, attr, {'dict': 'I am'})
+            setattr(action, attr, 'string I am')
+    for attr in ['type', 'location']:
+        setattr(action, attr, 'string I am')
+        with pytest.raises(TypeError):
+            setattr(action, attr, {'dict': 'I am'})
+            setattr(action, attr, ['list I am'])
+    action.datetime = datetime.now()
+    with pytest.raises(TypeError):
+        action.datetime = 'now I am'
 
 
 def test_action_attr_list(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    orig_list = ['sub1', 'sub2']
+    for attr in ['subjects', 'users', 'tags']:
+        prop_list = getattr(action, attr)
+        assert isinstance(prop_list, expipe.io.core.ProperyList)
+        prop_list.append('sub3')
+        orig_list.append('sub3')
+        setattr(action, attr, orig_list)
+        prop_list.extend(['sub3'])
+        orig_list.extend(['sub3'])
+        prop_list[1] = 'subsub'
+        orig_list[1] = 'subsub'
+        prop_list = getattr(action, attr)
+        assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
+        assert prop_list[1] == orig_list[1]
         orig_list = ['sub1', 'sub2']
-        for attr in ['subjects', 'users', 'tags']:
-            prop_list = getattr(action, attr)
-            assert isinstance(prop_list, expipe.io.core.ProperyList)
-            prop_list.append('sub3')
-            orig_list.append('sub3')
-            setattr(action, attr, orig_list)
-            prop_list.extend(['sub3'])
-            orig_list.extend(['sub3'])
-            prop_list[1] = 'subsub'
-            orig_list[1] = 'subsub'
-            prop_list = getattr(action, attr)
-            assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-            assert prop_list[1] == orig_list[1]
-            orig_list = ['sub1', 'sub2']
 
 
 def test_action_attr_list_dtype(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
-        for attr in ['subjects', 'users', 'tags']:
-            with pytest.raises(TypeError):
-                setattr(action, attr, ['sub1', 'sub2', 1])
-            with pytest.raises(TypeError):
-                setattr(action, attr, ['sub1', 'sub2', ['s']])
-            setattr(action, attr, ['sub1', 'sub2'])
-            prop_list = getattr(action, attr)
-            with pytest.raises(TypeError):
-                prop_list.append(1)
-            with pytest.raises(TypeError):
-                prop_list.extend([1])
-            with pytest.raises(TypeError):
-                prop_list[2] = 1
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    for attr in ['subjects', 'users', 'tags']:
+        with pytest.raises(TypeError):
+            setattr(action, attr, ['sub1', 'sub2', 1])
+        with pytest.raises(TypeError):
+            setattr(action, attr, ['sub1', 'sub2', ['s']])
+        setattr(action, attr, ['sub1', 'sub2'])
+        prop_list = getattr(action, attr)
+        with pytest.raises(TypeError):
+            prop_list.append(1)
+        with pytest.raises(TypeError):
+            prop_list.extend([1])
+        with pytest.raises(TypeError):
+            prop_list[2] = 1
 
 
 def test_action_messages_setter(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
-        time = datetime(2017, 6, 1, 21, 42, 20)
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    time = datetime(2017, 6, 1, 21, 42, 20)
 
-        _messages = ['mes1', 'mes2']
-        _datetimes = [time, time - timedelta(minutes=1)]
-        _users = ['us1', 'us2']
+    _messages = ['mes1', 'mes2']
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', 'us2']
 
-        messages = [{'message': m, 'datetime': d, 'user': u}
-                    for m, d, u in zip(_messages, _datetimes, _users)]
-        action.messages = messages
-        mes = action.messages
-        assert all(s1 == s2 for s1, s2 in zip(_messages, mes._messages))
-        assert all(s1 == s2 for s1, s2 in zip(_datetimes, mes._datetimes))
-        assert all(s1 == s2 for s1, s2 in zip(_users, mes._users))
-        assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                    for m1, m2 in zip(messages, mes.messages)])
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    action.messages = messages
+    mes = action.messages
+    assert all(s1 == s2 for s1, s2 in zip(_messages, mes._messages))
+    assert all(s1 == s2 for s1, s2 in zip(_datetimes, mes._datetimes))
+    assert all(s1 == s2 for s1, s2 in zip(_users, mes._users))
+    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+                for m1, m2 in zip(messages, mes.messages)])
 
-        new_message = {'message': 'sub3', 'user': 'usr3',
-                       'datetime': time + timedelta(minutes=10)}
-        mes[1] = new_message
-        messages[1] = new_message
-        assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                    for m1, m2 in zip(messages, mes.messages)])
-        assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
+    new_message = {'message': 'sub3', 'user': 'usr3',
+                   'datetime': time + timedelta(minutes=10)}
+    mes[1] = new_message
+    messages[1] = new_message
+    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+                for m1, m2 in zip(messages, mes.messages)])
+    assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
 
 
 def test_action_messages_append(teardown_project):
@@ -319,50 +317,83 @@ def test_action_messages_append(teardown_project):
 
 
 def test_action_messages_dtype(teardown_project):
-        project = expipe.require_project(pytest.PROJECT_ID)
-        action = project.require_action(pytest.ACTION_ID)
-        mes = action.messages
-        time = datetime(2017, 6, 1, 21, 42, 20)
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    mes = action.messages
+    time = datetime(2017, 6, 1, 21, 42, 20)
 
-        # string in date not ok
-        _messages = ['mes1', 'mes']
-        _datetimes = [time, 'time - timedelta(minutes=1)']
-        _users = ['us1', 'None']
-        messages = [{'message': m, 'datetime': d, 'user': u}
-                    for m, d, u in zip(_messages, _datetimes, _users)]
-        with pytest.raises(TypeError):
-            action.messages = messages
-
-        # int not ok
-        _messages = ['mes1', 'mes']
-        _datetimes = [time, time - timedelta(minutes=1)]
-        _users = ['us1', 1]
-        messages = [{'message': m, 'datetime': d, 'user': u}
-                    for m, d, u in zip(_messages, _datetimes, _users)]
-        with pytest.raises(TypeError):
-            action.messages = messages
-
-        # int not ok
-        _messages = ['mes1', 1]
-        _datetimes = [time, time - timedelta(minutes=1)]
-        _users = ['us1', 'None']
-        messages = [{'message': m, 'datetime': d, 'user': u}
-                    for m, d, u in zip(_messages, _datetimes, _users)]
-        with pytest.raises(TypeError):
-            action.messages = messages
-
-        # None is ok
-        _messages = ['mes1', 'mes']
-        _datetimes = [time, time - timedelta(minutes=1)]
-        _users = ['us1', None]
-        messages = [{'message': m, 'datetime': d, 'user': u}
-                    for m, d, u in zip(_messages, _datetimes, _users)]
+    # string in date not ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, 'time - timedelta(minutes=1)']
+    _users = ['us1', 'None']
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
         action.messages = messages
 
+    # int not ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', 1]
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+    # int not ok
+    _messages = ['mes1', 1]
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', 'None']
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+    # None is ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', None]
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    action.messages = messages
+
+# def test_fill_the_project(teardown_project):
+#     import quantities as pq
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     quan = [1, 2] * pq.s
+#     module_contents = {'quan': quan}
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict['quan'], pq.Quantity)
+#     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+#
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#
+#     _messages = ['mes1', 'mes2']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'us2']
+#
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     action.messages = messages
+#     mes = action.messages
+#
+#     orig_list = ['sub1', 'sub2']
+#     for attr in ['subjects', 'users', 'tags']:
+#         prop_list = getattr(action, attr)
+#         assert isinstance(prop_list, expipe.io.core.ProperyList)
+#         prop_list.append('sub3')
+#         orig_list.append('sub3')
+#         setattr(action, attr, orig_list)
+#         prop_list.extend(['sub3'])
+#         orig_list.extend(['sub3'])
+#         prop_list[1] = 'subsub'
+#         orig_list[1] = 'subsub'
+#         orig_list = ['sub1', 'sub2']
 
 
-# TODO test delete project var and on delete
-# TODO test messages and deletion
 # TODO test to_json
 # TODO test filerecord and Datafile and whatever it is for?
 # TODO measure coverage

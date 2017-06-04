@@ -37,3 +37,6 @@ can be `a priori` filled out by a user or added in an empty state for
 There exist other projects of similar goals (see e.g.
 `Alyx <http://alyx.readthedocs.io/en/latest/>`_,
 `LabLog <http://lablog.sourceforge.net/>`_)
+
+.. todo:: compare similar projects
+.. todo:: detail goals/aims

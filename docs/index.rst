@@ -22,11 +22,6 @@ to focus on production and analysis of the data.
    developers_guide
    authors
 
-.. testsetup:
-
-   import expipe
-   expipe.ensure_testing()
-
 
 Indices and tables
 ==================

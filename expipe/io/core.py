@@ -324,7 +324,7 @@ class Module:
                                   '" exists, choose another')
         print('Saving module "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
-            json.dump(module.to_dict(), outfile,
+            json.dump(self.to_dict(), outfile,
                       sort_keys=True, indent=4)
 
     def keys(self):
@@ -389,7 +389,7 @@ class ModuleManager:
                                   '" exists, choose another')
         print('Saving module "' + self.parent.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
-            json.dump(module.to_dict(), outfile,
+            json.dump(self.to_dict(), outfile,
                       sort_keys=True, indent=4)
 
     def keys(self):
@@ -737,8 +737,8 @@ def _require_module(name=None, template=None, contents=None,
 
 
 def require_template(template, contents=None, overwrite=False):
-    template_db = FirebaseBackend("/".join(["templates", template]))
-    contents_db = FirebaseBackend("/".join(["templates_contents", template]))
+    template_db = FirebaseBackend("/templates")
+    contents_db = FirebaseBackend("/templates_contents")
     template_contents = contents_db.get()
     result = template_db.get()
     if contents is None and result is None:
@@ -749,18 +749,26 @@ def require_template(template, contents=None, overwrite=False):
             result.update(template_contents)
         return result
 
+    if isinstance(contents, str):
+        if op.exists(contents):
+            import json
+            with open(contents, 'r') as infile:
+                contents = json.load(infile)
+        else:
+            raise FileNotFoundError('File "' + contents + '" not found.')
+
     if not isinstance(contents, dict):
         raise TypeError('Expected "dict", got "' + type(contents) + '".')
     if not overwrite and template_contents is not None:
         raise ValueError('Set overwrite to true if you want to ' +
                          'overwrite the contents of the template.')
-    template_db.set(template, {'identifier': template})
+    template_db.set(template, {'identifier': template, 'name': template})
     contents_db.set(template, contents)
 
 
 def get_template(template):
-    template_db = FirebaseBackend("/".join(["templates", template]))
-    contents_db = FirebaseBackend("/".join(["templates_contents", template]))
+    template_db = FirebaseBackend("/templates")
+    contents_db = FirebaseBackend("/templates_contents")
     template_contents = contents_db.get()
     result = template_db.get()
     if result is None:
@@ -771,6 +779,17 @@ def get_template(template):
     if template_contents is not None:
         result.update(template_contents)
     return result
+
+
+def delete_template(template):
+    template_db = FirebaseBackend("/templates")
+    contents_db = FirebaseBackend("/templates_contents")
+    template_contents = contents_db.get()
+    result = template_db.get()
+    if result is None:
+        raise NameError('Template "' + template + '" does not exist.')
+    contents_db.set({})
+    template_db.set({})
 
 
 def get_project(project_id):

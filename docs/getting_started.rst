@@ -15,6 +15,22 @@ on how to run this command.
 If you are involved in CINPLA, please see the
 `CINPLA setup page <https://github.com/CINPLA/expipe-plugin-cinpla/wiki/Setup>`_.
 
+.. testsetup::
+
+    import expipe
+    expipe.ensure_testing()
+    try:
+        expipe.delete_project('test', remove_all_childs=True)
+    except NameError:
+        pass
+    try:
+        expipe.delete_template('hardware_daq')
+    except NameError:
+        pass
+
+
+.. doctest::
+
     >>> import expipe
     >>> expipe.configure( # doctest: +SKIP
     ...     data_path="",
@@ -50,8 +66,8 @@ Create a new project if it does not exist with ``require_project``:
 
 .. doctest::
 
-    >>> import expipe.io
-    >>> project = expipe.io.require_project("test")
+    >>> import expipe
+    >>> project = expipe.require_project("test")
 
 A project can contain a number of actions and modules.
 
@@ -79,10 +95,10 @@ To give actions easily searchable properties you can add `Tags`, `Users`,
     >>> from datetime import datetime
     >>> action.tags = ['place cell', 'familiar environment']
     >>> action.datetime = datetime.now()
-    >>> users = action.users
-    {}
-    >>> users.update({'Peter': 'true'})
-    >>> action.users = users
+    >>> action.location = 'here'
+    >>> action.type = 'Recording'
+    >>> action.subjects = ['rat1']
+    >>> action.users = ['Peter', 'Mary']
 
 Modules
 -------
@@ -97,9 +113,7 @@ Ideally, templates should be designed in the beginning of a project to define
 what should be registered in each action.
 
 To add a module to an action, use `require_module`.
-The function takes an optional `template` parameter:
-
-.. doctest::
+The function takes an optional `template` parameter::
 
     >>> tracking = action.require_module("tracking", template="tracking")
 
@@ -109,18 +123,20 @@ If you are not using templates you may also create modules using dictionaries
 
 .. doctest::
 
-    >>> import quantities
-    >>> tracking = {'box_shape': {'value': 'square'}}
-    >>> action.require_module(name="tracking", contents=tracking)
-    >>> elphys = {'depth': 2 * pq.um, }
-    >>> action.require_module(name="electrophysiology", contents=elphys)
+    >>> import quantities as pq
+    >>> tracking_contents = {'box_shape': {'value': 'square'}}
+    >>> tracking_module = action.require_module(name="tracking",
+    ...                                         contents=tracking_contents)
+    >>> elphys_contents = {'depth': 2 * pq.um, }
+    >>> elphys_module = action.require_module(name="electrophysiology",
+    ...                                       contents=elphys_contents)
 
 You can loop through modules in an action
 
     >>> for name, val in action.modules.items():
-    >>>     if name == 'electrophysiology':
-    >>>         print(val['depth'])
-    2 um
+    ...     if name == 'electrophysiology':
+    ...         print(val['depth'])
+    2.0 um
 
 To further retrieve and edit the values of a module, you can use `module.to_dict()`:
 
@@ -128,37 +144,60 @@ To further retrieve and edit the values of a module, you can use `module.to_dict
 
     >>> tracking = action.require_module(name="tracking")
     >>> print(tracking.to_dict())
-    {'box_shape': {'value': 'square'}}
+    OrderedDict([('box_shape', {'value': 'square'})])
 
 From template to module
 -----------------------
+
+To upload a template you can write it in ``json`` or as a ``dict`` and use
+``require_template``.
+
+.. doctest::
+
+  >>> daq_contents = {
+  ...    "channel_count": {
+  ...         "definition": "The number of input channels of the DAQ-device.",
+  ...         "value": "64"}}
+  >>> expipe.require_template(template='hardware_daq',
+  ...                         contents=daq_contents)
+
+Contents can also be a ``.json`` file::
+
+  >>> expipe.require_template(template='hardware_daq',
+  ...                         contents='daq_contents.json')
 
 In order to use a template and add it as a module to an `action` use
 ``action.require_module``:
 
 .. doctest::
 
-  >>> dac = action.require_module(template='hardware_dac')
+  >>> daq = action.require_module(template='hardware_daq')
 
-Now, the template `hardware_dac` is added to your action as a module and you
-also have it locally stored in the variable ``dac``. To retrieve ``dac`` keys
+Now, the template `hardware_daq` is added to your action as a module and you
+also have it locally stored in the variable ``daq``. To retrieve ``daq`` keys
 and values use ``to_dict``:
 
 .. doctest::
 
-  >>> dac_dict = dac.to_dict()
-  >>> print(dac_dict.keys())
-  >>> print(dac_dict.values())
+  >>> daq_dict = daq.to_dict()
+  >>> print(daq_dict.keys())
+  odict_keys(['channel_count'])
+  >>> print(daq_dict.values())
+  odict_values([{'definition': 'The number of input channels of the DAQ-device.', 'value': '64'}])
 
 You may also view the module as ``.json`` by using the command ``to_json``:
 
 .. doctest::
 
-  >>> dac.to_json()
+  >>> daq.to_json()
+  Saving module "hardware_daq" to "hardware_daq.json"
 
 To furter change its values and upload them to Firebase:
 
 .. doctest::
 
-  >>> dac_dict['gain'] = {'value': 20}
-  >>> action.require_module(name='hardware_dac', contents=dac_dict)
+  >>> daq_dict['gain'] = {'value': 20}
+  >>> daq = action.require_module(name='hardware_daq', contents=daq_dict,
+  ...                             overwrite=True)
+
+.. todo:: tutorial, starting with require_template all the way to analysis
