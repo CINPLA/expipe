@@ -101,7 +101,7 @@ def convert_quantities(value):
                                  ' increasing by unity when sorted, thus not ' +
                                  'recognized as a list.')
             if len(value.keys()) > 0:
-                if sorted(value.keys())[0] != 0:
+                if int(sorted(value.keys())[0]) != 0:
                     raise ValueError('Dict keys are numeric, but not starting ' +
                                      'from 0, thus not recognized as a list.')
     if isinstance(value, pq.Quantity):
