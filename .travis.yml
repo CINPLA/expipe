@@ -13,7 +13,7 @@ script:
   - mkdir -p ~/.config/expipe
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
-  - py.test expipe/io/tests --doctest-modules --doctest-glob='*.rst' --pep8 expipe -v --cov expipe --cov-report term-missing
+  - py.test expipe/io/tests --cov expipe
   # - bash -ex libs/travis-conda-scripts/scripts/pytest.sh
   # - source libs/travis-conda-scripts/scripts/config.sh
   # - bash -ex libs/travis-conda-scripts/scripts/build.sh
