@@ -3,9 +3,9 @@ python:
   # We don't actually use the Travis Python, but this keeps it organized.
   - "3.5"
   - "3.6"
-# install:
-#   - source libs/travis-conda-scripts/scripts/config.sh
-#   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
+install:
+  - source libs/travis-conda-scripts/scripts/config.sh
+  - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
 before_script:
   - pip install pytest pyyaml pytest-cov pytest-pep8 coveralls pyrebase quantities numpy
   - python setup.py install
@@ -14,19 +14,18 @@ script:
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - py.test expipe/io/tests --cov expipe
-  # - bash -ex libs/travis-conda-scripts/scripts/pytest.sh
-  # - source libs/travis-conda-scripts/scripts/config.sh
-  # - bash -ex libs/travis-conda-scripts/scripts/build.sh
+  - source libs/travis-conda-scripts/scripts/config.sh
+  - bash -ex libs/travis-conda-scripts/scripts/build.sh
 after_success:
   - coveralls
-# deploy:
-#   - provider: script
-#     skip_cleanup: true
-#     script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla main
-#     on:
-#       tags: true
-#   - provider: script
-#     skip_cleanup: true
-#     script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla dev
-#     on:
-#       branch: dev
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla main
+    on:
+      tags: true
+  - provider: script
+    skip_cleanup: true
+    script: bash -ex libs/travis-conda-scripts/scripts/upload.sh cinpla dev
+    on:
+      branch: dev
