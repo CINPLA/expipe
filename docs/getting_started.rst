@@ -17,16 +17,16 @@ If you are involved in CINPLA, please see the
 
 .. testsetup::
 
-    import expipe
-    expipe.ensure_testing()
-    try:
-        expipe.delete_project('test', remove_all_childs=True)
-    except NameError:
-        pass
-    try:
-        expipe.delete_template('hardware_daq')
-    except NameError:
-        pass
+    >>> import expipe
+    >>> expipe.ensure_testing()
+    >>> try:
+    ...     expipe.delete_project('test', remove_all_childs=True)
+    ... except NameError:
+    ...     pass
+    >>> try:
+    ...     expipe.delete_template('hardware_daq')
+    ... except NameError:
+    ...     pass
 
 
 .. doctest::
@@ -115,7 +115,7 @@ what should be registered in each action.
 To add a module to an action, use `require_module`.
 The function takes an optional `template` parameter::
 
-    >>> tracking = action.require_module("tracking", template="tracking")
+    tracking = action.require_module("tracking", template="tracking")
 
 We recommend using `expipe-browser` to edit and browse module values.
 
@@ -163,8 +163,8 @@ To upload a template you can write it in ``json`` or as a ``dict`` and use
 
 Contents can also be a ``.json`` file::
 
-  >>> expipe.require_template(template='hardware_daq',
-  ...                         contents='daq_contents.json')
+  expipe.require_template(template='hardware_daq',
+                          contents='daq_contents.json')
 
 In order to use a template and add it as a module to an `action` use
 ``action.require_module``:
