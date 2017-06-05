@@ -13,7 +13,7 @@ script:
   - mkdir -p ~/.config/expipe
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
-  - py.test expipe/io/tests --cov expipe
+  - py.test -s --cov expipe
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
 after_success:
