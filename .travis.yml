@@ -7,13 +7,14 @@ install:
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
 before_script:
-  - pip install pytest pyyaml pytest-cov pytest-pep8 coveralls pyrebase quantities numpy
+  - pip install pytest pyyaml coverage coveralls pyrebase quantities numpy
   - python setup.py install
 script:
   - mkdir -p ~/.config/expipe
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
-  - py.test -s --cov=expipe/io --doctest-glob='*.rst'
+  - coverage run --source expipe -m py.test py.test -s --doctest-glob='*.rst'
+  - coverage report
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
 after_success:
