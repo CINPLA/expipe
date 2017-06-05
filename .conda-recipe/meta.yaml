@@ -8,7 +8,7 @@ source:
 build:
     # noarch: python  # TODO Add back noarch when it works properly on Windows,
                       # we are converting packages manually now
-    script: pip install pyrebase && python setup.py install
+    script: pip install quantities pytest pytest-cov pytest-pep8 coveralls pyrebase && python setup.py install
 
 requirements:
   build:
@@ -16,18 +16,21 @@ requirements:
     - setuptools
     - pyyaml
     - pip
-    - quantities
+    # - quantities
 
   run:
     - python
     - setuptools
     - pip
     - pyyaml
-    - quantities
+    # - quantities
 
 test:
   imports:
     - expipe
+  commands:
+    - py.test expipe/io/tests --doctest-modules --doctest-glob='*.rst' --pep8 expipe -v --cov expipe --cov-report term-missing
+
   requires:
     - sphinx
 

@@ -12,7 +12,7 @@ script:
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
-  - bash -ex libs/travis-conda-scripts/scripts/pytest.sh
+  # - bash -ex libs/travis-conda-scripts/scripts/pytest.sh
 after_success:
   - coveralls
 deploy:
