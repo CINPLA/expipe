@@ -6,16 +6,13 @@ python:
 install:
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
-before_script:
-  - pip install pytest pytest-cov pytest-pep8 coveralls pyrebase quantities numpy
-  - python setup.py install
 script:
   - source libs/travis-conda-scripts/scripts/config.sh
   - mkdir -p ~/.config/expipe
   - echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
-  - py.test expipe/io/tests --doctest-modules --pep8 expipe -v --cov expipe --cov-report term-missing
+  - bash -ex libs/travis-conda-scripts/scripts/pytest.sh
 after_success:
   - coveralls
 deploy:
