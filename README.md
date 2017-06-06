@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/CINPLA/expipe.svg)](https://travis-ci.org/CINPLA/expipe)
 [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
+https://anaconda.org/cinpla/expipe/badges/installer/conda.svg
 [![codecov](https://codecov.io/gh/CINPLA/expipe/branch/dev/graph/badge.svg)](https://codecov.io/gh/CINPLA/expipe)
 
 # Expipe
