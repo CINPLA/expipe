@@ -5,9 +5,9 @@ if [ -z "$1" ]; then
 fi
 if [ $TRAVIS_TEST_RESULT -eq 0 ]; then
     echo "Package name $PACKAGE"
-    conda convert "$PACKAGE" --platform win-64 -o packages
-    conda convert "$PACKAGE" --platform osx-64 -o packages
-    conda convert "$PACKAGE" --platform linux-64 -o packages
+    conda convert "$PACKAGE" --platform win-64 -o packages --force
+    conda convert "$PACKAGE" --platform osx-64 -o packages --force
+    conda convert "$PACKAGE" --platform linux-64 -o packages --force
     cd packages
     LABEL=${2:-main}
     for os in $(ls); do
