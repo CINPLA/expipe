@@ -18,20 +18,5 @@ production and analysis of the data.
 
 ## Installation
 
-TODO
-
-## Documentation
-
 See the [documentation](http://cinpla.github.io/expipe) 
 for more information on how to use expipe.
-
-## Development
-
-To set up a development environment for expipe, we recommend installing Anaconda
-and then running 
-
-```
-conda develop .
-```
-
-in the root folder of this repository.
