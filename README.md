@@ -17,10 +17,7 @@ production and analysis of the data.
 
 ## Installation
 
-Follow the installation instructions for your operating system:
-
-- [Installation on Linux](https://github.com/CINPLA/expipe/wiki/Installation-on-Linux)
-- [Installation on Windows](https://github.com/CINPLA/expipe/wiki/Installation-on-Windows)
+TODO
 
 ## Documentation
 
