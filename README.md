@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/CINPLA/expipe.svg)](https://travis-ci.org/CINPLA/expipe)
 [![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
-[![Coverage Status](https://coveralls.io/repos/github/CINPLA/expipe/badge.svg?branch=dev)](https://coveralls.io/github/CINPLA/expipe?branch=dev)
+[![codecov](https://codecov.io/gh/CINPLA/expipe/branch/dev/graph/badge.svg)](https://codecov.io/gh/CINPLA/expipe)
 
 # Expipe
 
