@@ -286,11 +286,9 @@ def test_action_messages_setter(teardown_project):
                 for m, d, u in zip(_messages, _datetimes, _users)]
     action.messages = messages
     mes = action.messages
-    assert all(s1 == s2 for s1, s2 in zip(_messages, mes._messages))
-    assert all(s1 == s2 for s1, s2 in zip(_datetimes, mes._datetimes))
-    assert all(s1 == s2 for s1, s2 in zip(_users, mes._users))
+    print(messages)
     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                for m1, m2 in zip(messages, mes.messages)])
+                for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
 
     new_message = {'message': 'sub3', 'user': 'usr3',
                    'datetime': time + timedelta(minutes=10)}
@@ -315,9 +313,6 @@ def test_action_messages_append(teardown_project):
     mes.messages.append(message)
     messages = [message]
 
-    assert all(s1 == s2 for s1, s2 in zip(_messages, mes._messages))
-    assert all(s1 == s2 for s1, s2 in zip(_datetimes, mes._datetimes))
-    assert all(s1 == s2 for s1, s2 in zip(_users, mes._users))
     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
                 for m1, m2 in zip(messages, mes.messages)])
 
@@ -355,14 +350,15 @@ def test_action_messages_dtype(teardown_project):
     with pytest.raises(TypeError):
         action.messages = messages
 
-    # None is ok
+    # None is not ok
     _messages = ['mes1', 'mes']
     _datetimes = [time, time - timedelta(minutes=1)]
     _users = ['us1', None]
     messages = [{'message': m, 'datetime': d, 'user': u}
                 for m, d, u in zip(_messages, _datetimes, _users)]
-    action.messages = messages
-
+    with pytest.raises(TypeError):
+        action.messages = messages
+#
 # def test_fill_the_project(teardown_project):
 #     import quantities as pq
 #     project = expipe.require_project(pytest.PROJECT_ID)
@@ -405,3 +401,4 @@ def test_action_messages_dtype(teardown_project):
 # TODO measure coverage
 # TODO test if you can give template identifier which is not unique
 # TODO support numeric keys without being list
+# TODO unique list in action attributes

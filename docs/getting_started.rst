@@ -28,22 +28,46 @@ If you are involved in CINPLA, please see the
     ... except NameError:
     ...     pass
 
+Configuration
+-------------
 
-.. doctest::
+You can either configure exipe by::
 
-    >>> import expipe
-    >>> expipe.configure( # doctest: +SKIP
-    ...     data_path="",
-    ...     email="",
-    ...     password="",
-    ...     url_prefix="",
-    ...     api_key=""
-    ... )
+    import expipe
+    expipe.configure( # doctest: +SKIP
+       data_path="",
+       email="",
+       password="",
+       url_prefix="",
+       api_key=""
+    )
 
 If you install the `expipe-cli` package you can configure expipe using the
 command line::
 
     $ expipe configure --data-path /path/to/data --email my@email.com ...
+
+For more advanced users you can add the following ``config.yaml`` file to ``~/.config/expipe``::
+
+  .. code-block:: yaml
+
+  data_path: c:/users/username/expipe_temp_storage
+  processing:
+    data_path: /home/user/expipe_temp_storage
+    username: processing server username
+    hostname: user@ipaddress
+  storage:
+    data_path: path to storage
+    username: storage username
+    hostname: hostname to storage
+  firebase:
+    email: your@email.com
+    password: yourpassword
+    config:
+      apiKey: your-firebase-apiKey
+      authDomain: your-firebase-site.firebaseapp.com
+      databaseURL: https://your-firebase-site.firebaseio.com
+      storageBucket: your-firebase-site.appspot.com
 
 
 Templates
@@ -199,5 +223,20 @@ To furter change its values and upload them to Firebase:
   >>> daq_dict['gain'] = {'value': 20}
   >>> daq = action.require_module(name='hardware_daq', contents=daq_dict,
   ...                             overwrite=True)
+
+Messages
+--------
+
+Actions have multiple properties such as the type,
+location, users, tags and subjects.
+If you want to expand an action with notes and messages,
+you can use messages. Messages are annotations from users that are involved
+with an action. To add a message:
+
+.. doctest::
+
+    >>> from datetime import datetime
+    >>> messages = [{'message': 'hello', 'user': 'Peter', 'datetime': datetime.now()}]
+    >>> action.messages = messages
 
 .. todo:: tutorial, starting with require_template all the way to analysis

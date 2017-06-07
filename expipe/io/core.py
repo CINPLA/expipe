@@ -6,6 +6,7 @@ import quantities as pq
 import numpy as np
 import warnings
 import expipe
+import copy
 
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
@@ -434,7 +435,7 @@ class ProperyList:
     @property
     def data(self):
         result = self._db.get(self.name)
-        return self.dtype_manager(result, iter_value=True, retrieve=True)
+        return result
 
     def __getitem__(self, args):
         data = self.data or []
@@ -452,7 +453,6 @@ class ProperyList:
     def __setitem__(self, args, value):
         data = self.data or []
         result = self.dtype_manager(value)
-        data = self.dtype_manager(data, iter_value=True)
         data[args] = result
         self._db.set(self.name, data)
 
@@ -469,96 +469,88 @@ class ProperyList:
     def append(self, value):
         data = self.data or []
         result = self.dtype_manager(value)
-        data = self.dtype_manager(data, iter_value=True)
         data.append(result)
         self._db.set(self.name, data)
 
     def extend(self, value):
         data = self.data or []
         result = self.dtype_manager(value, iter_value=True)
-        data = self.dtype_manager(data, iter_value=True)
         data.extend(result)
         self._db.set(self.name, data)
 
     def dtype_manager(self, value, iter_value=False, retrieve=False):
         if value is None or self.dtype is None:
             return
-        if not retrieve:
-            if iter_value:
-                if not all(isinstance(v, self.dtype) for v in value):
-                    raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                                     str([type(v) for v in value]))
-            else:
-                if not isinstance(value, self.dtype):
-                    raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                                 str(type(value)))
-        if self.dtype == datetime:
-            if iter_value:
-                if all(isinstance(v, str) for v in value):
-                    return [datetime.strptime(v, datetime_format) for v in value]
-                else:
-                    return [v.strftime(datetime_format) for v in value]
-            else:
-                if isinstance(value, str):
-                    return datetime.strptime(value, datetime_format)
-                else:
-                    return value.strftime(datetime_format)
+        if iter_value:
+            if not all(isinstance(v, self.dtype) for v in value):
+                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                                 str([type(v) for v in value]))
         else:
-            return value
+            if not isinstance(value, self.dtype):
+                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                             str(type(value)))
+
+        return value
 
 
-class Messages:
+class MessagesManager:
     def __init__(self, action):
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)
         self.action = action
-        self._messages = ProperyList(self._db, 'messages', dtype=str)
-        self._datetimes = ProperyList(self._db, 'datetimes', dtype=datetime)
-        self._users = ProperyList(self._db, 'users', dtype=str)
 
     @property
     def messages(self):
-        return [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(self._messages, self._datetimes, self._users)]
+        result = self._db.get() or []
+        for message in result:
+            message['datetime'] = datetime.strptime(message['datetime'],
+                                                    datetime_format)
+        return result
 
     @messages.setter
     def messages(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        self._db.set({})
-        for message in value:
-            self.append(message)
-
+        result = copy.deepcopy(value)
+        for message in result:
+            self._assert_dtype(message)
+            message['datetime'] = message['datetime'].strftime(datetime_format)
+        self._db.set(result)
 
     def __getitem__(self, arg):
-        message = {
-            'message': self._messages[arg],
-            'user': self._users[arg],
-            'datetime': self._datetimes[arg]
-        }
+        messages = self._db.get()
+        message = messages[arg]
+        message['datetime'] = datetime.strptime(message['datetime'],
+                                                datetime_format)
         return message
 
     def __setitem__(self, arg, message):
-        if not isinstance(message, dict):
-            raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
-        if not 'message' in message and 'user' in message and 'datetime' in message:
-            raise ValueError('Message must be formated as ' +
-                             'dict(message="message", user="user", ' +
-                             'datetime="datetime"')
-        self._messages[arg] = message['message']
-        self._datetimes[arg] = message['datetime']
-        self._users[arg] = message['user']
+        self._assert_dtype(message)
+        result = copy.copy(message)
+        result['datetime'] = result['datetime'].strftime(datetime_format)
+        self._db.set(arg, result)
 
     def append(self, message):
+        self._assert_dtype(message)
+        result = copy.copy(message)
+        result['datetime'] = result['datetime'].strftime(datetime_format)
+        messages = self.messages
+        messages.append(result)
+        self._db.set(messages)
+
+    def _assert_dtype(self, message):
         if not isinstance(message, dict):
             raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
         if not 'message' in message and 'user' in message and 'datetime' in message:
             raise ValueError('Message must be formated as ' +
                              'dict(message="message", user="user", ' +
                              'datetime="datetime"')
-        self._messages.append(message['message'])
-        self._datetimes.append(message['datetime'])
-        self._users.append(message['user'])
+        if not isinstance(message['message'], str):
+            raise TypeError('Message must be of type "str"')
+        if not isinstance(message['datetime'], datetime):
+            raise TypeError('Datetime must be of type "datetime"')
+        if not isinstance(message['user'], str):
+            raise TypeError('User must be of type "str"')
 
 
 class Action:
@@ -572,11 +564,11 @@ class Action:
 
     @property
     def messages(self):
-        return Messages(self)
+        return MessagesManager(self)
 
     @messages.setter
     def messages(self, value):
-        mes = Messages(self)
+        mes = MessagesManager(self)
         mes.messages = value
 
     @property
