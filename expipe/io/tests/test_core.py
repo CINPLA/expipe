@@ -286,7 +286,6 @@ def test_action_messages_setter(teardown_project):
                 for m, d, u in zip(_messages, _datetimes, _users)]
     action.messages = messages
     mes = action.messages
-    print(messages)
     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
                 for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
 
