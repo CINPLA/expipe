@@ -8,7 +8,10 @@ source:
 build:
     # noarch: python  # TODO Add back noarch when it works properly on Windows,
                       # we are converting packages manually now
-    script: pip install pyrebase && python setup.py install
+    script:
+      - pip install git+https://github.com/python-quantities/python-quantities.git
+      - pip install pyrebase
+      - python setup.py install
 
 requirements:
   build:
@@ -16,14 +19,14 @@ requirements:
     - setuptools
     - pyyaml
     - pip
-    - quantities
+    - numpy
 
   run:
     - python
     - setuptools
     - pip
     - pyyaml
-    - quantities
+    - numpy
 
 test:
   imports:
