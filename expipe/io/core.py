@@ -544,6 +544,7 @@ class MessagesManager:
         old = self._db.get() or []
         new = copy.deepcopy(messages)
         result = old + new
+        print(result)
         for message in result:
             self._assert_dtype(message)
             message['datetime'] = message['datetime'].strftime(datetime_format)
