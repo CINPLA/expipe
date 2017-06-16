@@ -538,6 +538,19 @@ class MessagesManager:
         messages.append(result)
         self._db.set(messages)
 
+    def extend(self, messages):
+        if not isinstance(messages, list):
+            raise TypeError('Expected "list", got "' + str(type(messages)) + '"')
+        old = self._db.get() or []
+        new = copy.deepcopy(messages)
+        result = old + new
+        for message in result:
+            self._assert_dtype(message)
+            message['datetime'] = message['datetime'].strftime(datetime_format)
+
+        self._db.set(result)
+
+
     def _assert_dtype(self, message):
         if not isinstance(message, dict):
             raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
