@@ -699,7 +699,7 @@ def _require_module(name=None, template=None, contents=None,
     if contents is not None:
         if not isinstance(contents, dict):
             raise TypeError('Contents expected "dict", got "' +
-                            type(contents) + '".')
+                            str(type(contents)) + '".')
 
     module = Module(parent=parent, module_id=name)
     if module._db.exists():
