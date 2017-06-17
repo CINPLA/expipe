@@ -87,7 +87,7 @@ def convert_quantities(value):
         isnumeric_keys = False
         if (any(isinstance(key, str) for key in value) and
             any(isinstance(key, int) for key in value)):
-            raise ValueError('Combination of both "str" and "int" in keys is ' +
+            raise TypeError('Combination of both "str" and "int" in keys is ' +
                              'not allowed.')
         if all(isinstance(key, int) for key in value):
             isnumeric_keys = True
@@ -332,7 +332,7 @@ class Module:
         result = self._db.get()
         if isinstance(result, list):
             if len(result) > 0:
-                raise ValueError('Got nonempty list, expected dict')
+                raise TypeError('Got nonempty list, expected dict')
             result = None
         return result
 
@@ -542,15 +542,12 @@ class MessagesManager:
         if not isinstance(messages, list):
             raise TypeError('Expected "list", got "' + str(type(messages)) + '"')
         old = self._db.get() or []
-        new = copy.deepcopy(messages)
-        result = old + new
-        print(result)
-        for message in result:
+        _messages = copy.deepcopy(messages)
+        for message in _messages:
             self._assert_dtype(message)
             message['datetime'] = message['datetime'].strftime(datetime_format)
-
+        result = old + _messages
         self._db.set(result)
-
 
     def _assert_dtype(self, message):
         if not isinstance(message, dict):
@@ -705,7 +702,7 @@ def _require_module(name=None, template=None, contents=None,
     if module._db.exists():
         if template is not None or contents is not None:
             if not overwrite:
-                raise ValueError('Set overwrite to true if you want to ' +
+                raise NameError('Set overwrite to true if you want to ' +
                                  'overwrite the contents of the module.')
 
     if template is not None:
@@ -717,7 +714,7 @@ def _require_module(name=None, template=None, contents=None,
         if '_inherits' in contents:
             heritage = FirebaseBackend(contents['_inherits']).get()
             if heritage is None:
-                raise ValueError(
+                raise NameError(
                     'Can not inherit {}'.format(contents['_inherits']))
             d = DictDiffer(contents, heritage)
             keys = [key for key in list(d.added()) + list(d.changed())]
@@ -734,7 +731,7 @@ def require_template(template, contents=None, overwrite=False):
     template_contents = contents_db.get()
     result = template_db.get()
     if contents is None and result is None:
-        raise ValueError('Template does not exist, please give contents' +
+        raise NameError('Template does not exist, please give contents' +
                          'in order to generate a template.')
     elif contents is None and result is not None:
         if template_contents is not None:
@@ -752,7 +749,7 @@ def require_template(template, contents=None, overwrite=False):
     if not isinstance(contents, dict):
         raise TypeError('Expected "dict", got "' + type(contents) + '".')
     if not overwrite and template_contents is not None:
-        raise ValueError('Set overwrite to true if you want to ' +
+        raise NameError('Set overwrite to true if you want to ' +
                          'overwrite the contents of the template.')
     template_db.set(template, {'identifier': template, 'name': template})
     contents_db.set(template, contents)
