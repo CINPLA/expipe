@@ -427,10 +427,12 @@ class Filerecord:
 
 
 class ProperyList:
-    def __init__(self, db_instance, name, dtype=None):
+    def __init__(self, db_instance, name, dtype=None, unique=False):
         self._db = db_instance
         self.name = name
-        self.dtype = dtype
+        self.dtype = dtype¨
+        self.unique = unique
+
 
     @property
     def data(self):
@@ -454,6 +456,8 @@ class ProperyList:
         data = self.data or []
         result = self.dtype_manager(value)
         data[args] = result
+        if self.unique:
+            data = list(set(data))
         self._db.set(self.name, data)
 
     def __contains__(self, value):
@@ -470,12 +474,16 @@ class ProperyList:
         data = self.data or []
         result = self.dtype_manager(value)
         data.append(result)
+        if self.unique:
+            data = list(set(data))
         self._db.set(self.name, data)
 
     def extend(self, value):
         data = self.data or []
         result = self.dtype_manager(value, iter_value=True)
         data.extend(result)
+        if self.unique:
+            data = list(set(data))
         self._db.set(self.name, data)
 
     def dtype_manager(self, value, iter_value=False, retrieve=False):
@@ -604,7 +612,7 @@ class Action:
 
     @property
     def subjects(self):
-        return ProperyList(self._db, 'subjects', dtype=str)
+        return ProperyList(self._db, 'subjects', dtype=str, unique=True)
 
     @subjects.setter
     def subjects(self, value):
@@ -613,6 +621,7 @@ class Action:
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
                              str([type(v) for v in value]))
+        value = list(set(value))
         self._db.set('subjects', value)
 
     @property
@@ -629,7 +638,7 @@ class Action:
 
     @property
     def users(self):
-        return ProperyList(self._db, 'users', dtype=str)
+        return ProperyList(self._db, 'users', dtype=str, unique=True)
 
     @users.setter
     def users(self, value):
@@ -638,11 +647,12 @@ class Action:
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
                              str([type(v) for v in value]))
+        value = list(set(value))
         self._db.set('users', value)
 
     @property
     def tags(self):
-        return ProperyList(self._db, 'tags', dtype=str)
+        return ProperyList(self._db, 'tags', dtype=str, unique=True)
 
     @tags.setter
     def tags(self, value):
@@ -651,6 +661,7 @@ class Action:
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
                              str([type(v) for v in value]))
+        value = list(set(value))
         self._db.set('tags', value)
 
     @property
