@@ -430,7 +430,7 @@ class ProperyList:
     def __init__(self, db_instance, name, dtype=None, unique=False):
         self._db = db_instance
         self.name = name
-        self.dtype = dtype¨
+        self.dtype = dtype
         self.unique = unique
 
 
