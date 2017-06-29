@@ -739,11 +739,11 @@ def _require_module(name=None, template=None, contents=None,
 def require_template(template, contents=None, overwrite=False):
     template_db = FirebaseBackend("/templates")
     contents_db = FirebaseBackend("/templates_contents")
-    template_contents = contents_db.get()
-    result = template_db.get()
+    template_contents = contents_db.get(template)
+    result = template_db.get(template)
     if contents is None and result is None:
         raise NameError('Template does not exist, please give contents' +
-                         'in order to generate a template.')
+                        'in order to generate a template.')
     elif contents is None and result is not None:
         if template_contents is not None:
             result.update(template_contents)
@@ -761,7 +761,7 @@ def require_template(template, contents=None, overwrite=False):
         raise TypeError('Expected "dict", got "' + type(contents) + '".')
     if not overwrite and template_contents is not None:
         raise NameError('Set overwrite to true if you want to ' +
-                         'overwrite the contents of the template.')
+                        'overwrite the contents of the template.')
     template_db.set(template, {'identifier': template, 'name': template})
     contents_db.set(template, contents)
 
@@ -769,11 +769,11 @@ def require_template(template, contents=None, overwrite=False):
 def get_template(template):
     template_db = FirebaseBackend("/templates")
     contents_db = FirebaseBackend("/templates_contents")
-    template_contents = contents_db.get()
-    result = template_db.get()
+    template_contents = contents_db.get(template)
+    result = template_db.get(template)
     if result is None:
         raise NameError('Template "' + template + '" does not exist.')
-    name = template_db.get('identifier')
+    name = result.get('identifier')
     if name is None:
         raise ValueError('Template "' + template + '" has no identifier.')
     if template_contents is not None:
@@ -784,12 +784,12 @@ def get_template(template):
 def delete_template(template):
     template_db = FirebaseBackend("/templates")
     contents_db = FirebaseBackend("/templates_contents")
-    template_contents = contents_db.get()
-    result = template_db.get()
+    template_contents = contents_db.get(template)
+    result = template_db.get(template)
     if result is None:
         raise NameError('Template "' + template + '" does not exist.')
-    contents_db.set({})
-    template_db.set({})
+    contents_db.set(template, {})
+    template_db.set(template, {})
 
 
 def get_project(project_id):
