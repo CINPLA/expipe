@@ -74,7 +74,11 @@ def convert_back_quantities(value):
                     result[key] = convert_back_quantities(value)
             except AttributeError:
                 pass
-
+    if isinstance(result, str):
+        if result == 'NaN':
+            result = np.nan
+    # elif isinstance(result, list):
+    #     result = [v if v != 'NaN' else np.nan for v in result]
     return result
 
 
@@ -130,7 +134,11 @@ def convert_quantities(value):
             result = new_result
         except AttributeError:
             pass
-
+    if isinstance(result, (int, float, complex)):
+        if np.isnan(result):
+            result = 'NaN'
+    # elif isinstance(result, list):
+    #     result = ['NaN' if np.isnan(v) else v for v in result]
     return result
 
 
@@ -297,6 +305,9 @@ class Module:
             return {}
         if '_inherits' in d:
             inherit = FirebaseBackend(d['_inherits']).get()
+            if inherit is None:
+                raise ValueError('Module "' + self.id + '" is unable to ' +
+                                 'inherit "' + d['_inherits'] + '"')
             inherit.update(d)
             d = inherit
         return d
