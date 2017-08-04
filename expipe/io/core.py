@@ -155,16 +155,13 @@ class ActionManager:
 
     def __iter__(self):
         for key in self.keys():
-            yield self[key]
+            yield Action(project=self.project, action_id=key)
 
     def __contains__(self, name):
         return name in self.keys()
 
     def keys(self):
-        result = self._db.get()
-        if result is None:
-            result = dict()
-        return result.keys()
+        return self._db.get_keys()
 
     def to_dict(self):
         result = self._db.get()
@@ -258,6 +255,13 @@ class FirebaseBackend:
         else:
             value = db.child(self.path).child(name).get(user["idToken"]).val()
         value = convert_back_quantities(value)
+        return value
+
+    def get_keys(self, name=None):
+        if name is None:
+            value = db.child(self.path).shallow().get(user["idToken"]).val()
+        else:
+            value = db.child(self.path).child(name).shallow().get(user["idToken"]).val()
         return value
 
     def set(self, name, value=None):
@@ -438,17 +442,13 @@ class Filerecord:
 
 
 class ProperyList:
-    def __init__(self, db_instance, name, dtype=None, unique=False):
+    def __init__(self, db_instance, name, dtype=None, unique=False,
+                 data=None):
         self._db = db_instance
         self.name = name
         self.dtype = dtype
         self.unique = unique
-
-
-    @property
-    def data(self):
-        result = self._db.get(self.name)
-        return result
+        self.data = data or self._db.get(self.name)
 
     def __getitem__(self, args):
         data = self.data or []
@@ -591,6 +591,13 @@ class Action:
         self._db = FirebaseBackend(path)
         modules_path = "/".join(["action_modules", self.project.id, self.id])
         self._db_modules = FirebaseBackend(modules_path)
+        self._action_dirty = True
+
+    def _db_get(self, name):
+        if self._action_dirty:
+            self._data = self._db.get()
+            self._action_dirty = False
+        return self._data[name]
 
     @property
     def messages(self):
@@ -603,7 +610,7 @@ class Action:
 
     @property
     def location(self):
-        return self._db.get('location')
+        return self._db_get('location')
 
     @location.setter
     def location(self, value):
@@ -613,7 +620,7 @@ class Action:
 
     @property
     def type(self):
-        return self._db.get('type')
+        return self._db_get('type')
 
     @type.setter
     def type(self, value):
@@ -623,7 +630,8 @@ class Action:
 
     @property
     def subjects(self):
-        return ProperyList(self._db, 'subjects', dtype=str, unique=True)
+        return ProperyList(self._db, 'subjects', dtype=str, unique=True,
+                           data=self._db_get('subjects'))
 
     @subjects.setter
     def subjects(self, value):
@@ -637,7 +645,7 @@ class Action:
 
     @property
     def datetime(self):
-        return datetime.strptime(self._db.get('datetime'), datetime_format)
+        return datetime.strptime(self._db_get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -649,7 +657,8 @@ class Action:
 
     @property
     def users(self):
-        return ProperyList(self._db, 'users', dtype=str, unique=True)
+        return ProperyList(self._db, 'users', dtype=str, unique=True,
+                           data=self._db_get('users'))
 
     @users.setter
     def users(self, value):
@@ -663,7 +672,8 @@ class Action:
 
     @property
     def tags(self):
-        return ProperyList(self._db, 'tags', dtype=str, unique=True)
+        return ProperyList(self._db, 'tags', dtype=str, unique=True,
+                           data=self._db_get('tags'))
 
     @tags.setter
     def tags(self, value):
