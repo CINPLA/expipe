@@ -597,7 +597,7 @@ class Action:
         if self._action_dirty:
             self._data = self._db.get()
             self._action_dirty = False
-        return self._data[name]
+        return self._data.get(name)
 
     @property
     def messages(self):
