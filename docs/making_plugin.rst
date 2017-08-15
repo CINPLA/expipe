@@ -46,8 +46,7 @@ following content.::
 
 
   def reveal():
-      import os.path as op
-      print(__file__)
+      pass
 
 In the root directory you need a ``setup.py`` file with the
 following minimum contents, note that the entry point must begin with
