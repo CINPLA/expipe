@@ -253,6 +253,8 @@ class FirebaseBackend:
         if name is None:
             value = db.child(self.path).get(user["idToken"]).val()
         else:
+            if not isinstance(name, str):
+                raise TypeError('Expected "str", not "{}"'.format(type(name)))
             value = db.child(self.path).child(name).get(user["idToken"]).val()
         value = convert_back_quantities(value)
         return value
@@ -261,6 +263,8 @@ class FirebaseBackend:
         if name is None:
             value = db.child(self.path).shallow().get(user["idToken"]).val()
         else:
+            if not isinstance(name, str):
+                raise TypeError('Expected "str", not "{}"'.format(type(name)))
             value = db.child(self.path).child(name).shallow().get(user["idToken"]).val()
         return value
 
