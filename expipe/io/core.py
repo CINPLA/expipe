@@ -110,8 +110,8 @@ def convert_quantities(value):
                     raise ValueError('Dict keys are numeric, but not starting ' +
                                      'from 0, thus not recognized as a list.')
     if isinstance(value, pq.Quantity):
-        result = {"value": value.magnitude.tolist(),
-                  "unit": value.dimensionality.string}
+        result["value"] = value.magnitude.tolist()
+        result["unit"] = value.dimensionality.string
         if isinstance(value, pq.UncertainQuantity):
             assert(value.dimensionality == value.uncertainty.dimensionality)
             result["uncertainty"] = value.uncertainty.magnitude.tolist()
