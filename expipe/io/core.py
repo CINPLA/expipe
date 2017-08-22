@@ -234,7 +234,7 @@ class Project:
     def delete_module(self, name):
         result = self._db_modules.get(name)
         if result is None:
-            raise NameError('Module "' + self.id + '" does not exist.')
+            raise NameError('Module "' + name + '" does not exist.')
         self._db_modules.set(name, {})
 
 
@@ -708,7 +708,7 @@ class Action:
     def delete_module(self, name):
         result = self._db_modules.get(name)
         if result is None:
-            raise NameError('Module "' + self.id + '" does not exist.')
+            raise NameError('Module "' + name + '" does not exist.')
         self._db_modules.set(name, {})
 
     def require_filerecord(self, class_type=None, name=None):
