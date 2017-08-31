@@ -77,8 +77,8 @@ def convert_back_quantities(value):
     if isinstance(result, str):
         if result == 'NaN':
             result = np.nan
-    # elif isinstance(result, list):
-    #     result = [v if v != 'NaN' else np.nan for v in result]
+    elif isinstance(result, list):
+        result = [v if v != 'NaN' else np.nan for v in result]
     return result
 
 
@@ -90,9 +90,9 @@ def convert_quantities(value):
     if isinstance(value, dict):
         isnumeric_keys = False
         if (any(isinstance(key, str) for key in value) and
-            any(isinstance(key, int) for key in value)):
+                any(isinstance(key, int) for key in value)):
             raise TypeError('Combination of both "str" and "int" in keys is ' +
-                             'not allowed.')
+                            'not allowed.')
         if all(isinstance(key, int) for key in value):
             isnumeric_keys = True
         elif all(isinstance(key, str) for key in value):
@@ -102,15 +102,20 @@ def convert_quantities(value):
             if not all(int(x) == int(y) + 1
                        for x, y in zip(sorted(value.keys())[1:],
                                        sorted(value.keys()))):
-                raise ValueError('Dict keys are numeric, but not monotonously' +
-                                 ' increasing by unity when sorted, thus not ' +
-                                 'recognized as a list.')
+                raise ValueError('Dict keys are numeric, but not ' +
+                                 'monotonously increasing by unity when  ' +
+                                 'sorted, thus not recognized as a list.')
             if len(value.keys()) > 0:
                 if int(sorted(value.keys())[0]) != 0:
-                    raise ValueError('Dict keys are numeric, but not starting ' +
-                                     'from 0, thus not recognized as a list.')
+                    raise ValueError('Dict keys are numeric, but not ' +
+                                     'starting from 0, thus not recognized ' +
+                                     'as a list.')
     if isinstance(value, pq.Quantity):
-        result = {"value": value.magnitude.tolist(),
+        try:
+            val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
+        except TypeError:
+            val = value.magnitude.tolist()
+        result = {"value": val,
                   "unit": value.dimensionality.string}
         if isinstance(value, pq.UncertainQuantity):
             assert(value.dimensionality == value.uncertainty.dimensionality)
@@ -137,8 +142,10 @@ def convert_quantities(value):
     if isinstance(result, (int, float, complex)):
         if np.isnan(result):
             result = 'NaN'
-    # elif isinstance(result, list):
-    #     result = ['NaN' if np.isnan(v) else v for v in result]
+    try:
+        result = ['NaN' if np.isnan(r) else r for r in result]
+    except TypeError:
+        pass # isnt iterable or cannot be cast as "safe"
     return result
 
 
