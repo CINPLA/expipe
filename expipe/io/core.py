@@ -741,8 +741,8 @@ def _require_module(name=None, template=None, contents=None,
         raise ValueError('Cannot set contents if a template' +
                          'is requested.')
     if contents is not None:
-        if not isinstance(contents, dict):
-            raise TypeError('Contents expected "dict", got "' +
+        if not isinstance(contents, (dict, list, np.ndarray)):
+            raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
 
     module = Module(parent=parent, module_id=name)
