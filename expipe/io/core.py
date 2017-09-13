@@ -46,7 +46,7 @@ class DictDiffer(object):
                    if self.past_dict[o] == self.current_dict[o])
 
 
-def convert_back_quantities(value):
+def convert_from_firebase(value):
     """
     Converts quantities back from dictionary
     """
@@ -71,7 +71,7 @@ def convert_back_quantities(value):
         else:
             try:
                 for key, value in result.items():
-                    result[key] = convert_back_quantities(value)
+                    result[key] = convert_from_firebase(value)
             except AttributeError:
                 pass
     if isinstance(result, str):
@@ -82,7 +82,7 @@ def convert_back_quantities(value):
     return result
 
 
-def convert_quantities(value):
+def convert_to_firebase(value):
     """
     Converts quantities to dictionary
     """
@@ -109,8 +109,11 @@ def convert_quantities(value):
                     raise ValueError('Dict keys are numeric, but not ' +
                                      'starting from 0, thus not recognized ' +
                                      'as a list.')
-    if isinstance(value, (list, np.array)):
+    if isinstance(value, np.ndarray):
+        assert value.ndim in (0, 1)
+    if isinstance(value, (list, np.ndarray)):
         value = {idx: val for idx, val in enumerate(value)}
+
     result = value
 
     if isinstance(value, pq.Quantity):
@@ -135,8 +138,8 @@ def convert_quantities(value):
         try:
             new_result = {}
             for key, val in value.items():
-                new_key = convert_quantities(key)
-                new_result[new_key] = convert_quantities(val)
+                new_key = convert_to_firebase(key)
+                new_result[new_key] = convert_to_firebase(val)
             result = new_result
         except AttributeError:
             pass
@@ -262,7 +265,7 @@ class FirebaseBackend:
             if not isinstance(name, str):
                 raise TypeError('Expected "str", not "{}"'.format(type(name)))
             value = db.child(self.path).child(name).get(user["idToken"]).val()
-        value = convert_back_quantities(value)
+        value = convert_from_firebase(value)
         return value
 
     def get_keys(self, name=None):
@@ -277,21 +280,21 @@ class FirebaseBackend:
     def set(self, name, value=None):
         if value is None:
             value = name
-            value = convert_quantities(value)
+            value = convert_to_firebase(value)
             db.child(self.path).set(value, user["idToken"])
         else:
-            value = convert_quantities(value)
+            value = convert_to_firebase(value)
             db.child(self.path).child(name).set(value, user["idToken"])
 
     def update(self, name, value=None):
         if value is None:
             value = name
-            value = convert_quantities(value)
+            value = convert_to_firebase(value)
             db.child(self.path).update(value, user["idToken"])
         else:
-            value = convert_quantities(value)
+            value = convert_to_firebase(value)
             db.child(self.path).child(name).update(value, user["idToken"])
-        value = convert_back_quantities(value)
+        value = convert_from_firebase(value)
         return value
 
 
