@@ -111,7 +111,8 @@ def convert_to_firebase(value):
                                      'as a list.')
     if isinstance(value, np.ndarray):
         assert value.ndim in (0, 1)
-    if isinstance(value, (list, np.ndarray)):
+        value = value.tolist()
+    if isinstance(value, list):
         value = {idx: val for idx, val in enumerate(value)}
 
     result = value
