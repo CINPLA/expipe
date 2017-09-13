@@ -86,7 +86,6 @@ def convert_quantities(value):
     """
     Converts quantities to dictionary
     """
-    result = value
     if isinstance(value, dict):
         isnumeric_keys = False
         if (any(isinstance(key, str) for key in value) and
@@ -110,6 +109,10 @@ def convert_quantities(value):
                     raise ValueError('Dict keys are numeric, but not ' +
                                      'starting from 0, thus not recognized ' +
                                      'as a list.')
+    if isinstance(value, (list, np.array)):
+        value = {idx: val for idx, val in enumerate(value)}
+    result = value
+
     if isinstance(value, pq.Quantity):
         try:
             val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
@@ -120,8 +123,6 @@ def convert_quantities(value):
         if isinstance(value, pq.UncertainQuantity):
             assert(value.dimensionality == value.uncertainty.dimensionality)
             result["uncertainty"] = value.uncertainty.magnitude.tolist()
-    elif isinstance(value, np.ndarray):
-        result = value.tolist()
     elif isinstance(value, np.integer):
         result = int(value)
     elif isinstance(value, np.float):
@@ -139,13 +140,11 @@ def convert_quantities(value):
             result = new_result
         except AttributeError:
             pass
-    if isinstance(result, (int, float, complex)):
+    try:
         if np.isnan(result):
             result = 'NaN'
-    try:
-        result = ['NaN' if np.isnan(r) else r for r in result]
     except TypeError:
-        pass # isnt iterable or cannot be cast as "safe"
+        pass
     return result
 
 
