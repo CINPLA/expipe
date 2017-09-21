@@ -109,9 +109,8 @@ def convert_to_firebase(value):
                     raise ValueError('Dict keys are numeric, but not ' +
                                      'starting from 0, thus not recognized ' +
                                      'as a list.')
-    if isinstance(value, np.ndarray):
-        assert value.ndim in (0, 1)
-        if value.ndim == 1:
+    if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
+        if value.ndim >= 1:
             value = value.tolist()
     if isinstance(value, list):
         value = {idx: val for idx, val in enumerate(value)}
@@ -172,22 +171,19 @@ class ActionManager:
         return name in self.keys()
 
     def keys(self):
-        return self._db.get_keys()
+        result = self._db.get_keys() or list()
+        return result
 
     def to_dict(self):
-        result = self._db.get()
-        return result or dict()
+        result = self._db.get() or dict()
+        return result
 
     def items(self):
-        result = self._db.get()
-        if result is None:
-            result = dict()
+        result = self._db.get() or dict()
         return result.items()
 
     def values(self):
-        result = self._db.get()
-        if result is None:
-            result = dict()
+        result = self._db.get() or dict()
         return result.values()
 
 
@@ -465,10 +461,6 @@ class ProperyList:
         self.unique = unique
         self.data = data or self._db.get(self.name)
 
-    def __getitem__(self, args):
-        data = self.data or []
-        return data[args]
-
     def __iter__(self):
         data = self.data or []
         for d in data:
@@ -477,14 +469,6 @@ class ProperyList:
     def __len__(self):
         data = self.data or []
         return len(data)
-
-    def __setitem__(self, args, value):
-        data = self.data or []
-        result = self.dtype_manager(value)
-        data[args] = result
-        if self.unique:
-            data = list(set(data))
-        self._db.set(self.name, data)
 
     def __contains__(self, value):
         value = self.dtype_manager(value)

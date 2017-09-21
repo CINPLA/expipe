@@ -104,20 +104,24 @@ def test_module_list(teardown_project):
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
-    with pytest.raises(TypeError):
-        project_module = project.require_module(pytest.MODULE_ID,
-                                                contents=list_cont)
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=list_cont)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict, list)
+    assert all(a == b for a, b in zip(list_cont, mod_dict))
 
     module_contents = {'list': list_cont}
     project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
+                                            contents=module_contents,
+                                            overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['list'], list)
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
     action_module = action.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
+                                            contents=module_contents,
+                                            overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], list)
 
@@ -137,7 +141,7 @@ def test_module_list(teardown_project):
                                                 overwrite=True)
 
     module_contents = {'not_list': {'0': 'df', '1': 'd', 5: 's'}}
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         action_module = action.require_module(pytest.MODULE_ID,
                                                 contents=module_contents,
                                                 overwrite=True)
@@ -245,13 +249,11 @@ def test_action_attr_list(teardown_project):
         prop_list.append('sub3')
         orig_list.append('sub3')
         setattr(action, attr, orig_list)
-        prop_list.extend(['sub3'])
-        orig_list.extend(['sub3'])
-        prop_list[1] = 'subsub'
-        orig_list[1] = 'subsub'
         prop_list = getattr(action, attr)
-        assert all(s1 == s2 for s1, s2 in zip(orig_list, prop_list))
-        assert prop_list[1] == orig_list[1]
+        prop_list.extend(['sub4'])
+        orig_list.extend(['sub4'])
+        prop_list = getattr(action, attr)
+        assert set(orig_list) == set(prop_list)
         orig_list = ['sub1', 'sub2']
 
 
@@ -269,8 +271,6 @@ def test_action_attr_list_dtype(teardown_project):
             prop_list.append(1)
         with pytest.raises(TypeError):
             prop_list.extend([1])
-        with pytest.raises(TypeError):
-            prop_list[2] = 1
 
 
 def test_action_messages_setter(teardown_project):
