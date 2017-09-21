@@ -466,6 +466,10 @@ class ProperyList:
         for d in data:
             yield d
 
+    def __getitem__(self, args):
+        data = self.data or []
+        return data[args]
+
     def __len__(self):
         data = self.data or []
         return len(data)
