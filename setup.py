@@ -7,8 +7,6 @@ import versioneer
 
 long_description = open("README.md").read()
 
-install_requires = ['pyrebase', 'quantities']
-
 setup(name="expipe",
       packages=find_packages(),
       version=versioneer.get_version(),

@@ -6,18 +6,13 @@ source:
   git_url: ..
 
 build:
-    noarch: python  
-    script:
-      - pip install pyrebase quantities
-      - python setup.py install
+    noarch: python
+    script: python setup.py install
 
 requirements:
   build:
     - python
     - setuptools
-    - pyyaml
-    - pip
-    - numpy
 
   run:
     - python
@@ -26,11 +21,7 @@ requirements:
     - pyyaml
     - numpy
 
-test:
-  imports:
-    - expipe
-  requires:
-    - sphinx
+# NOTE cannot do tests here beacuse of pyrebase from pip (issues with noarch), but is tested in travis
 
 about:
   home: https://github.com/CINPLA/expipe/
