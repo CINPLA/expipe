@@ -863,6 +863,7 @@ def _init_module():
     firebase = pyrebase.initialize_app(config)
     refresh_token()
     db = firebase.database()
+    assert(db.child("config/database_version").get().val() == 1)
 
     return True
 
