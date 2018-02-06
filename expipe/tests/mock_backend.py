@@ -34,14 +34,12 @@ def create_mock_backend(data):
             else:
                 if not isinstance(name, str):
                     raise TypeError('Expected "str", not "{}"'.format(type(name)))
-                print(self.path + "/" + name)
                 value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
             value = expipe.io.core.convert_from_firebase(value)
             return value
 
         def get_keys(self, name=None):
             if name is None:
-                print(self.path, self.data)
                 value = dpath.util.get(glob=self.path, obj=self.data)
             else:
                 if not isinstance(name, str):
@@ -53,10 +51,10 @@ def create_mock_backend(data):
             if value is None:
                 value = name
                 value = convert_to_firebase(value)
-                # db.child(self.path).set(value, user["idToken"])
+                dpath.util.get(glob=self.path, obj=self.data, value=value)
             else:
                 value = convert_to_firebase(value)
-                # db.child(self.path).child(name).set(value, user["idToken"])
+                dpath.util.get(glob=self.path + "/" + name, obj=self.data, value=value)
 
         def update(self, name, value=None):
             if value is None:
