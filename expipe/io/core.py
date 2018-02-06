@@ -1,7 +1,8 @@
 from datetime import datetime
 import os
 import os.path as op
-import pyrebase
+import requests
+
 import quantities as pq
 import numpy as np
 import warnings
@@ -248,8 +249,56 @@ class Project:
 class FirebaseBackend:
     def __init__(self, path):
         self.path = path
+        self.id_token = None
+
+    def ensure_auth(self):
+        if self.id_token is not None:
+            return
+
+        api_key = expipe.settings["firebase"]["config"]["apiKey"]
+        auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
+        auth_data = {
+            "email": expipe.settings["firebase"]["email"],
+            "password": expipe.settings["firebase"]["password"],
+            "returnSecureToken": True
+        }
+        response = requests.post(auth_url, json=auth_data)
+        assert(response.status_code == 200)
+        value = response.json()
+        print("AUTH response", value)
+        assert("errors" not in value)
+        self.refresh_token = value["refreshToken"]
+        self.id_token = value["idToken"]
+
+        # TODO implement refresh token when token is invalidated
+
+        # auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
+        # auth_data = "grant_type=refresh_token&refresh_token={}".format(refresh_token)
+
+        # print(auth_url)
+        
+        # response = requests.post(auth_url, auth_data)
+        # assert(response.status_code == 200)
+        # value = response.json()
+        # print("AUTH response", value)
+        # assert("errors" not in value)
+        # self.id_token = value["id_token"]
+        # self.refresh_token = value["refresh_token"]
+
+    def build_url(self, name):
+        if name is None:
+            full_path = self.path
+        else:
+            full_path = "/".join([self.path, name])
+        database_url = expipe.settings["firebase"]["config"]["databaseURL"]
+        return "{database_url}/{name}.json?auth={id_token}".format(
+            database_url=database_url, 
+            name=full_path, 
+            id_token=self.id_token
+        )
 
     def exists(self):
+        self.ensure_auth()
         value = self.get()
         if value:
             return True
@@ -257,16 +306,19 @@ class FirebaseBackend:
             return False
 
     def get(self, name=None):
-        if name is None:
-            value = db.child(self.path).get(user["idToken"]).val()
-        else:
-            if not isinstance(name, str):
-                raise TypeError('Expected "str", not "{}"'.format(type(name)))
-            value = db.child(self.path).child(name).get(user["idToken"]).val()
+        self.ensure_auth()
+        url = self.build_url(name)
+        print("URL", url)
+        response = requests.get(url)
+        print("Get result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
         value = convert_from_firebase(value)
         return value
 
     def get_keys(self, name=None):
+        self.ensure_auth()
         if name is None:
             value = db.child(self.path).shallow().get(user["idToken"]).val()
         else:
@@ -276,6 +328,7 @@ class FirebaseBackend:
         return value
 
     def set(self, name, value=None):
+        self.ensure_auth()
         if value is None:
             value = name
             value = convert_to_firebase(value)
@@ -285,6 +338,7 @@ class FirebaseBackend:
             db.child(self.path).child(name).set(value, user["idToken"])
 
     def update(self, name, value=None):
+        self.ensure_auth()
         if value is None:
             value = name
             value = convert_to_firebase(value)
@@ -857,15 +911,16 @@ def _init_module():
     """
     Helper function, which can abort if loading fails.
     """
-    global db
-
-    config = expipe.settings['firebase']['config']
-    firebase = pyrebase.initialize_app(config)
-    refresh_token()
-    db = firebase.database()
-    assert(db.child("config/database_version").get().val() == 1)
-
     return True
+    # global db
+
+    # config = expipe.settings['firebase']['config']
+    # firebase = pyrebase.initialize_app(config)
+    # refresh_token()
+    # db = firebase.database()
+    # assert(db.child("config/database_version").get().val() == 1)
+
+    # return True
 
 
 def refresh_token():
