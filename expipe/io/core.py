@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import os.path as op
+import datetime
 import requests
 
 import quantities as pq
@@ -250,12 +251,30 @@ class FirebaseBackend:
     def __init__(self, path):
         self.path = path
         self.id_token = None
+        self.refresh_token = None
+        self.token_expiration = datetime.datetime.now()
 
     def ensure_auth(self):
-        if self.id_token is not None:
+        current_time = datetime.datetime.now()
+        api_key = expipe.settings["firebase"]["config"]["apiKey"]
+
+        if self.id_token is not None and self.refresh_token is not None:
+            if current_time + datetime.timedelta(0, 10) < self.token_expiration and False:
+                return
+            auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
+            auth_data = {
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token
+            }
+
+            response = requests.post(auth_url, json=auth_data)
+            value = response.json()
+            assert(response.status_code == 200)
+            assert("errors" not in value)
+            self.id_token = value["id_token"]
+            self.refresh_token = value["refresh_token"]
             return
 
-        api_key = expipe.settings["firebase"]["config"]["apiKey"]
         auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
         auth_data = {
             "email": expipe.settings["firebase"]["email"],
@@ -265,27 +284,13 @@ class FirebaseBackend:
         response = requests.post(auth_url, json=auth_data)
         assert(response.status_code == 200)
         value = response.json()
-        print("AUTH response", value)
         assert("errors" not in value)
         self.refresh_token = value["refreshToken"]
         self.id_token = value["idToken"]
+        self.token_expiration = current_time + datetime.timedelta(0, int(value["expiresIn"]))
 
-        # TODO implement refresh token when token is invalidated
 
-        # auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
-        # auth_data = "grant_type=refresh_token&refresh_token={}".format(refresh_token)
-
-        # print(auth_url)
-        
-        # response = requests.post(auth_url, auth_data)
-        # assert(response.status_code == 200)
-        # value = response.json()
-        # print("AUTH response", value)
-        # assert("errors" not in value)
-        # self.id_token = value["id_token"]
-        # self.refresh_token = value["refresh_token"]
-
-    def build_url(self, name):
+    def build_url(self, name=None):
         if name is None:
             full_path = self.path
         else:
@@ -305,9 +310,11 @@ class FirebaseBackend:
         else:
             return False
 
-    def get(self, name=None):
+    def get(self, name=None, shallow=False):
         self.ensure_auth()
         url = self.build_url(name)
+        if shallow:
+            url += "&shallow=true"
         print("URL", url)
         response = requests.get(url)
         print("Get result", response.json())
@@ -318,34 +325,32 @@ class FirebaseBackend:
         return value
 
     def get_keys(self, name=None):
-        self.ensure_auth()
-        if name is None:
-            value = db.child(self.path).shallow().get(user["idToken"]).val()
-        else:
-            if not isinstance(name, str):
-                raise TypeError('Expected "str", not "{}"'.format(type(name)))
-            value = db.child(self.path).child(name).shallow().get(user["idToken"]).val()
-        return value
+        return self.get(name, shallow=True)
 
     def set(self, name, value=None):
         self.ensure_auth()
+        url = self.build_url(name)
         if value is None:
             value = name
-            value = convert_to_firebase(value)
-            db.child(self.path).set(value, user["idToken"])
-        else:
-            value = convert_to_firebase(value)
-            db.child(self.path).child(name).set(value, user["idToken"])
+        print("URL", url)
+        response = requests.put(url, json=value)
+        print("Set result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
 
     def update(self, name, value=None):
         self.ensure_auth()
+        url = self.build_url(name)
         if value is None:
             value = name
-            value = convert_to_firebase(value)
-            db.child(self.path).update(value, user["idToken"])
-        else:
-            value = convert_to_firebase(value)
-            db.child(self.path).child(name).update(value, user["idToken"])
+        value = convert_to_firebase(value)
+        print("URL", url)
+        response = requests.patch(url, json=value)
+        print("Set result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
         value = convert_from_firebase(value)
         return value
 
