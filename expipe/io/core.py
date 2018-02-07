@@ -113,7 +113,7 @@ def convert_to_firebase(value):
         if value.ndim >= 1:
             value = value.tolist()
     if isinstance(value, list):
-        value = {idx: val for idx, val in enumerate(value)}
+        value = [convert_to_firebase(val) for val in value]
 
     result = value
 
@@ -145,7 +145,7 @@ def convert_to_firebase(value):
         except AttributeError:
             pass
     try:
-        if np.isnan(result):
+        if not isinstance(value, list) and np.isnan(result):
             result = 'NaN'
     except TypeError:
         pass
@@ -193,6 +193,7 @@ class Project:
         self._db_actions = FirebaseBackend('/actions/' + project_id)
         self._db_modules = FirebaseBackend('/project_modules/' + project_id)
 
+
     @property
     def actions(self):
         return ActionManager(self)
@@ -215,12 +216,12 @@ class Project:
         if action_data is None:
             raise NameError('Action "' + name + '" does not exist.')
         action = Action(self, name)
-        for module in action.modules.keys():
+        for module in list(action.modules.keys()):
             action.delete_module(module)
         action.messages.messages = []
         action.messages.datetimes = []
         action.messages.users = []
-        self._db_actions.set(name, {})
+        self._db_actions.delete(name)
         del action
 
     @property
@@ -242,15 +243,15 @@ class Project:
         result = self._db_modules.get(name)
         if result is None:
             raise NameError('Module "' + name + '" does not exist.')
-        self._db_modules.set(name, {})
+        self._db_modules.delete(name)
 
 
 class FirebaseBackend:
     def __init__(self, path):
         self.path = path
 
-    def exists(self):
-        value = self.get()
+    def exists(self, name=None):
+        value = self.get(name)
         if value:
             return True
         else:
@@ -283,6 +284,9 @@ class FirebaseBackend:
         else:
             value = convert_to_firebase(value)
             db.child(self.path).child(name).set(value, user["idToken"])
+
+    def delete(self, name):
+        db.child(self.path).child(name).set({}, user["idToken"])
 
     def update(self, name, value=None):
         if value is None:
@@ -708,7 +712,7 @@ class Action:
         result = self._db_modules.get(name)
         if result is None:
             raise NameError('Module "' + name + '" does not exist.')
-        self._db_modules.set(name, {})
+        self._db_modules.delete(name)
 
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
@@ -812,13 +816,13 @@ def delete_template(template):
     result = template_db.get(template)
     if result is None:
         raise NameError('Template "' + template + '" does not exist.')
-    contents_db.set(template, {})
-    template_db.set(template, {})
+    contents_db.delete(template)
+    template_db.delete(template)
 
 
 def get_project(project_id):
-    existing = db.child("/".join(["projects",
-                                  project_id])).get(user["idToken"]).val()
+    project_db = FirebaseBackend("/projects")
+    existing = project_db.exists(project_id)
     if not existing:
         raise NameError("Project " + project_id + " does not exist.")
     return Project(project_id)
@@ -826,31 +830,33 @@ def get_project(project_id):
 
 def require_project(project_id):
     """Creates a new project with the provided id."""
-    existing = db.child("/".join(["projects",
-                                  project_id])).get(user["idToken"]).val()
+    project_db = FirebaseBackend("/projects")
+    existing = project_db.exists(project_id)
     registered = datetime.today().strftime(datetime_format)
     if not existing:
-        db.child("/".join(["projects",
-                           project_id])).set({"registered":
-                                              registered}, user["idToken"])
+        project_db.set(name=project_id, value={"registered": registered})
+        # db.child("/".join(["projects",
+        #                    project_id])).set({"registered":
+        #                                       registered}, user["idToken"])
     return Project(project_id)
 
 
 def delete_project(project_id, remove_all_childs=False):
     """Deletes a project named after the provided id."""
-    existing = db.child("/".join(["projects",
-                                  project_id])).get(user["idToken"]).val()
+    project_db = FirebaseBackend("/projects")
+    existing = project_db.exists(project_id)
     if not existing:
         raise NameError('Project "' + project_id + '" does not exist.')
     else:
         if remove_all_childs:
             project = Project(project_id)
-            for action in project.actions.keys():
+            for action in list(project.actions.keys()):
                 project.delete_action(action)
-            for module in project.modules.keys():
+            for module in list(project.modules.keys()):
                 project.delete_module(module)
-        db.child("/".join(["projects",
-                           project_id])).set({}, user["idToken"])
+        project_db.delete(name=project_id)
+        # db.child("/".join(["projects",
+        #                    project_id])).set({}, user["idToken"])
 
 
 def _init_module():
@@ -858,7 +864,7 @@ def _init_module():
     Helper function, which can abort if loading fails.
     """
     global db
-
+    
     config = expipe.settings['firebase']['config']
     firebase = pyrebase.initialize_app(config)
     refresh_token()
