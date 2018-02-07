@@ -14,6 +14,15 @@ db_dummy = {
 }
 
 
+def delete_keys_from_dict(data, key_list):
+    sub = data
+    for i in key_list[:-1]:
+        sub = sub[i]
+
+    del sub[key_list[-1]]
+    return data
+
+
 def create_mock_backend(data):
 
     class MockBackend:
@@ -21,9 +30,9 @@ def create_mock_backend(data):
             self.path = path
             self.data = data
 
-        def exists(self):
-            value = self.path in self.data
-            if value:
+        def exists(self, name=None):
+            value = self.get(name)
+            if value is not None:
                 return True
             else:
                 return False
@@ -31,7 +40,7 @@ def create_mock_backend(data):
         def get(self, name=None):
             try:
                 if name is None:
-                        value = dpath.util.get(glob=self.path, obj=self.data)
+                    value = dpath.util.get(glob=self.path, obj=self.data)
                 else:
                     if not isinstance(name, str):
                         raise TypeError('Expected "str", not "{}"'.format(type(name)))
@@ -59,13 +68,21 @@ def create_mock_backend(data):
                 value = expipe.io.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path + "/" + name, obj=self.data, value=value)
 
+        def delete(self, name):
+            key_list = (self.path + "/" + name).split("/")
+            if "" in key_list:
+                key_list.remove("")
+            self.data = delete_keys_from_dict(self.data, key_list)
+
         def update(self, name, value=None):
             if value is None:
                 value = name
                 value = expipe.io.core.convert_to_firebase(value)
+                dpath.util.new(path=self.path, obj=self.data, value=value)
                 # db.child(self.path).update(value, user["idToken"])
             else:
                 value = expipe.io.core.convert_to_firebase(value)
+                dpath.util.new(path=self.path + "/" + name, obj=self.data, value=value)
                 # db.child(self.path).child(name).update(value, user["idToken"])
             value = expipe.io.core.convert_from_firebase(value)
             return value
