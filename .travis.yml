@@ -12,8 +12,8 @@ script:
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
 after_success:
   - pip install pyrebase
-  - conda install -c defaults -c conda-forge coverage codecov dpath
-  - coverage run --source expipe -m py.test -s 
+  - conda install -c defaults -c conda-forge pytest coverage codecov dpath
+  - coverage run --source expipe -m py.test -s
   - coverage report
 deploy:
   - provider: script
