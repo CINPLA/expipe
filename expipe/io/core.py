@@ -846,7 +846,7 @@ def _init_module():
     Helper function, which can abort if loading fails.
     """
     global db
-    
+
     config = expipe.settings['firebase']['config']
     firebase = pyrebase.initialize_app(config)
     refresh_token()
