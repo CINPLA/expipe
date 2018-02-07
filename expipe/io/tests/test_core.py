@@ -100,161 +100,161 @@ expipe.ensure_testing()
 #         assert d.removed() == set()
 
 
-def test_module_list(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    list_cont = ['list I am', 1]
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=list_cont)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict, list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict))
-
-    module_contents = {'list': list_cont}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['list'], list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
-
-    module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], list)
-
-    module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['almost_list1'], dict)
-    diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
-    assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
-
-    module_contents = {'almost_list2': {'0': 'df', '1': 'd', '5': 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(pytest.MODULE_ID,
-                                                contents=module_contents,
-                                                overwrite=True)
-
-    module_contents = {'not_list': {'0': 'df', '1': 'd', 5: 's'}}
-    with pytest.raises(TypeError):
-        action_module = action.require_module(pytest.MODULE_ID,
-                                                contents=module_contents,
-                                                overwrite=True)
-
-    module_contents = {'not_list': {'1': 'df', '2': 'd', '3': 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(pytest.MODULE_ID,
-                                                contents=module_contents,
-                                                overwrite=True)
-
-    module_contents = {'not_list': {0: 'df', 1: 'd', 5: 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(pytest.MODULE_ID,
-                                                contents=module_contents,
-                                                overwrite=True)
-
-    module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], list)
-
-
-def test_module_quantities(teardown_project):
-    import quantities as pq
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    quan = [1, 2] * pq.s
-    module_contents = {'quan': quan}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], pq.Quantity)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+# def test_module_list(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     list_cont = ['list I am', 1]
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=list_cont)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict, list)
+#     assert all(a == b for a, b in zip(list_cont, mod_dict))
+#
+#     module_contents = {'list': list_cont}
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents,
+#                                             overwrite=True)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict['list'], list)
+#     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+#
+#     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
+#     action_module = action.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents,
+#                                             overwrite=True)
+#     mod_dict = action_module.to_dict()
+#     assert isinstance(mod_dict['is_list'], list)
+#
+#     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
+#     action_module = action.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents,
+#                                             overwrite=True)
+#     mod_dict = action_module.to_dict()
+#     assert isinstance(mod_dict['almost_list1'], dict)
+#     diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
+#     assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
+#
+#     module_contents = {'almost_list2': {'0': 'df', '1': 'd', '5': 's'}}
+#     with pytest.raises(ValueError):
+#         action_module = action.require_module(pytest.MODULE_ID,
+#                                                 contents=module_contents,
+#                                                 overwrite=True)
+#
+#     module_contents = {'not_list': {'0': 'df', '1': 'd', 5: 's'}}
+#     with pytest.raises(TypeError):
+#         action_module = action.require_module(pytest.MODULE_ID,
+#                                                 contents=module_contents,
+#                                                 overwrite=True)
+#
+#     module_contents = {'not_list': {'1': 'df', '2': 'd', '3': 's'}}
+#     with pytest.raises(ValueError):
+#         action_module = action.require_module(pytest.MODULE_ID,
+#                                                 contents=module_contents,
+#                                                 overwrite=True)
+#
+#     module_contents = {'not_list': {0: 'df', 1: 'd', 5: 's'}}
+#     with pytest.raises(ValueError):
+#         action_module = action.require_module(pytest.MODULE_ID,
+#                                                 contents=module_contents,
+#                                                 overwrite=True)
+#
+#     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
+#     action_module = action.require_module(pytest.MODULE_ID,
+#                                           contents=module_contents,
+#                                           overwrite=True)
+#     mod_dict = action_module.to_dict()
+#     assert isinstance(mod_dict['is_list'], list)
 
 
-def test_module_array(teardown_project):
-    import numpy as np
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    quan = np.array([1, 2])
-    module_contents = {'quan': quan}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], list)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+# def test_module_quantities(teardown_project):
+#     import quantities as pq
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     quan = [1, 2] * pq.s
+#     module_contents = {'quan': quan}
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict['quan'], pq.Quantity)
+#     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-def test_delete_action(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    module_contents = {'test': {'value': 'youyo'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents)
-    mes = action.messages
-    time = datetime(2017, 6, 1, 21, 42, 20)
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 'us2']
-    _messages = ['mes1', 'mes2']
-    mes.messages = [{'message': m, 'user': u, 'datetime': d} for m, u, d in
-                    zip(_messages, _users, _datetimes)]
+# def test_module_array(teardown_project):
+#     import numpy as np
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     quan = np.array([1, 2])
+#     module_contents = {'quan': quan}
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict['quan'], list)
+#     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
-    for attr in ['subjects', 'users', 'tags']:
-        setattr(action, attr, ['sub1', 'sub2'])
-    assert len(list(action.modules.keys())) != 0
-    project.delete_action(action.id)
-    with pytest.raises(NameError):
-        project.get_action(pytest.ACTION_ID)
-    # remake and assert that all is deleted
-    action = project.require_action(pytest.ACTION_ID)
-    assert len(list(action.modules.keys())) == 0
-    assert len(list(action_module.keys())) == 0
-    for attr in ['subjects', 'users', 'tags']:
-        a = getattr(action, attr).data
-        assert a is None
-    assert len(action.messages.messages) == 0
-
-
-def test_action_attr(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    for attr in ['subjects', 'users', 'tags']:
-        with pytest.raises(TypeError):
-            setattr(action, attr, {'dict': 'I am'})
-            setattr(action, attr, 'string I am')
-    for attr in ['type', 'location']:
-        setattr(action, attr, 'string I am')
-        with pytest.raises(TypeError):
-            setattr(action, attr, {'dict': 'I am'})
-            setattr(action, attr, ['list I am'])
-    action.datetime = datetime.now()
-    with pytest.raises(TypeError):
-        action.datetime = 'now I am'
+#
+# def test_delete_action(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     module_contents = {'test': {'value': 'youyo'}}
+#     action_module = action.require_module(pytest.MODULE_ID,
+#                                           contents=module_contents)
+#     mes = action.messages
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'us2']
+#     _messages = ['mes1', 'mes2']
+#     mes.messages = [{'message': m, 'user': u, 'datetime': d} for m, u, d in
+#                     zip(_messages, _users, _datetimes)]
+#
+#     for attr in ['subjects', 'users', 'tags']:
+#         setattr(action, attr, ['sub1', 'sub2'])
+#     assert len(list(action.modules.keys())) != 0
+#     project.delete_action(action.id)
+#     with pytest.raises(NameError):
+#         project.get_action(pytest.ACTION_ID)
+#     # remake and assert that all is deleted
+#     action = project.require_action(pytest.ACTION_ID)
+#     assert len(list(action.modules.keys())) == 0
+#     assert len(list(action_module.keys())) == 0
+#     for attr in ['subjects', 'users', 'tags']:
+#         a = getattr(action, attr).data
+#         assert a is None
+#     assert len(action.messages.messages) == 0
 
 
-def test_action_attr_list(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    orig_list = ['sub1', 'sub2']
-    for attr in ['subjects', 'users', 'tags']:
-        prop_list = getattr(action, attr)
-        assert isinstance(prop_list, expipe.io.core.ProperyList)
-        prop_list.append('sub3')
-        orig_list.append('sub3')
-        setattr(action, attr, orig_list)
-        prop_list = getattr(action, attr)
-        prop_list.extend(['sub4'])
-        orig_list.extend(['sub4'])
-        prop_list = getattr(action, attr)
-        assert set(orig_list) == set(prop_list)
-        orig_list = ['sub1', 'sub2']
+# def test_action_attr(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     for attr in ['subjects', 'users', 'tags']:
+#         with pytest.raises(TypeError):
+#             setattr(action, attr, {'dict': 'I am'})
+#             setattr(action, attr, 'string I am')
+#     for attr in ['type', 'location']:
+#         setattr(action, attr, 'string I am')
+#         with pytest.raises(TypeError):
+#             setattr(action, attr, {'dict': 'I am'})
+#             setattr(action, attr, ['list I am'])
+#     action.datetime = datetime.now()
+#     with pytest.raises(TypeError):
+#         action.datetime = 'now I am'
+
+
+# def test_action_attr_list(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     orig_list = ['sub1', 'sub2']
+#     for attr in ['subjects', 'users', 'tags']:
+#         prop_list = getattr(action, attr)
+#         assert isinstance(prop_list, expipe.io.core.ProperyList)
+#         prop_list.append('sub3')
+#         orig_list.append('sub3')
+#         setattr(action, attr, orig_list)
+#         prop_list = getattr(action, attr)
+#         prop_list.extend(['sub4'])
+#         orig_list.extend(['sub4'])
+#         prop_list = getattr(action, attr)
+#         assert set(orig_list) == set(prop_list)
+#         orig_list = ['sub1', 'sub2']
 
 
 def test_action_attr_list_dtype(teardown_project):
