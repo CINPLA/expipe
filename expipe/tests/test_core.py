@@ -34,3 +34,26 @@ def test_action_manager():
 
     with pytest.raises(KeyError):
         action_manager["ret_3"]
+
+
+@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+def test_module_to_dict():
+    from expipe.io.core import DictDiffer
+    project_id = "retina"
+    action_id = "ret_3"
+    module_name = "vision"
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.io.core.Project(project_id)
+    project_module = project.require_module(module_name,
+                                            contents=module_contents)
+
+    action = project.require_action(action_id)
+    action_module = action.require_module(module_name,
+                                          contents=module_contents)
+
+    for module_dict in [action_module.to_dict(), project_module.to_dict()]:
+        d = DictDiffer(module_dict, module_contents)
+        assert d.changed() == set()
+        assert d.added() == set()
+        assert d.removed() == set()

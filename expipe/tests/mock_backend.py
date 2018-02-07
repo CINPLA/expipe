@@ -22,19 +22,22 @@ def create_mock_backend(data):
             self.data = data
 
         def exists(self):
-            value = self.get()
+            value = self.path in self.data
             if value:
                 return True
             else:
                 return False
 
         def get(self, name=None):
-            if name is None:
-                value = dpath.util.get(glob=self.path, obj=self.data)
-            else:
-                if not isinstance(name, str):
-                    raise TypeError('Expected "str", not "{}"'.format(type(name)))
-                value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
+            try:
+                if name is None:
+                        value = dpath.util.get(glob=self.path, obj=self.data)
+                else:
+                    if not isinstance(name, str):
+                        raise TypeError('Expected "str", not "{}"'.format(type(name)))
+                    value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
+            except KeyError:
+                value = None
             value = expipe.io.core.convert_from_firebase(value)
             return value
 
@@ -50,21 +53,21 @@ def create_mock_backend(data):
         def set(self, name, value=None):
             if value is None:
                 value = name
-                value = convert_to_firebase(value)
-                dpath.util.get(glob=self.path, obj=self.data, value=value)
+                value = expipe.io.core.convert_to_firebase(value)
+                dpath.util.new(path=self.path, obj=self.data, value=value)
             else:
-                value = convert_to_firebase(value)
-                dpath.util.get(glob=self.path + "/" + name, obj=self.data, value=value)
+                value = expipe.io.core.convert_to_firebase(value)
+                dpath.util.new(path=self.path + "/" + name, obj=self.data, value=value)
 
         def update(self, name, value=None):
             if value is None:
                 value = name
-                value = convert_to_firebase(value)
+                value = expipe.io.core.convert_to_firebase(value)
                 # db.child(self.path).update(value, user["idToken"])
             else:
-                value = convert_to_firebase(value)
+                value = expipe.io.core.convert_to_firebase(value)
                 # db.child(self.path).child(name).update(value, user["idToken"])
-            value = convert_from_firebase(value)
+            value = expipe.io.core.convert_from_firebase(value)
             return value
 
     return MockBackend

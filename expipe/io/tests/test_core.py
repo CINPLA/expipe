@@ -82,22 +82,22 @@ def test_module_get_require_equal_path(teardown_project):
     assert action_module._db.path == action_module2._db.path
 
 
-def test_module_to_dict(teardown_project):
-    from expipe.io.core import DictDiffer
-    project = expipe.require_project(pytest.PROJECT_ID)
-    module_contents = {'test': {'value': 'youyo'}}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
-
-    action = project.require_action(pytest.ACTION_ID)
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents)
-    module_dict = action_module.to_dict()
-    for module_dict in [action_module.to_dict(), project_module.to_dict()]:
-        d = DictDiffer(module_dict, module_contents)
-        assert d.changed() == set()
-        assert d.added() == set()
-        assert d.removed() == set()
+# def test_module_to_dict(teardown_project):
+#     from expipe.io.core import DictDiffer
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     module_contents = {'test': {'value': 'youyo'}}
+#     project_module = project.require_module(pytest.MODULE_ID,
+#                                             contents=module_contents)
+#
+#     action = project.require_action(pytest.ACTION_ID)
+#     action_module = action.require_module(pytest.MODULE_ID,
+#                                           contents=module_contents)
+#     module_dict = action_module.to_dict()
+#     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
+#         d = DictDiffer(module_dict, module_contents)
+#         assert d.changed() == set()
+#         assert d.added() == set()
+#         assert d.removed() == set()
 
 
 def test_module_list(teardown_project):
