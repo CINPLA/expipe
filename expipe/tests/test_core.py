@@ -321,6 +321,96 @@ def test_module_array():
 
 
 @mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+def test_action_attr_list_dtype():
+    project_id = "lgn"
+    action_id = "lgn_1"
+    project = expipe.require_project(project_id)
+    action = project.require_action(action_id)
+
+    for attr in ['subjects', 'users', 'tags']:
+        with pytest.raises(TypeError):
+            setattr(action, attr, ['sub1', 'sub2', 1])
+        with pytest.raises(TypeError):
+            setattr(action, attr, ['sub1', 'sub2', ['s']])
+        setattr(action, attr, ['sub1', 'sub2'])
+        prop_list = getattr(action, attr)
+        with pytest.raises(TypeError):
+            prop_list.append(1)
+        with pytest.raises(TypeError):
+            prop_list.extend([1])
+
+
+@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+def test_action_messages_append():
+    from datetime import datetime, timedelta
+    project_id = "lgn"
+    action_id = "lgn_1"
+    project = expipe.require_project(project_id)
+    action = project.require_action(action_id)
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    mes = action.messages
+    _messages = ['sub3']
+    _datetimes = [time + timedelta(minutes=10)]
+    _users = ['usr3']
+
+    message = {'message': 'sub3', 'user': 'usr3',
+               'datetime': time + timedelta(minutes=10)}
+    mes.messages.append(message)
+    messages = [message]
+
+    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+                for m1, m2 in zip(messages, mes.messages)])
+
+
+@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+def test_action_messages_dtype():
+    from datetime import datetime, timedelta
+    project_id = "lgn"
+    action_id = "lgn_1"
+    project = expipe.require_project(project_id)
+    action = project.require_action(action_id)
+    mes = action.messages
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    # string in date not ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, 'time - timedelta(minutes=1)']
+    _users = ['us1', 'None']
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+    # int not ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', 1]
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+    # int not ok
+    _messages = ['mes1', 1]
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', 'None']
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+    # None is not ok
+    _messages = ['mes1', 'mes']
+    _datetimes = [time, time - timedelta(minutes=1)]
+    _users = ['us1', None]
+    messages = [{'message': m, 'datetime': d, 'user': u}
+                for m, d, u in zip(_messages, _datetimes, _users)]
+    with pytest.raises(TypeError):
+        action.messages = messages
+
+
+@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_list():
     project_id = "lgn"
     action_id = "lgn_1"
@@ -360,33 +450,83 @@ def test_module_list():
     diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
     assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
 
-    module_contents = {'almost_list2': {'0': 'df', '1': 'd', '5': 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(module_name,
-                                              contents=module_contents,
-                                              overwrite=True)
-
-    module_contents = {'not_list': {'0': 'df', '1': 'd', 5: 's'}}
-    with pytest.raises(TypeError):
-        action_module = action.require_module(module_name,
-                                              contents=module_contents,
-                                              overwrite=True)
-
-    module_contents = {'not_list': {'1': 'df', '2': 'd', '3': 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(module_name,
-                                              contents=module_contents,
-                                              overwrite=True)
-
-    module_contents = {'not_list': {0: 'df', 1: 'd', 5: 's'}}
-    with pytest.raises(ValueError):
-        action_module = action.require_module(module_name,
-                                              contents=module_contents,
-                                              overwrite=True)
-
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
     action_module = action.require_module(module_name,
                                           contents=module_contents,
                                           overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
+
+
+# @mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+# def test_action_messages_setter():
+#     from datetime import datetime, timedelta
+#     project_id = "lgn"
+#     action_id = "lgn_1"
+#     project = expipe.require_project(project_id)
+#     action = project.require_action(action_id)
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#
+#     _messages = ['mes1', 'mes2']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'us2']
+#
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     action.messages = messages
+#     mes = action.messages
+#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#                 for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
+#
+#     new_message = {'message': 'sub3', 'user': 'usr3',
+#                    'datetime': time + timedelta(minutes=10)}
+#     mes[1] = new_message
+#     messages[1] = new_message
+#     print(mes.messages)
+#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#                 for m1, m2 in zip(messages, mes.messages)])
+#     assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
+
+# @mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+# def test_fill_the_project():
+#     import quantities as pq
+#     from datetime import datetime, timedelta
+#     project_id = "lgn"
+#     action_id = "lgn_1"
+#     module_name = "vision"
+#     module_contents = {'species': {'value': 'rat'}}
+#
+#     project = expipe.require_project(project_id)
+#     action = project.require_action(action_id)
+#
+#     quan = [1, 2] * pq.s
+#     module_contents = {'quan': quan}
+#     project_module = project.require_module(module_name,
+#                                             contents=module_contents,
+#                                             overwrite=True)
+#     mod_dict = project_module.to_dict()
+#     assert isinstance(mod_dict['quan'], pq.Quantity)
+#     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+#
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#
+#     _messages = ['mes1', 'mes2']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'us2']
+#
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     action.messages = messages
+#     mes = action.messages
+#
+#     orig_list = ['sub1', 'sub2']
+#     for attr in ['subjects', 'users', 'tags']:
+#         prop_list = getattr(action, attr)
+#         assert isinstance(prop_list, expipe.io.core.ProperyList)
+#         prop_list.append('sub3')
+#         orig_list.append('sub3')
+#         setattr(action, attr, orig_list)
+#         prop_list.extend(['sub3'])
+#         orig_list.extend(['sub3'])
+#         prop_list[1] = 'subsub'
+#         orig_list[1] = 'subsub'

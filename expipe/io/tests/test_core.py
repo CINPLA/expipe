@@ -257,107 +257,107 @@ expipe.ensure_testing()
 #         orig_list = ['sub1', 'sub2']
 
 
-def test_action_attr_list_dtype(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    for attr in ['subjects', 'users', 'tags']:
-        with pytest.raises(TypeError):
-            setattr(action, attr, ['sub1', 'sub2', 1])
-        with pytest.raises(TypeError):
-            setattr(action, attr, ['sub1', 'sub2', ['s']])
-        setattr(action, attr, ['sub1', 'sub2'])
-        prop_list = getattr(action, attr)
-        with pytest.raises(TypeError):
-            prop_list.append(1)
-        with pytest.raises(TypeError):
-            prop_list.extend([1])
+# def test_action_attr_list_dtype(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     for attr in ['subjects', 'users', 'tags']:
+#         with pytest.raises(TypeError):
+#             setattr(action, attr, ['sub1', 'sub2', 1])
+#         with pytest.raises(TypeError):
+#             setattr(action, attr, ['sub1', 'sub2', ['s']])
+#         setattr(action, attr, ['sub1', 'sub2'])
+#         prop_list = getattr(action, attr)
+#         with pytest.raises(TypeError):
+#             prop_list.append(1)
+#         with pytest.raises(TypeError):
+#             prop_list.extend([1])
 
 
-def test_action_messages_setter(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    time = datetime(2017, 6, 1, 21, 42, 20)
-
-    _messages = ['mes1', 'mes2']
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 'us2']
-
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
-    action.messages = messages
-    mes = action.messages
-    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
-
-    new_message = {'message': 'sub3', 'user': 'usr3',
-                   'datetime': time + timedelta(minutes=10)}
-    mes[1] = new_message
-    messages[1] = new_message
-    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                for m1, m2 in zip(messages, mes.messages)])
-    assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
-
-
-def test_action_messages_append(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    time = datetime(2017, 6, 1, 21, 42, 20)
-    mes = action.messages
-    _messages = ['sub3']
-    _datetimes = [time + timedelta(minutes=10)]
-    _users = ['usr3']
-
-    message = {'message': 'sub3', 'user': 'usr3',
-                   'datetime': time + timedelta(minutes=10)}
-    mes.messages.append(message)
-    messages = [message]
-
-    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
-                for m1, m2 in zip(messages, mes.messages)])
-
-
-def test_action_messages_dtype(teardown_project):
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    mes = action.messages
-    time = datetime(2017, 6, 1, 21, 42, 20)
-
-    # string in date not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, 'time - timedelta(minutes=1)']
-    _users = ['us1', 'None']
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
-    with pytest.raises(TypeError):
-        action.messages = messages
-
-    # int not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 1]
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
-    with pytest.raises(TypeError):
-        action.messages = messages
-
-    # int not ok
-    _messages = ['mes1', 1]
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 'None']
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
-    with pytest.raises(TypeError):
-        action.messages = messages
-
-    # None is not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', None]
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
-    with pytest.raises(TypeError):
-        action.messages = messages
+# def test_action_messages_setter(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     time = datetime(2017, 6, 1, 21, 42, 20)
 #
+#     _messages = ['mes1', 'mes2']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'us2']
+#
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     action.messages = messages
+#     mes = action.messages
+#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#                 for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
+#
+#     new_message = {'message': 'sub3', 'user': 'usr3',
+#                    'datetime': time + timedelta(minutes=10)}
+#     mes[1] = new_message
+#     messages[1] = new_message
+#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#                 for m1, m2 in zip(messages, mes.messages)])
+#     assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
+
+
+# def test_action_messages_append(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#     mes = action.messages
+#     _messages = ['sub3']
+#     _datetimes = [time + timedelta(minutes=10)]
+#     _users = ['usr3']
+#
+#     message = {'message': 'sub3', 'user': 'usr3',
+#                    'datetime': time + timedelta(minutes=10)}
+#     mes.messages.append(message)
+#     messages = [message]
+#
+#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#                 for m1, m2 in zip(messages, mes.messages)])
+
+
+# def test_action_messages_dtype(teardown_project):
+#     project = expipe.require_project(pytest.PROJECT_ID)
+#     action = project.require_action(pytest.ACTION_ID)
+#     mes = action.messages
+#     time = datetime(2017, 6, 1, 21, 42, 20)
+#
+#     # string in date not ok
+#     _messages = ['mes1', 'mes']
+#     _datetimes = [time, 'time - timedelta(minutes=1)']
+#     _users = ['us1', 'None']
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     with pytest.raises(TypeError):
+#         action.messages = messages
+#
+#     # int not ok
+#     _messages = ['mes1', 'mes']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 1]
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     with pytest.raises(TypeError):
+#         action.messages = messages
+#
+#     # int not ok
+#     _messages = ['mes1', 1]
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', 'None']
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     with pytest.raises(TypeError):
+#         action.messages = messages
+#
+#     # None is not ok
+#     _messages = ['mes1', 'mes']
+#     _datetimes = [time, time - timedelta(minutes=1)]
+#     _users = ['us1', None]
+#     messages = [{'message': m, 'datetime': d, 'user': u}
+#                 for m, d, u in zip(_messages, _datetimes, _users)]
+#     with pytest.raises(TypeError):
+#         action.messages = messages
+# #
 # def test_fill_the_project(teardown_project):
 #     import quantities as pq
 #     project = expipe.require_project(pytest.PROJECT_ID)

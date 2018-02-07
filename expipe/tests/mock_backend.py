@@ -66,7 +66,7 @@ def create_mock_backend(data):
                 dpath.util.new(path=self.path, obj=self.data, value=value)
             else:
                 value = expipe.io.core.convert_to_firebase(value)
-                dpath.util.new(path=self.path + "/" + name, obj=self.data, value=value)
+                dpath.util.new(path=self.path + "/" + str(name), obj=self.data, value=value)
 
         def delete(self, name):
             key_list = (self.path + "/" + name).split("/")
