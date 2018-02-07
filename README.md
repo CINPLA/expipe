@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/CINPLA/expipe.svg?branch=dev)](https://travis-ci.org/CINPLA/expipe)
-[![Project Status: Active - The project has reached a stable, usable state and is being actively developed.](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](http://www.repostatus.org/badges/latest/wip.svg)](http://www.repostatus.org/#wip)
 [![Anaconda-Server Badge](https://anaconda.org/cinpla/expipe/badges/installer/conda.svg)](https://conda.anaconda.org/cinpla/expipe)
 [![codecov](https://codecov.io/gh/CINPLA/expipe/branch/dev/graph/badge.svg)](https://codecov.io/gh/CINPLA/expipe)
 
