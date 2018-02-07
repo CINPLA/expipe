@@ -1,11 +1,10 @@
 import pytest
 import expipe
-# import uuid
-from expipe.io.core import DictDiffer
+from expipe.core import DictDiffer
 
 expipe.ensure_testing()
 
-unique_id = 'test'#str(uuid.uuid4())
+unique_id = 'test'
 
 
 PROJECT_ID = 'project-' + unique_id

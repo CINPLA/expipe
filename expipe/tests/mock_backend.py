@@ -47,7 +47,7 @@ def create_mock_backend(data):
                     value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
             except KeyError:
                 value = None
-            value = expipe.io.core.convert_from_firebase(value)
+            value = expipe.core.convert_from_firebase(value)
             return value
 
         def get_keys(self, name=None):
@@ -62,10 +62,10 @@ def create_mock_backend(data):
         def set(self, name, value=None):
             if value is None:
                 value = name
-                value = expipe.io.core.convert_to_firebase(value)
+                value = expipe.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path, obj=self.data, value=value)
             else:
-                value = expipe.io.core.convert_to_firebase(value)
+                value = expipe.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path + "/" + str(name), obj=self.data, value=value)
 
         def delete(self, name):
@@ -77,14 +77,14 @@ def create_mock_backend(data):
         def update(self, name, value=None):
             if value is None:
                 value = name
-                value = expipe.io.core.convert_to_firebase(value)
+                value = expipe.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path, obj=self.data, value=value)
                 # db.child(self.path).update(value, user["idToken"])
             else:
-                value = expipe.io.core.convert_to_firebase(value)
+                value = expipe.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path + "/" + name, obj=self.data, value=value)
                 # db.child(self.path).child(name).update(value, user["idToken"])
-            value = expipe.io.core.convert_from_firebase(value)
+            value = expipe.core.convert_from_firebase(value)
             return value
 
     return MockBackend

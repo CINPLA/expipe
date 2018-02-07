@@ -25,10 +25,10 @@ db["actions"] = {
 }
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_manager():
     project_id = "retina"
-    project = expipe.io.core.Project(project_id)
+    project = expipe.core.Project(project_id)
     action_manager = project.actions
 
     assert project == action_manager.project
@@ -42,15 +42,15 @@ def test_action_manager():
         action_manager["ret_3"]
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_to_dict():
-    from expipe.io.core import DictDiffer
+    from expipe.core import DictDiffer
     project_id = "retina"
     action_id = "ret_3"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     project_module = project.require_module(module_name,
                                             contents=module_contents)
 
@@ -65,14 +65,14 @@ def test_module_to_dict():
         assert d.removed() == set()
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_delete_project_and_childs():
     project_id = "lgn"
     action_id = "lgn_1"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
     action_module = action.require_module(module_name,
                                           contents=module_contents,
@@ -98,14 +98,14 @@ def test_create_delete_project_and_childs():
         action.get_module(module_name)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_delete_project_not_childs():
     project_id = "lgn"
     action_id = "lgn_1"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     action_module = action.require_module(module_name,
@@ -126,30 +126,30 @@ def test_create_delete_project_not_childs():
     action.get_module(module_name)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_project():
     project_id = "lgn"
     expipe.require_project(project_id)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_action():
     project_id = "lgn"
     action_id = "lgn_1"
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
     project.get_action(action_id)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_action_module():
     project_id = "lgn"
     action_id = "lgn_1"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     action_module = action.require_module(module_name,
@@ -158,28 +158,28 @@ def test_create_action_module():
     action.get_module(module_name)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_create_project_module():
     project_id = "lgn"
     action_id = "lgn_1"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     project.require_module(module_name, contents=module_contents, overwrite=True)
     project.get_module(module_name)
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_get_require_equal_path():
     project_id = "lgn"
     action_id = "lgn_1"
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     project_module = project.require_module(module_name,
@@ -196,7 +196,7 @@ def test_module_get_require_equal_path():
     assert action_module._db.path == action_module2._db.path
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_delete_action():
     from datetime import datetime, timedelta
 
@@ -205,7 +205,7 @@ def test_delete_action():
     module_name = "vision"
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
     action_module = action.require_module(module_name,
                                           contents=module_contents,
@@ -236,13 +236,13 @@ def test_delete_action():
     assert len(action.messages.messages) == 0
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_attr():
     from datetime import datetime, timedelta
     project_id = "lgn"
     action_id = "lgn_1"
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     for attr in ['subjects', 'users', 'tags']:
@@ -259,18 +259,18 @@ def test_action_attr():
         action.datetime = 'now I am'
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_attr_list():
     project_id = "lgn"
     action_id = "lgn_1"
 
-    project = expipe.io.core.require_project(project_id)
+    project = expipe.core.require_project(project_id)
     action = project.require_action(action_id)
 
     orig_list = ['sub1', 'sub2']
     for attr in ['subjects', 'users', 'tags']:
         prop_list = getattr(action, attr)
-        assert isinstance(prop_list, expipe.io.core.ProperyList)
+        assert isinstance(prop_list, expipe.core.ProperyList)
         prop_list.append('sub3')
         orig_list.append('sub3')
         setattr(action, attr, orig_list)
@@ -282,7 +282,7 @@ def test_action_attr_list():
         orig_list = ['sub1', 'sub2']
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_quantities():
     import quantities as pq
     project_id = "lgn"
@@ -301,7 +301,7 @@ def test_module_quantities():
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_array():
     import numpy as np
     project_id = "lgn"
@@ -320,7 +320,7 @@ def test_module_array():
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_attr_list_dtype():
     project_id = "lgn"
     action_id = "lgn_1"
@@ -340,7 +340,7 @@ def test_action_attr_list_dtype():
             prop_list.extend([1])
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_messages_append():
     from datetime import datetime, timedelta
     project_id = "lgn"
@@ -359,11 +359,11 @@ def test_action_messages_append():
     mes.messages.append(message)
     messages = [message]
 
-    assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+    assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
                 for m1, m2 in zip(messages, mes.messages)])
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_action_messages_dtype():
     from datetime import datetime, timedelta
     project_id = "lgn"
@@ -410,7 +410,7 @@ def test_action_messages_dtype():
         action.messages = messages
 
 
-@mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 def test_module_list():
     project_id = "lgn"
     action_id = "lgn_1"
@@ -447,7 +447,7 @@ def test_module_list():
                                           overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['almost_list1'], dict)
-    diff = expipe.io.core.DictDiffer(module_contents, mod_dict)
+    diff = expipe.core.DictDiffer(module_contents, mod_dict)
     assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
@@ -458,7 +458,7 @@ def test_module_list():
     assert isinstance(mod_dict['is_list'], dict)
 
 
-# @mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+# @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 # def test_action_messages_setter():
 #     from datetime import datetime, timedelta
 #     project_id = "lgn"
@@ -475,7 +475,7 @@ def test_module_list():
 #                 for m, d, u in zip(_messages, _datetimes, _users)]
 #     action.messages = messages
 #     mes = action.messages
-#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#     assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
 #                 for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
 #
 #     new_message = {'message': 'sub3', 'user': 'usr3',
@@ -483,11 +483,11 @@ def test_module_list():
 #     mes[1] = new_message
 #     messages[1] = new_message
 #     print(mes.messages)
-#     assert all([expipe.io.core.DictDiffer(m1, m2).changed() == set()
+#     assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
 #                 for m1, m2 in zip(messages, mes.messages)])
-#     assert expipe.io.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
+#     assert expipe.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
 
-# @mock.patch('expipe.io.core.FirebaseBackend', new=create_mock_backend(db))
+# @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
 # def test_fill_the_project():
 #     import quantities as pq
 #     from datetime import datetime, timedelta
@@ -522,7 +522,7 @@ def test_module_list():
 #     orig_list = ['sub1', 'sub2']
 #     for attr in ['subjects', 'users', 'tags']:
 #         prop_list = getattr(action, attr)
-#         assert isinstance(prop_list, expipe.io.core.ProperyList)
+#         assert isinstance(prop_list, expipe.core.ProperyList)
 #         prop_list.append('sub3')
 #         orig_list.append('sub3')
 #         setattr(action, attr, orig_list)
