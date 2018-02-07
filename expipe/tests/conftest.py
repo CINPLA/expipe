@@ -6,7 +6,6 @@ expipe.ensure_testing()
 
 unique_id = 'test'
 
-
 PROJECT_ID = 'project-' + unique_id
 ACTION_ID = 'action-' + unique_id
 MODULE_ID = 'module-' + unique_id

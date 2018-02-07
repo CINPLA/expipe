@@ -1,17 +1,5 @@
 import dpath.util
-import yaml
 import expipe
-
-db_dummy = {
-    "projects": {},
-    "project_modules": {},
-    "actions": {},
-    "action_modules": {},
-    "action_messages": {},
-    "templates": {},
-    "templates_contents": {},
-    "files": {}
-}
 
 
 def delete_keys_from_dict(data, key_list):
@@ -23,7 +11,8 @@ def delete_keys_from_dict(data, key_list):
     return data
 
 
-def create_mock_backend(data):
+def create_mock_backend(data=None):
+    data = {} if data is None else data
 
     class MockBackend:
         def __init__(self, path):
