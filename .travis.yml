@@ -12,9 +12,10 @@ script:
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
 after_success:
   - pip install pyrebase
-  - conda install -c defaults -c conda-forge pytest coverage codecov dpath
+  - conda install -c defaults -c conda-forge pytest dpath quantities coverage codecov
   - coverage run --source expipe -m py.test -s
   - coverage report
+  - codecov
 deploy:
   - provider: script
     skip_cleanup: true
