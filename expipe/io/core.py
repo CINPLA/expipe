@@ -52,6 +52,8 @@ def convert_from_firebase(value):
     """
     result = value
     if isinstance(value, dict):
+        if "_force_dict" in value:
+            del value["_force_dict"]
         if 'units' in value and "value" in value:
             value['unit'] = value['units']
             del(value['units'])
@@ -87,28 +89,8 @@ def convert_to_firebase(value):
     Converts quantities to dictionary
     """
     if isinstance(value, dict):
-        isnumeric_keys = False
-        if (any(isinstance(key, str) for key in value) and
-                any(isinstance(key, int) for key in value)):
-            raise TypeError('Combination of both "str" and "int" in keys is ' +
-                            'not allowed.')
-        if all(isinstance(key, int) for key in value):
-            isnumeric_keys = True
-        elif all(isinstance(key, str) for key in value):
-            if all(key.isnumeric() for key in value):
-                isnumeric_keys = True
-        if isnumeric_keys:
-            if not all(int(x) == int(y) + 1
-                       for x, y in zip(sorted(value.keys())[1:],
-                                       sorted(value.keys()))):
-                raise ValueError('Dict keys are numeric, but not ' +
-                                 'monotonously increasing by unity when  ' +
-                                 'sorted, thus not recognized as a list.')
-            if len(value.keys()) > 0:
-                if int(sorted(value.keys())[0]) != 0:
-                    raise ValueError('Dict keys are numeric, but not ' +
-                                     'starting from 0, thus not recognized ' +
-                                     'as a list.')
+        if all(isinstance(key, int) or (isinstance(key, str) and key.isnumeric()) for key in value):
+            value["_force_dict"] = True
     if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
         if value.ndim >= 1:
             value = value.tolist()
