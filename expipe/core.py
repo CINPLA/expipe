@@ -176,7 +176,6 @@ class Project:
         self._db_actions = FirebaseBackend('/actions/' + project_id)
         self._db_modules = FirebaseBackend('/project_modules/' + project_id)
 
-
     @property
     def actions(self):
         return ActionManager(self)
@@ -270,7 +269,6 @@ class FirebaseBackend:
         self.refresh_token = value["refreshToken"]
         self.id_token = value["idToken"]
         self.token_expiration = current_time + datetime.timedelta(0, int(value["expiresIn"]))
-
 
     def build_url(self, name=None):
         if name is None:
@@ -453,7 +451,7 @@ class ModuleManager:
         result = self._get_modules() or {}
         return result.keys()
 
-    def items(self): # TODO does not work with _inherits
+    def items(self):  # TODO does not work with _inherits
         result = self._get_modules() or {}
         return result.items()
 
@@ -550,11 +548,11 @@ class ProperyList:
         if iter_value:
             if not all(isinstance(v, self.dtype) for v in value):
                 raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                                 str([type(v) for v in value]))
+                                str([type(v) for v in value]))
         else:
             if not isinstance(value, self.dtype):
                 raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                             str(type(value)))
+                                str(type(value)))
 
         return value
 
@@ -618,7 +616,7 @@ class MessagesManager:
     def _assert_dtype(self, message):
         if not isinstance(message, dict):
             raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
-        if not 'message' in message and 'user' in message and 'datetime' in message:
+        if 'message' not in message and 'user' in message and 'datetime' in message:
             raise ValueError('Message must be formated as ' +
                              'dict(message="message", user="user", ' +
                              'datetime="datetime"')
@@ -686,7 +684,7 @@ class Action:
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
-                             str([type(v) for v in value]))
+                            str([type(v) for v in value]))
         value = list(set(value))
         self._db.set('subjects', value)
 
@@ -713,7 +711,7 @@ class Action:
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
-                             str([type(v) for v in value]))
+                            str([type(v) for v in value]))
         value = list(set(value))
         self._db.set('users', value)
 
@@ -728,7 +726,7 @@ class Action:
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
-                             str([type(v) for v in value]))
+                            str([type(v) for v in value]))
         value = list(set(value))
         self._db.set('tags', value)
 
@@ -782,7 +780,7 @@ def _require_module(name=None, template=None, contents=None,
         if template is not None or contents is not None:
             if not overwrite:
                 raise NameError('Set overwrite to true if you want to ' +
-                                 'overwrite the contents of the module.')
+                                'overwrite the contents of the module.')
 
     if template is not None:
         template_cont_path = "/".join(["templates_contents", template])
@@ -875,9 +873,7 @@ def require_project(project_id):
     registered = datetime.today().strftime(datetime_format)
     if not existing:
         project_db.set(name=project_id, value={"registered": registered})
-        # db.child("/".join(["projects",
-        #                    project_id])).set({"registered":
-        #                                       registered}, user["idToken"])
+
     return Project(project_id)
 
 
@@ -895,8 +891,6 @@ def delete_project(project_id, remove_all_childs=False):
             for module in list(project.modules.keys()):
                 project.delete_module(module)
         project_db.delete(name=project_id)
-        # db.child("/".join(["projects",
-        #                    project_id])).set({}, user["idToken"])
 
 
 def _init_module():
