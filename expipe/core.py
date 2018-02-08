@@ -66,7 +66,7 @@ class ModuleManager:
         elif isinstance(parent, Project):
             module_path = '/'.join(['project_modules', parent.id])
         else:
-            raise IOError("Parent of type '{}' cannot have cannot have modules.".format(type(parent)))
+            raise IOError("Parent of type '{}' cannot have modules.".format(type(parent)))
 
         self.parent = parent
         self._db = FirebaseBackend(module_path)
@@ -120,6 +120,9 @@ class ModuleManager:
 
 
 class MessagesManager:
+    """
+    Manager class for messages for an action
+    """
     def __init__(self, action):
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)
@@ -136,7 +139,7 @@ class MessagesManager:
     @messages.setter
     def messages(self, value):
         if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
+            raise TypeError("Expected 'list', got '{}'".format(type(value)))
         result = copy.deepcopy(value)
         for message in result:
             self._assert_dtype(message)
