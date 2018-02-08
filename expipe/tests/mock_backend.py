@@ -1,5 +1,6 @@
 import dpath.util
 import expipe
+import copy
 
 
 def create_mock_backend(data=None):
@@ -25,6 +26,7 @@ def create_mock_backend(data=None):
                     if not isinstance(name, str):
                         raise TypeError('Expected "str", not "{}"'.format(type(name)))
                     value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
+                value = copy.deepcopy(value)
             except KeyError:
                 value = None
             value = expipe.core.convert_from_firebase(value)
@@ -47,6 +49,11 @@ def create_mock_backend(data=None):
             else:
                 value = expipe.core.convert_to_firebase(value)
                 dpath.util.new(path=self.path + "/" + str(name), obj=self.data, value=value)
+
+        def push(self, value=None):
+            import numpy as np
+            name = str(np.random.random())
+            self.set(name=name, value=value)
 
         def delete(self, name):
             dpath.util.delete(glob=self.path + "/" + str(name), obj=self.data)

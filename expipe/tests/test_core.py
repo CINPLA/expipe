@@ -3,9 +3,7 @@ from unittest import mock
 import expipe
 from mock_backend import create_mock_backend
 
-# TODO test to_json
 # TODO test filerecord and Datafile and whatever it is for?
-# TODO measure coverage
 # TODO test if you can give template identifier which is not unique
 # TODO support numeric keys without being list
 # TODO unique list in action attributes
@@ -256,38 +254,35 @@ def test_module_list():
 
 
 ######################################################################################################
-# Messages
+# MessagesManager
 ######################################################################################################
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_message_manager():
-
-    message = {'species': {'value': 'rat'}}
-
-    project = expipe.core.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-
-    # assert action.messages == []
-
-
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_messages_append():
+def test_action_messages_setter():
     from datetime import datetime, timedelta
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
+    message_manager = action.messages
+
+    assert len(message_manager) == 0
 
     time = datetime(2017, 6, 1, 21, 42, 20)
-    mes = action.messages
-    _messages = ['sub3']
-    _datetimes = [time + timedelta(minutes=10)]
-    _users = ['usr3']
+    msg_1 = {'message': 'sub1', 'user': 'usr1',
+             'datetime': time}
 
-    message = {'message': 'sub3', 'user': 'usr3',
-               'datetime': time + timedelta(minutes=10)}
-    mes.messages.append(message)
-    messages = [message]
+    messages = [msg_1]
+    action.add_message(msg_1)
 
-    assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
-                for m1, m2 in zip(messages, mes.messages)])
+    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+                for m1, m2 in zip(messages, message_manager)])
+
+    msg_2 = {'message': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    messages.append(msg_2)
+    action.add_message(msg_2)
+
+    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+                for m1, m2 in zip(messages, message_manager)])
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -295,44 +290,67 @@ def test_action_messages_dtype():
     from datetime import datetime, timedelta
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    mes = action.messages
     time = datetime(2017, 6, 1, 21, 42, 20)
 
     # string in date not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, 'time - timedelta(minutes=1)']
-    _users = ['us1', 'None']
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
+    msg = {'message': 'sub2', 'user': 'usr2',
+           'datetime': str(time + timedelta(minutes=10))}
+
     with pytest.raises(TypeError):
-        action.messages = messages
+        action.add_message(msg)
 
     # int not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 1]
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
+    msg = {'message': 'sub2', 'user': 13,
+           'datetime': time + timedelta(minutes=10)}
     with pytest.raises(TypeError):
-        action.messages = messages
+        action.add_message(msg)
 
     # int not ok
-    _messages = ['mes1', 1]
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 'None']
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
+    msg = {'message': 12, 'user': "usr2",
+           'datetime': time + timedelta(minutes=10)}
+
     with pytest.raises(TypeError):
-        action.messages = messages
+        action.add_message(msg)
 
     # None is not ok
-    _messages = ['mes1', 'mes']
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', None]
-    messages = [{'message': m, 'datetime': d, 'user': u}
-                for m, d, u in zip(_messages, _datetimes, _users)]
+    msg = {'message': "sub2", 'user': None,
+           'datetime': time + timedelta(minutes=10)}
+
     with pytest.raises(TypeError):
-        action.messages = messages
+        action.add_message(msg)
+
+
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
+def test_change_message():
+    from datetime import datetime, timedelta
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    message_manager = action.messages
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    # add two messages
+    msg_1 = {'message': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'message': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    action.add_message(msg_1)
+    action.add_message(msg_2)
+
+    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+                for m1, m2 in zip([msg_1, msg_2], message_manager)])
+
+    # change one of them
+    msg_3 = {'message': 'sub3', 'user': 'usr3',
+             'datetime': time + timedelta(minutes=10)}
+
+    for i, message in enumerate(message_manager):
+        if message.content["user"] == "usr2":
+            message.content = msg_3
+
+    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+                for m1, m2 in zip([msg_1, msg_3], message_manager)])
 
 
 ######################################################################################################
@@ -440,57 +458,30 @@ def test_delete_action():
                                           contents=module_contents,
                                           overwrite=True)
 
-    mes = action.messages
-    time = datetime(2017, 6, 1, 21, 42, 20)
-    _datetimes = [time, time - timedelta(minutes=1)]
-    _users = ['us1', 'us2']
-    _messages = ['mes1', 'mes2']
-    mes.messages = [{'message': m, 'user': u, 'datetime': d} for m, u, d in
-                    zip(_messages, _users, _datetimes)]
+    # mes = action.messages
+    # time = datetime(2017, 6, 1, 21, 42, 20)
+    # _datetimes = [time, time - timedelta(minutes=1)]
+    # _users = ['us1', 'us2']
+    # _messages = ['mes1', 'mes2']
+    # mes.messages = [{'message': m, 'user': u, 'datetime': d} for m, u, d in
+    #                 zip(_messages, _users, _datetimes)]
+    #
+    # for attr in ['subjects', 'users', 'tags']:
+    #     setattr(action, attr, ['sub1', 'sub2'])
+    # assert len(list(action.modules.keys())) != 0
+    # project.delete_action(action.id)
+    # with pytest.raises(NameError):
+    #     project.get_action(pytest.ACTION_ID)
+    #
+    # # remake and assert that all is deleted
+    # action = project.require_action(pytest.ACTION_ID)
+    # assert len(list(action.modules.keys())) == 0
+    # assert len(list(action_module.keys())) == 0
+    # for attr in ['subjects', 'users', 'tags']:
+    #     a = getattr(action, attr).data
+    #     assert a is None
+    # assert len(action.messages.messages) == 0
 
-    for attr in ['subjects', 'users', 'tags']:
-        setattr(action, attr, ['sub1', 'sub2'])
-    assert len(list(action.modules.keys())) != 0
-    project.delete_action(action.id)
-    with pytest.raises(NameError):
-        project.get_action(pytest.ACTION_ID)
-
-    # remake and assert that all is deleted
-    action = project.require_action(pytest.ACTION_ID)
-    assert len(list(action.modules.keys())) == 0
-    assert len(list(action_module.keys())) == 0
-    for attr in ['subjects', 'users', 'tags']:
-        a = getattr(action, attr).data
-        assert a is None
-    assert len(action.messages.messages) == 0
-
-
-# @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-# def test_action_messages_setter():
-#     from datetime import datetime, timedelta
-#     project = expipe.require_project(pytest.PROJECT_ID)
-#     action = project.require_action(pytest.ACTION_ID)
-#     time = datetime(2017, 6, 1, 21, 42, 20)
-#
-#     _messages = ['mes1', 'mes2']
-#     _datetimes = [time, time - timedelta(minutes=1)]
-#     _users = ['us1', 'us2']
-#
-#     messages = [{'message': m, 'datetime': d, 'user': u}
-#                 for m, d, u in zip(_messages, _datetimes, _users)]
-#     action.messages = messages
-#     mes = action.messages
-#     assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
-#                 for m1, m2 in zip(messages, mes.messages)]), '{}, {}'.format(messages, mes.messages)
-#
-#     new_message = {'message': 'sub3', 'user': 'usr3',
-#                    'datetime': time + timedelta(minutes=10)}
-#     mes[1] = new_message
-#     messages[1] = new_message
-#     print(mes.messages)
-#     assert all([expipe.core.DictDiffer(m1, m2).changed() == set()
-#                 for m1, m2 in zip(messages, mes.messages)])
-#     assert expipe.core.DictDiffer(messages[1], mes.messages[1]).changed() == set()
 
 # @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
 # def test_fill_the_project():

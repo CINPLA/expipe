@@ -119,78 +119,56 @@ class ModuleManager:
             json.dump(self.to_dict(), outfile, sort_keys=True, indent=4)
 
 
-class MessagesManager:
+class Message:
+    def __init__(self, action, message_id):
+        if not isinstance(message_id, str):
+            raise TypeError('Module name must be string')
+
+        if not isinstance(action, Action):
+            raise IOError("Parent must be of type Action, given type {}".format(type(action)))
+
+        path = '/'.join(['action_messages', action.project.id, action.id, message_id])
+
+        self.id = message_id
+        self.action = action
+        self._db = FirebaseBackend(path)
+
+    @property
+    def content(self):
+        content = self._db.get()
+        if content:
+            content['datetime'] = datetime.strptime(content['datetime'],
+                                                    datetime_format)
+        return content
+
+    @content.setter
+    def content(self, content):
+        _assert_message_dtype(content)
+        result = copy.deepcopy(content)
+        result['datetime'] = content['datetime'].strftime(datetime_format)
+        self._db.set(result)
+
+
+class MessageManager:
     """
-    Manager class for messages for an action
+    Manager class for messages in an action
     """
     def __init__(self, action):
+        if not isinstance(action, Action):
+            raise IOError("Parent must be of type Action, given type {}".format(type(action)))
+
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)
         self.action = action
 
-    @property
-    def messages(self):
-        result = self._db.get() or []
-        for message in result:
-            message['datetime'] = datetime.strptime(message['datetime'],
-                                                    datetime_format)
-        return result
+    def __iter__(self):
+        keys = self._db.get(shallow=True) or []
+        for key in keys:
+            yield Message(action=self.action, message_id=key)
 
-    @messages.setter
-    def messages(self, value):
-        if not isinstance(value, list):
-            raise TypeError("Expected 'list', got '{}'".format(type(value)))
-        result = copy.deepcopy(value)
-        for message in result:
-            self._assert_dtype(message)
-            message['datetime'] = message['datetime'].strftime(datetime_format)
-        self._db.set(result)
-
-    def __getitem__(self, arg):
-        messages = self._db.get()
-        message = messages[arg]
-        message['datetime'] = datetime.strptime(message['datetime'],
-                                                datetime_format)
-        return message
-
-    def __setitem__(self, arg, message):
-        self._assert_dtype(message)
-        result = copy.copy(message)
-        result['datetime'] = result['datetime'].strftime(datetime_format)
-        self._db.set(arg, result)
-
-    def append(self, message):
-        self._assert_dtype(message)
-        result = copy.copy(message)
-        result['datetime'] = result['datetime'].strftime(datetime_format)
-        messages = self.messages
-        messages.append(result)
-        self._db.set(messages)
-
-    def extend(self, messages):
-        if not isinstance(messages, list):
-            raise TypeError('Expected "list", got "' + str(type(messages)) + '"')
-        old = self._db.get() or []
-        _messages = copy.deepcopy(messages)
-        for message in _messages:
-            self._assert_dtype(message)
-            message['datetime'] = message['datetime'].strftime(datetime_format)
-        result = old + _messages
-        self._db.set(result)
-
-    def _assert_dtype(self, message):
-        if not isinstance(message, dict):
-            raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
-        if 'message' not in message and 'user' in message and 'datetime' in message:
-            raise ValueError('Message must be formated as ' +
-                             'dict(message="message", user="user", ' +
-                             'datetime="datetime"')
-        if not isinstance(message['message'], str):
-            raise TypeError('Message must be of type "str"')
-        if not isinstance(message['datetime'], datetime):
-            raise TypeError('Datetime must be of type "datetime"')
-        if not isinstance(message['user'], str):
-            raise TypeError('User must be of type "str"')
+    def __len__(self):
+        keys = self._db.get(shallow=True) or []
+        return len(keys)
 
 
 ######################################################################################################
@@ -262,6 +240,8 @@ class Action:
         self._db = FirebaseBackend(path)
         modules_path = "/".join(["action_modules", self.project.id, self.id])
         self._db_modules = FirebaseBackend(modules_path)
+        messages_path = "/".join(["action_messages", self.project.id, self.id])
+        self._db_messages = FirebaseBackend(messages_path)
         self._action_dirty = True
 
     def _db_get(self, name):
@@ -272,12 +252,13 @@ class Action:
 
     @property
     def messages(self):
-        return MessagesManager(self)
+        return MessageManager(self)
 
-    @messages.setter
-    def messages(self, value):
-        mes = MessagesManager(self)
-        mes.messages = value
+    def add_message(self, contents):
+        _assert_message_dtype(contents)
+        result = copy.deepcopy(contents)  # TODO: Do we need deepcopy here?
+        result['datetime'] = contents['datetime'].strftime(datetime_format)
+        self._db_messages.push(result)
 
     @property
     def location(self):
@@ -541,6 +522,18 @@ class FirebaseBackend:
         value = response.json()
         assert("errors" not in value)
 
+    def push(self, name, value=None):
+        self.ensure_auth()
+        url = self.build_url(name)
+        if value is None:
+            value = name
+        print("URL", url)
+        response = requests.push(url, json=value)  # QUESTION: should this be post?
+        print("Push result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
+
     def delete(self, name):
         db.child(self.path).child(name).set({}, user["idToken"])
 
@@ -791,6 +784,21 @@ def delete_project(project_id, remove_all_childs=False):
 ######################################################################################################
 # Helpers
 ######################################################################################################
+def _assert_message_dtype(message):
+    if not isinstance(message, dict):
+        raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
+    if 'message' not in message and 'user' in message and 'datetime' in message:
+        raise ValueError('Message must be formated as ' +
+                         'dict(message="message", user="user", ' +
+                         'datetime="datetime"')
+    if not isinstance(message['message'], str):
+        raise TypeError('Message must be of type "str"')
+    if not isinstance(message['datetime'], datetime):
+        raise TypeError('Datetime must be of type "datetime"')
+    if not isinstance(message['user'], str):
+        raise TypeError('User must be of type "str"')
+
+
 class DictDiffer(object):
     """
     A dictionary difference calculator
