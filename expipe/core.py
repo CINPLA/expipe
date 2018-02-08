@@ -647,51 +647,6 @@ class ProperyList:
 ######################################################################################################
 # utilities
 ######################################################################################################
-def _require_module(name=None, template=None, contents=None,
-                    overwrite=False, parent=None):
-    assert parent is not None
-    if name is None and template is not None:
-        template_path = "/".join(["templates", template])
-        name = FirebaseBackend(template_path).get('identifier')
-        if name is None:
-            raise ValueError('Template "' + template + '" has no identifier.')
-    if template is None and name is None:
-        raise ValueError('name and template cannot both be None.')
-    if contents is not None and template is not None:
-        raise ValueError('Cannot set contents if a template' +
-                         'is requested.')
-    if contents is not None:
-        if not isinstance(contents, (dict, list, np.ndarray)):
-            raise TypeError('Contents expected "dict" or "list" got "' +
-                            str(type(contents)) + '".')
-
-    module = Module(parent=parent, module_id=name)
-    if module._db.exists():
-        if template is not None or contents is not None:
-            if not overwrite:
-                raise NameError('Set overwrite to true if you want to ' +
-                                'overwrite the contents of the module.')
-
-    if template is not None:
-        template_cont_path = "/".join(["templates_contents", template])
-        template_contents = FirebaseBackend(template_cont_path).get()
-        # TODO give error if template does not exist
-        module._db.set(template_contents)
-    if contents is not None:
-        if '_inherits' in contents:
-            heritage = FirebaseBackend(contents['_inherits']).get()
-            if heritage is None:
-                raise NameError(
-                    'Can not inherit {}'.format(contents['_inherits']))
-            d = DictDiffer(contents, heritage)
-            keys = [key for key in list(d.added()) + list(d.changed())]
-            diffcont = {key: contents[key] for key in keys}
-            module._db.set(diffcont)
-        else:
-            module._db.set(contents)
-    return module
-
-
 def require_template(template, contents=None, overwrite=False):
     template_db = FirebaseBackend("/templates")
     contents_db = FirebaseBackend("/templates_contents")
@@ -786,6 +741,51 @@ def delete_project(project_id, remove_all_childs=False):
 ######################################################################################################
 # Helpers
 ######################################################################################################
+def _require_module(name=None, template=None, contents=None,
+                    overwrite=False, parent=None):
+    assert parent is not None
+    if name is None and template is not None:
+        template_path = "/".join(["templates", template])
+        name = FirebaseBackend(template_path).get('identifier')
+        if name is None:
+            raise ValueError('Template "' + template + '" has no identifier.')
+    if template is None and name is None:
+        raise ValueError('name and template cannot both be None.')
+    if contents is not None and template is not None:
+        raise ValueError('Cannot set contents if a template' +
+                         'is requested.')
+    if contents is not None:
+        if not isinstance(contents, (dict, list, np.ndarray)):
+            raise TypeError('Contents expected "dict" or "list" got "' +
+                            str(type(contents)) + '".')
+
+    module = Module(parent=parent, module_id=name)
+    if module._db.exists():
+        if template is not None or contents is not None:
+            if not overwrite:
+                raise NameError('Set overwrite to true if you want to ' +
+                                'overwrite the contents of the module.')
+
+    if template is not None:
+        template_cont_path = "/".join(["templates_contents", template])
+        template_contents = FirebaseBackend(template_cont_path).get()
+        # TODO give error if template does not exist
+        module._db.set(template_contents)
+    if contents is not None:
+        if '_inherits' in contents:
+            heritage = FirebaseBackend(contents['_inherits']).get()
+            if heritage is None:
+                raise NameError(
+                    'Can not inherit {}'.format(contents['_inherits']))
+            d = DictDiffer(contents, heritage)
+            keys = [key for key in list(d.added()) + list(d.changed())]
+            diffcont = {key: contents[key] for key in keys}
+            module._db.set(diffcont)
+        else:
+            module._db.set(contents)
+    return module
+
+
 def _assert_message_dtype(message):
     if not isinstance(message, dict):
         raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
