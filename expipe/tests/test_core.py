@@ -11,7 +11,7 @@ from mock_backend import create_mock_backend
 # TODO unique list in action attributes
 
 
-db = {
+db_action_manager = {
     "actions": {
         "retina": {
             "ret_1": {
@@ -27,20 +27,48 @@ db = {
 }
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db))
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db_action_manager))
 def test_action_manager():
     PROJECT_ID = "retina"
     project = expipe.core.Project(PROJECT_ID)
     action_manager = project.actions
 
     assert project == action_manager.project
-
-    assert db["actions"]["retina"] == action_manager.to_dict()
-    assert set(list(db["actions"]["retina"].keys())) == set(list(action_manager.keys()))
+    assert db_action_manager["actions"]["retina"] == action_manager.to_dict()
+    assert set(list(db_action_manager["actions"]["retina"].keys())) == set(list(action_manager.keys()))
     assert all(k in action_manager for k in ("ret_1", "ret_2"))
 
     with pytest.raises(KeyError):
         action_manager["ret_3"]
+
+
+db_module_manager = {
+    "project_modules": {
+        "retina": {
+            "ret_1": [0, 1, 2],
+            "ret_2": {
+                "type": "surgery",
+                "location": "room2",
+            },
+        },
+    }
+}
+
+
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db_module_manager))
+def test_module_manager():
+    PROJECT_ID = "retina"
+    project = expipe.core.Project(PROJECT_ID)
+    module_manager = project.modules
+    module = db_module_manager["project_modules"]["retina"]
+
+    assert project == module_manager.parent
+    assert module == module_manager.to_dict()
+    assert all(k in module_manager for k in ("ret_1", "ret_2"))
+    assert set(list(module.keys())) == set(list(module_manager.keys()))
+
+    with pytest.raises(KeyError):
+        module_manager["ret_3"]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())

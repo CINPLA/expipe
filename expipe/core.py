@@ -18,13 +18,16 @@ datetime_format = '%Y-%m-%dT%H:%M:%S'
 # Managers
 ######################################################################################################
 class ActionManager:
+    """
+    Manager class for retrieving actions in a project
+    """
     def __init__(self, project):
         self.project = project
         self._db = FirebaseBackend('/actions/' + project.id)
 
     def __getitem__(self, name):
         if not self._db.exists(name):
-            raise KeyError("Action '" + name + "' does not exist.")
+            raise KeyError("Action '{}' does not exist".format(name))
         return Action(project=self.project, action_id=name)
 
     def __iter__(self):
@@ -39,10 +42,6 @@ class ActionManager:
     def __contains__(self, name):
         return name in self._db.get(shallow=True)
 
-    def to_dict(self):
-        result = self._db.get() or dict()
-        return result
-
     def items(self):
         return collections.abc.ItemsView(self)
 
@@ -52,29 +51,52 @@ class ActionManager:
     def values(self):
         return collections.abc.ValuesView(self)
 
+    def to_dict(self):
+        result = self._db.get() or dict()
+        return result
+
 
 class ModuleManager:
+    """
+    Manager class for retrieving modules in a project or an action
+    """
     def __init__(self, parent):
         if isinstance(parent, Action):
-            module_path = '/'.join(['action_modules', parent.project.id,
-                                    parent.id])
+            module_path = '/'.join(['action_modules', parent.project.id, parent.id])
         elif isinstance(parent, Project):
             module_path = '/'.join(['project_modules', parent.id])
         else:
-            raise IOError('Parent of type "' + type(parent) +
-                          '" cannot have modules.')
+            raise IOError("Parent of type '{}' cannot have cannot have modules.".format(type(parent)))
+
         self.parent = parent
         self._db = FirebaseBackend(module_path)
 
     def __getitem__(self, name):
-        return Module(self.parent, name)
+        if not self._db.exists(name):
+            raise KeyError("Module '{}' does not exist".format(name))
+        return Module(parent=self.parent, module_id=name)
 
     def __iter__(self):
-        for name in self.keys():
-            yield self[name]
+        keys = self._db.get(shallow=True)
+        for key in keys:
+            yield key
+
+    def __len__(self):
+        keys = self._db.get(shallow=True)
+        return len(keys)
 
     def __contains__(self, name):
-        return name in self.keys()
+        return name in self._db.get(shallow=True)
+
+    def items(self):
+        # TODO check if this works for _inherits as well
+        return collections.abc.ItemsView(self)
+
+    def keys(self):
+        return collections.abc.KeysView(self)
+
+    def values(self):
+        return collections.abc.ValuesView(self)
 
     def to_dict(self):
         d = {}
@@ -83,37 +105,18 @@ class ModuleManager:
         return d
 
     def to_json(self, fname=None):
+        warnings.warn("module_manager.to_json() is depracated. Will be removed in next version!")
         import json
         fname = fname or self.parent.id
+
         if not fname.endswith('.json'):
             fname = fname + '.json'
         if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        print('Saving module "' + self.parent.id + '" to "' + fname + '"')
+            raise FileExistsError("The filename '{}' exists, choose another".format(fname))
+
+        print("Saving module '{}' to '{}'".format(self.parent.id, fname))
         with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_modules() or {}
-        return result.keys()
-
-    def items(self):  # TODO does not work with _inherits
-        result = self._get_modules() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_modules() or {}
-        return result.values()
-
-    def _get_modules(self):
-        result = self._db.get()
-        if isinstance(result, list):
-            if len(result) > 0:
-                raise TypeError('Got nonempty list, expected dict')
-            result = None
-        return result
+            json.dump(self.to_dict(), outfile, sort_keys=True, indent=4)
 
 
 class MessagesManager:
