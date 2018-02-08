@@ -254,7 +254,7 @@ def test_module_list():
 
 
 ######################################################################################################
-# MessagesManager
+# Message and MessageManager
 ######################################################################################################
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
 def test_action_messages_setter():
@@ -454,33 +454,36 @@ def test_delete_action():
 
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
+    message_manager = action.messages
     action_module = action.require_module(pytest.MODULE_ID,
                                           contents=module_contents,
                                           overwrite=True)
 
-    # mes = action.messages
-    # time = datetime(2017, 6, 1, 21, 42, 20)
-    # _datetimes = [time, time - timedelta(minutes=1)]
-    # _users = ['us1', 'us2']
-    # _messages = ['mes1', 'mes2']
-    # mes.messages = [{'message': m, 'user': u, 'datetime': d} for m, u, d in
-    #                 zip(_messages, _users, _datetimes)]
-    #
-    # for attr in ['subjects', 'users', 'tags']:
-    #     setattr(action, attr, ['sub1', 'sub2'])
-    # assert len(list(action.modules.keys())) != 0
-    # project.delete_action(action.id)
-    # with pytest.raises(NameError):
-    #     project.get_action(pytest.ACTION_ID)
-    #
-    # # remake and assert that all is deleted
-    # action = project.require_action(pytest.ACTION_ID)
-    # assert len(list(action.modules.keys())) == 0
-    # assert len(list(action_module.keys())) == 0
-    # for attr in ['subjects', 'users', 'tags']:
-    #     a = getattr(action, attr).data
-    #     assert a is None
-    # assert len(action.messages.messages) == 0
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    msg_1 = {'message': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'message': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    action.add_message(msg_1)
+    action.add_message(msg_2)
+
+    for attr in ['subjects', 'users', 'tags']:
+        setattr(action, attr, ['sub1', 'sub2'])
+    assert len(list(action.modules.keys())) != 0
+    project.delete_action(action.id)
+    with pytest.raises(NameError):
+        project.get_action(pytest.ACTION_ID)
+
+    # remake and assert that all is deleted
+    action = project.require_action(pytest.ACTION_ID)
+    assert len(list(action.modules.keys())) == 0
+    assert len(list(action_module.keys())) == 0
+    for attr in ['subjects', 'users', 'tags']:
+        a = getattr(action, attr).data
+        assert a is None
+    assert len(action.messages) == 0
 
 
 # @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())

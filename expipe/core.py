@@ -202,11 +202,9 @@ class Project:
         if action_data is None:
             raise NameError('Action "' + name + '" does not exist.')
         action = Action(self, name)
+        action.delete_messages()
         for module in list(action.modules.keys()):
             action.delete_module(module)
-        action.messages.messages = []
-        action.messages.datetimes = []
-        action.messages.users = []
         self._db_actions.delete(name)
         del action
 
@@ -259,6 +257,10 @@ class Action:
         result = copy.deepcopy(contents)  # TODO: Do we need deepcopy here?
         result['datetime'] = contents['datetime'].strftime(datetime_format)
         self._db_messages.push(result)
+
+    def delete_messages(self):
+        for message in self.messages:
+            self._db_messages.delete(name=message.id)
 
     @property
     def location(self):
