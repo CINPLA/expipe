@@ -2,15 +2,6 @@ import dpath.util
 import expipe
 
 
-def delete_keys_from_dict(data, key_list):
-    sub = data
-    for i in key_list[:-1]:
-        sub = sub[i]
-
-    del sub[key_list[-1]]
-    return data
-
-
 def create_mock_backend(data=None):
     data = {} if data is None else data
 
@@ -58,10 +49,7 @@ def create_mock_backend(data=None):
                 dpath.util.new(path=self.path + "/" + str(name), obj=self.data, value=value)
 
         def delete(self, name):
-            key_list = (self.path + "/" + name).split("/")
-            if "" in key_list:
-                key_list.remove("")
-            self.data = delete_keys_from_dict(self.data, key_list)
+            dpath.util.delete(glob=self.path + "/" + str(name), obj=self.data)
 
         def update(self, name, value=None):
             if value is None:

@@ -14,7 +14,7 @@ datetime_format = '%Y-%m-%dT%H:%M:%S'
 
 
 ######################################################################################################
-# Mangers
+# Managers
 ######################################################################################################
 class ActionManager:
     def __init__(self, project):
@@ -903,7 +903,7 @@ def convert_to_firebase(value):
     except TypeError:
         pass
     return result
-    
+
 
 def refresh_token():
     global auth, user

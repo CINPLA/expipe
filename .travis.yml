@@ -13,7 +13,7 @@ script:
 after_success:
   - pip install pyrebase
   - conda install -c defaults -c conda-forge pytest dpath quantities coverage codecov
-  - coverage run --source expipe -m py.test -s
+  - coverage run --source expipe --omit expipe/_version.py -m py.test -s
   - coverage report
   - codecov
 deploy:
