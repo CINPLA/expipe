@@ -486,44 +486,43 @@ def test_delete_action():
     assert len(action.messages) == 0
 
 
-# @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-# def test_fill_the_project():
-#     import quantities as pq
-#     from datetime import datetime, timedelta
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
+def test_fill_the_project():
+    import quantities as pq
+    from datetime import datetime, timedelta
 
-#     module_contents = {'species': {'value': 'rat'}}
-#
-#     project = expipe.require_project(pytest.PROJECT_ID)
-#     action = project.require_action(pytest.ACTION_ID)
-#
-#     quan = [1, 2] * pq.s
-#     module_contents = {'quan': quan}
-#     project_module = project.require_module(pytest.MODULE_ID,
-#                                             contents=module_contents,
-#                                             overwrite=True)
-#     mod_dict = project_module.to_dict()
-#     assert isinstance(mod_dict['quan'], pq.Quantity)
-#     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
-#
-#     time = datetime(2017, 6, 1, 21, 42, 20)
-#
-#     _messages = ['mes1', 'mes2']
-#     _datetimes = [time, time - timedelta(minutes=1)]
-#     _users = ['us1', 'us2']
-#
-#     messages = [{'message': m, 'datetime': d, 'user': u}
-#                 for m, d, u in zip(_messages, _datetimes, _users)]
-#     action.messages = messages
-#     mes = action.messages
-#
-#     orig_list = ['sub1', 'sub2']
-#     for attr in ['subjects', 'users', 'tags']:
-#         prop_list = getattr(action, attr)
-#         assert isinstance(prop_list, expipe.core.ProperyList)
-#         prop_list.append('sub3')
-#         orig_list.append('sub3')
-#         setattr(action, attr, orig_list)
-#         prop_list.extend(['sub3'])
-#         orig_list.extend(['sub3'])
-#         prop_list[1] = 'subsub'
-#         orig_list[1] = 'subsub'
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    quan = [1, 2] * pq.s
+    module_contents = {'quan': quan}
+    project_module = project.require_module(pytest.MODULE_ID,
+                                            contents=module_contents,
+                                            overwrite=True)
+    mod_dict = project_module.to_dict()
+    assert isinstance(mod_dict['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+
+    # time = datetime(2017, 6, 1, 21, 42, 20)
+    # msg_1 = {'message': 'sub1', 'user': 'usr1',
+    #          'datetime': time}
+    #
+    # msg_2 = {'message': 'sub2', 'user': 'usr2',
+    #          'datetime': time + timedelta(minutes=10)}
+    #
+    # action.add_message(msg_1)
+    # action.add_message(msg_2)
+
+    # orig_list = ['sub1', 'sub2']
+    # for attr in ['subjects', 'users', 'tags']:
+    #     prop_list = getattr(action, attr)
+    #     assert isinstance(prop_list, expipe.core.ProperyList)
+    #     prop_list.append('sub3')
+    #     orig_list.append('sub3')
+    #     setattr(action, attr, orig_list)
+    #     prop_list.extend(['sub3'])
+    #     orig_list.extend(['sub3'])
+    #     prop_list[1] = 'subsub'
+    #     orig_list[1] = 'subsub'
