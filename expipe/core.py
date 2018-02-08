@@ -13,128 +13,9 @@ import copy
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 
 
-class DictDiffer(object):
-    """
-    A dictionary difference calculator
-    Originally posted as:
-    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
-
-    Calculate the difference between two dictionaries as:
-    (1) items added
-    (2) items removed
-    (3) keys same in both but changed values
-    (4) keys same in both and unchanged values
-    """
-    def __init__(self, current_dict, past_dict):
-        self.current_dict, self.past_dict = current_dict, past_dict
-        self.current_keys, self.past_keys = [
-            set(d.keys()) for d in (current_dict, past_dict)
-        ]
-        self.intersect = self.current_keys.intersection(self.past_keys)
-
-    def added(self):
-        return self.current_keys - self.intersect
-
-    def removed(self):
-        return self.past_keys - self.intersect
-
-    def changed(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] != self.current_dict[o])
-
-    def unchanged(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] == self.current_dict[o])
-
-
-def convert_from_firebase(value):
-    """
-    Converts quantities back from dictionary
-    """
-    result = value
-    if isinstance(value, dict):
-        if "_force_dict" in value:
-            del value["_force_dict"]
-        if 'units' in value and "value" in value:
-            value['unit'] = value['units']
-            del(value['units'])
-        if "unit" in value and "value" in value:
-            if "uncertainty" in value:
-                try:
-                    result = pq.UncertainQuantity(value["value"],
-                                                  value["unit"],
-                                                  value["uncertainty"])
-                except Exception:
-                    pass
-            else:
-                try:
-                    result = pq.Quantity(value["value"], value["unit"])
-                except Exception:
-                    pass
-        else:
-            try:
-                for key, value in result.items():
-                    result[key] = convert_from_firebase(value)
-            except AttributeError:
-                pass
-    if isinstance(result, str):
-        if result == 'NaN':
-            result = np.nan
-    elif isinstance(result, list):
-        result = [v if v != 'NaN' else np.nan for v in result]
-    return result
-
-
-def convert_to_firebase(value):
-    """
-    Converts quantities to dictionary
-    """
-    if isinstance(value, dict):
-        if all(isinstance(key, int) or (isinstance(key, str) and key.isnumeric()) for key in value):
-            value["_force_dict"] = True
-    if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
-        if value.ndim >= 1:
-            value = value.tolist()
-    if isinstance(value, list):
-        value = [convert_to_firebase(val) for val in value]
-
-    result = value
-
-    if isinstance(value, pq.Quantity):
-        try:
-            val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
-        except TypeError:
-            val = value.magnitude.tolist()
-        result = {"value": val,
-                  "unit": value.dimensionality.string}
-        if isinstance(value, pq.UncertainQuantity):
-            assert(value.dimensionality == value.uncertainty.dimensionality)
-            result["uncertainty"] = value.uncertainty.magnitude.tolist()
-    elif isinstance(value, np.integer):
-        result = int(value)
-    elif isinstance(value, np.float):
-        result = float(value)
-    else:
-        # try if dictionary like objects can be converted if not return the
-        # original object
-        # Note, this might fail if .items() returns a strange combination of
-        # objects
-        try:
-            new_result = {}
-            for key, val in value.items():
-                new_key = convert_to_firebase(key)
-                new_result[new_key] = convert_to_firebase(val)
-            result = new_result
-        except AttributeError:
-            pass
-    try:
-        if not isinstance(value, list) and np.isnan(result):
-            result = 'NaN'
-    except TypeError:
-        pass
-    return result
-
-
+######################################################################################################
+# Mangers
+######################################################################################################
 class ActionManager:
     def __init__(self, project):
         self.project = project
@@ -168,241 +49,6 @@ class ActionManager:
     def values(self):
         result = self._db.get() or dict()
         return result.values()
-
-
-class Project:
-    def __init__(self, project_id):
-        self.id = project_id
-        self._db_actions = FirebaseBackend('/actions/' + project_id)
-        self._db_modules = FirebaseBackend('/project_modules/' + project_id)
-
-    @property
-    def actions(self):
-        return ActionManager(self)
-
-    def require_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
-            dtime = datetime.today().strftime(datetime_format)
-            self._db_actions.update(name, {"registered": dtime})
-        return Action(self, name)
-
-    def get_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
-            raise NameError('Action "' + name + '" does not exist')
-        return Action(self, name)
-
-    def delete_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
-            raise NameError('Action "' + name + '" does not exist.')
-        action = Action(self, name)
-        for module in list(action.modules.keys()):
-            action.delete_module(module)
-        action.messages.messages = []
-        action.messages.datetimes = []
-        action.messages.users = []
-        self._db_actions.delete(name)
-        del action
-
-    @property
-    def modules(self):
-        return ModuleManager(self)
-
-    def require_module(self, name=None, template=None, contents=None,
-                       overwrite=False):
-        return _require_module(name=name, template=template, contents=contents,
-                               overwrite=overwrite, parent=self)
-
-    def get_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise NameError('Module "' + name + '" does not exist')
-        return Module(self, name)
-
-    def delete_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise NameError('Module "' + name + '" does not exist.')
-        self._db_modules.delete(name)
-
-
-class FirebaseBackend:
-    def __init__(self, path):
-        self.path = path
-        self.id_token = None
-        self.refresh_token = None
-        self.token_expiration = datetime.now()
-
-    def ensure_auth(self):
-        current_time = datetime.now()
-        api_key = expipe.settings["firebase"]["config"]["apiKey"]
-
-        if self.id_token is not None and self.refresh_token is not None:
-            if current_time + timedelta(0, 10) < self.token_expiration and False:
-                return
-            auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
-            auth_data = {
-                "grant_type": "refresh_token",
-                "refresh_token": self.refresh_token
-            }
-
-            response = requests.post(auth_url, json=auth_data)
-            value = response.json()
-            assert(response.status_code == 200)
-            assert("errors" not in value)
-            self.id_token = value["id_token"]
-            self.refresh_token = value["refresh_token"]
-            return
-
-        auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
-        auth_data = {
-            "email": expipe.settings["firebase"]["email"],
-            "password": expipe.settings["firebase"]["password"],
-            "returnSecureToken": True
-        }
-        response = requests.post(auth_url, json=auth_data)
-        assert(response.status_code == 200)
-        value = response.json()
-        assert("errors" not in value)
-        self.refresh_token = value["refreshToken"]
-        self.id_token = value["idToken"]
-        self.token_expiration = current_time + datetime.timedelta(0, int(value["expiresIn"]))
-
-    def build_url(self, name=None):
-        if name is None:
-            full_path = self.path
-        else:
-            full_path = "/".join([self.path, name])
-        database_url = expipe.settings["firebase"]["config"]["databaseURL"]
-        return "{database_url}/{name}.json?auth={id_token}".format(
-            database_url=database_url,
-            name=full_path,
-            id_token=self.id_token
-        )
-
-    def exists(self, name=None):
-        self.ensure_auth()
-        value = self.get(name, shallow=True)
-        if value:
-            return True
-        else:
-            return False
-
-    def get(self, name=None, shallow=False):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if shallow:
-            url += "&shallow=true"
-        print("URL", url)
-        response = requests.get(url)
-        print("Get result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        assert("errors" not in value)
-        value = convert_from_firebase(value)
-        return value
-
-    def get_keys(self, name=None):
-        return self.get(name, shallow=True)
-
-    def set(self, name, value=None):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if value is None:
-            value = name
-        print("URL", url)
-        response = requests.put(url, json=value)
-        print("Set result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        assert("errors" not in value)
-
-    def delete(self, name):
-        db.child(self.path).child(name).set({}, user["idToken"])
-
-    def update(self, name, value=None):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if value is None:
-            value = name
-        value = convert_to_firebase(value)
-        print("URL", url)
-        response = requests.patch(url, json=value)
-        print("Set result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        assert("errors" not in value)
-        value = convert_from_firebase(value)
-        return value
-
-
-class Module:
-    def __init__(self, parent, module_id):
-        self.parent = parent
-        if not isinstance(module_id, str):
-            raise TypeError('Module name must be string')
-        self.id = module_id
-        if isinstance(parent, Action):
-            path = '/'.join(['action_modules', parent.project.id,
-                             parent.id, self.id])
-        elif isinstance(parent, Project):
-            path = '/'.join(['project_modules', parent.id, self.id])
-        else:
-            raise IOError('Parent of type "' + type(parent) +
-                          '" cannot have modules.')
-        self._db = FirebaseBackend(path)
-
-    # TODO module reference id
-
-    def to_dict(self):
-        d = self._db.get()
-        if d is None:
-            return {}
-        if '_inherits' in d:
-            inherit = FirebaseBackend(d['_inherits']).get()
-            if inherit is None:
-                raise ValueError('Module "' + self.id + '" is unable to ' +
-                                 'inherit "' + d['_inherits'] + '"')
-            inherit.update(d)
-            d = inherit
-        return d
-
-    def to_json(self, fname=None):
-        import json
-        fname = fname or self.id
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        print('Saving module "' + self.id + '" to "' + fname + '"')
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_module_content() or {}
-        return result.keys()
-
-    def items(self):
-        result = self._get_module_content() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_module_content()
-        if result is None:
-            result = dict()
-        return result.values()
-
-    def _get_module_content(self):
-        result = self._db.get()
-        if isinstance(result, list):
-            if len(result) > 0:
-                raise TypeError('Got nonempty list, expected dict')
-            result = None
-        return result
 
 
 class ModuleManager:
@@ -466,95 +112,6 @@ class ModuleManager:
                 raise TypeError('Got nonempty list, expected dict')
             result = None
         return result
-
-
-class Filerecord:
-    def __init__(self, action, filerecord_id=None):
-        self.id = filerecord_id or "main"  # oneliner hack by Mikkel
-        self.action = action
-
-        # TODO make into properties/functions in case settings change
-        self.exdir_path = op.join(action.project.id, action.id,
-                                  self.id + ".exdir")
-        if 'data_path' in expipe.settings:
-            self.local_path = op.join(expipe.settings["data_path"],
-                                      self.exdir_path)
-        else:
-            self.local_path = None
-        if 'server_path' in expipe.settings:
-            self.server_path = op.join(expipe.settings['server']["data_path"],
-                                       self.exdir_path)
-        else:
-            self.server_path = None
-
-        # TODO if not exists and not required, return error
-        ref_path = "/".join(["files", action.project.id, action.id])
-        self._db = FirebaseBackend(ref_path)
-        if not self._db.get(self.id):
-            self._db.update(self.id, {"path": self.exdir_path})
-
-
-class ProperyList:
-    def __init__(self, db_instance, name, dtype=None, unique=False,
-                 data=None):
-        self._db = db_instance
-        self.name = name
-        self.dtype = dtype
-        self.unique = unique
-        self.data = data or self._db.get(self.name)
-
-    def __iter__(self):
-        data = self.data or []
-        for d in data:
-            yield d
-
-    def __getitem__(self, args):
-        data = self.data or []
-        return data[args]
-
-    def __len__(self):
-        data = self.data or []
-        return len(data)
-
-    def __contains__(self, value):
-        value = self.dtype_manager(value)
-        return value in self.data
-
-    def __str__(self):
-        return self.data.__str__()
-
-    def __repr__(self):
-        return self.data.__repr__()
-
-    def append(self, value):
-        data = self.data or []
-        result = self.dtype_manager(value)
-        data.append(result)
-        if self.unique:
-            data = list(set(data))
-        self._db.set(self.name, data)
-
-    def extend(self, value):
-        data = self.data or []
-        result = self.dtype_manager(value, iter_value=True)
-        data.extend(result)
-        if self.unique:
-            data = list(set(data))
-        self._db.set(self.name, data)
-
-    def dtype_manager(self, value, iter_value=False, retrieve=False):
-        if value is None or self.dtype is None:
-            return
-        if iter_value:
-            if not all(isinstance(v, self.dtype) for v in value):
-                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                                str([type(v) for v in value]))
-        else:
-            if not isinstance(value, self.dtype):
-                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
-                                str(type(value)))
-
-        return value
 
 
 class MessagesManager:
@@ -626,6 +183,67 @@ class MessagesManager:
             raise TypeError('Datetime must be of type "datetime"')
         if not isinstance(message['user'], str):
             raise TypeError('User must be of type "str"')
+
+
+######################################################################################################
+# Main classes
+######################################################################################################
+class Project:
+    def __init__(self, project_id):
+        self.id = project_id
+        self._db_actions = FirebaseBackend('/actions/' + project_id)
+        self._db_modules = FirebaseBackend('/project_modules/' + project_id)
+
+    @property
+    def actions(self):
+        return ActionManager(self)
+
+    def require_action(self, name):
+        action_data = self._db_actions.get(name)
+        if action_data is None:
+            dtime = datetime.today().strftime(datetime_format)
+            self._db_actions.update(name, {"registered": dtime})
+        return Action(self, name)
+
+    def get_action(self, name):
+        action_data = self._db_actions.get(name)
+        if action_data is None:
+            raise NameError('Action "' + name + '" does not exist')
+        return Action(self, name)
+
+    def delete_action(self, name):
+        action_data = self._db_actions.get(name)
+        if action_data is None:
+            raise NameError('Action "' + name + '" does not exist.')
+        action = Action(self, name)
+        for module in list(action.modules.keys()):
+            action.delete_module(module)
+        action.messages.messages = []
+        action.messages.datetimes = []
+        action.messages.users = []
+        self._db_actions.delete(name)
+        del action
+
+    @property
+    def modules(self):
+        return ModuleManager(self)
+
+    def require_module(self, name=None, template=None, contents=None,
+                       overwrite=False):
+        return _require_module(name=name, template=template, contents=contents,
+                               overwrite=overwrite, parent=self)
+
+    def get_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise NameError('Module "' + name + '" does not exist')
+        return Module(self, name)
+
+    def delete_module(self, name):
+        result = self._db_modules.get(name)
+        if result is None:
+            raise NameError('Module "' + name + '" does not exist.')
+        self._db_modules.delete(name)
 
 
 class Action:
@@ -757,6 +375,275 @@ class Action:
         return class_type(self, name)
 
 
+class Module:
+    def __init__(self, parent, module_id):
+        self.parent = parent
+        if not isinstance(module_id, str):
+            raise TypeError('Module name must be string')
+        self.id = module_id
+        if isinstance(parent, Action):
+            path = '/'.join(['action_modules', parent.project.id,
+                             parent.id, self.id])
+        elif isinstance(parent, Project):
+            path = '/'.join(['project_modules', parent.id, self.id])
+        else:
+            raise IOError('Parent of type "' + type(parent) +
+                          '" cannot have modules.')
+        self._db = FirebaseBackend(path)
+
+    # TODO module reference id
+
+    def to_dict(self):
+        d = self._db.get()
+        if d is None:
+            return {}
+        if '_inherits' in d:
+            inherit = FirebaseBackend(d['_inherits']).get()
+            if inherit is None:
+                raise ValueError('Module "' + self.id + '" is unable to ' +
+                                 'inherit "' + d['_inherits'] + '"')
+            inherit.update(d)
+            d = inherit
+        return d
+
+    def to_json(self, fname=None):
+        import json
+        fname = fname or self.id
+        if not fname.endswith('.json'):
+            fname = fname + '.json'
+        if op.exists(fname):
+            raise FileExistsError('The filename "' + fname +
+                                  '" exists, choose another')
+        print('Saving module "' + self.id + '" to "' + fname + '"')
+        with open(fname, 'w') as outfile:
+            json.dump(self.to_dict(), outfile,
+                      sort_keys=True, indent=4)
+
+    def keys(self):
+        result = self._get_module_content() or {}
+        return result.keys()
+
+    def items(self):
+        result = self._get_module_content() or {}
+        return result.items()
+
+    def values(self):
+        result = self._get_module_content()
+        if result is None:
+            result = dict()
+        return result.values()
+
+    def _get_module_content(self):
+        result = self._db.get()
+        if isinstance(result, list):
+            if len(result) > 0:
+                raise TypeError('Got nonempty list, expected dict')
+            result = None
+        return result
+
+
+class FirebaseBackend:
+    def __init__(self, path):
+        self.path = path
+        self.id_token = None
+        self.refresh_token = None
+        self.token_expiration = datetime.now()
+
+    def ensure_auth(self):
+        current_time = datetime.now()
+        api_key = expipe.settings["firebase"]["config"]["apiKey"]
+
+        if self.id_token is not None and self.refresh_token is not None:
+            if current_time + timedelta(0, 10) < self.token_expiration and False:
+                return
+            auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
+            auth_data = {
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token
+            }
+
+            response = requests.post(auth_url, json=auth_data)
+            value = response.json()
+            assert(response.status_code == 200)
+            assert("errors" not in value)
+            self.id_token = value["id_token"]
+            self.refresh_token = value["refresh_token"]
+            return
+
+        auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
+        auth_data = {
+            "email": expipe.settings["firebase"]["email"],
+            "password": expipe.settings["firebase"]["password"],
+            "returnSecureToken": True
+        }
+        response = requests.post(auth_url, json=auth_data)
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
+        self.refresh_token = value["refreshToken"]
+        self.id_token = value["idToken"]
+        self.token_expiration = current_time + datetime.timedelta(0, int(value["expiresIn"]))
+
+    def build_url(self, name=None):
+        if name is None:
+            full_path = self.path
+        else:
+            full_path = "/".join([self.path, name])
+        database_url = expipe.settings["firebase"]["config"]["databaseURL"]
+        return "{database_url}/{name}.json?auth={id_token}".format(
+            database_url=database_url,
+            name=full_path,
+            id_token=self.id_token
+        )
+
+    def exists(self, name=None):
+        self.ensure_auth()
+        value = self.get(name, shallow=True)
+        if value:
+            return True
+        else:
+            return False
+
+    def get(self, name=None, shallow=False):
+        self.ensure_auth()
+        url = self.build_url(name)
+        if shallow:
+            url += "&shallow=true"
+        print("URL", url)
+        response = requests.get(url)
+        print("Get result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
+        value = convert_from_firebase(value)
+        return value
+
+    def get_keys(self, name=None):
+        return self.get(name, shallow=True)
+
+    def set(self, name, value=None):
+        self.ensure_auth()
+        url = self.build_url(name)
+        if value is None:
+            value = name
+        print("URL", url)
+        response = requests.put(url, json=value)
+        print("Set result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
+
+    def delete(self, name):
+        db.child(self.path).child(name).set({}, user["idToken"])
+
+    def update(self, name, value=None):
+        self.ensure_auth()
+        url = self.build_url(name)
+        if value is None:
+            value = name
+        value = convert_to_firebase(value)
+        print("URL", url)
+        response = requests.patch(url, json=value)
+        print("Set result", response.json())
+        assert(response.status_code == 200)
+        value = response.json()
+        assert("errors" not in value)
+        value = convert_from_firebase(value)
+        return value
+
+
+class Filerecord:
+    def __init__(self, action, filerecord_id=None):
+        self.id = filerecord_id or "main"  # oneliner hack by Mikkel
+        self.action = action
+
+        # TODO make into properties/functions in case settings change
+        self.exdir_path = op.join(action.project.id, action.id,
+                                  self.id + ".exdir")
+        if 'data_path' in expipe.settings:
+            self.local_path = op.join(expipe.settings["data_path"],
+                                      self.exdir_path)
+        else:
+            self.local_path = None
+        if 'server_path' in expipe.settings:
+            self.server_path = op.join(expipe.settings['server']["data_path"],
+                                       self.exdir_path)
+        else:
+            self.server_path = None
+
+        # TODO if not exists and not required, return error
+        ref_path = "/".join(["files", action.project.id, action.id])
+        self._db = FirebaseBackend(ref_path)
+        if not self._db.get(self.id):
+            self._db.update(self.id, {"path": self.exdir_path})
+
+
+class ProperyList:
+    def __init__(self, db_instance, name, dtype=None, unique=False,
+                 data=None):
+        self._db = db_instance
+        self.name = name
+        self.dtype = dtype
+        self.unique = unique
+        self.data = data or self._db.get(self.name)
+
+    def __iter__(self):
+        data = self.data or []
+        for d in data:
+            yield d
+
+    def __getitem__(self, args):
+        data = self.data or []
+        return data[args]
+
+    def __len__(self):
+        data = self.data or []
+        return len(data)
+
+    def __contains__(self, value):
+        value = self.dtype_manager(value)
+        return value in self.data
+
+    def __str__(self):
+        return self.data.__str__()
+
+    def __repr__(self):
+        return self.data.__repr__()
+
+    def append(self, value):
+        data = self.data or []
+        result = self.dtype_manager(value)
+        data.append(result)
+        if self.unique:
+            data = list(set(data))
+        self._db.set(self.name, data)
+
+    def extend(self, value):
+        data = self.data or []
+        result = self.dtype_manager(value, iter_value=True)
+        data.extend(result)
+        if self.unique:
+            data = list(set(data))
+        self._db.set(self.name, data)
+
+    def dtype_manager(self, value, iter_value=False, retrieve=False):
+        if value is None or self.dtype is None:
+            return
+        if iter_value:
+            if not all(isinstance(v, self.dtype) for v in value):
+                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                                str([type(v) for v in value]))
+        else:
+            if not isinstance(value, self.dtype):
+                raise TypeError('Expected ' + str(self.dtype) + ' got ' +
+                                str(type(value)))
+
+        return value
+
+
+######################################################################################################
+# utilities
+######################################################################################################
 def _require_module(name=None, template=None, contents=None,
                     overwrite=False, parent=None):
     assert parent is not None
@@ -893,12 +780,130 @@ def delete_project(project_id, remove_all_childs=False):
         project_db.delete(name=project_id)
 
 
-def _init_module():
+######################################################################################################
+# Helpers
+######################################################################################################
+class DictDiffer(object):
     """
-    Helper function, which can abort if loading fails.
-    """
-    return True
+    A dictionary difference calculator
+    Originally posted as:
+    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
 
+    Calculate the difference between two dictionaries as:
+    (1) items added
+    (2) items removed
+    (3) keys same in both but changed values
+    (4) keys same in both and unchanged values
+    """
+    def __init__(self, current_dict, past_dict):
+        self.current_dict, self.past_dict = current_dict, past_dict
+        self.current_keys, self.past_keys = [
+            set(d.keys()) for d in (current_dict, past_dict)
+        ]
+        self.intersect = self.current_keys.intersection(self.past_keys)
+
+    def added(self):
+        return self.current_keys - self.intersect
+
+    def removed(self):
+        return self.past_keys - self.intersect
+
+    def changed(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] != self.current_dict[o])
+
+    def unchanged(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] == self.current_dict[o])
+
+
+def convert_from_firebase(value):
+    """
+    Converts quantities back from dictionary
+    """
+    result = value
+    if isinstance(value, dict):
+        if "_force_dict" in value:
+            del value["_force_dict"]
+        if 'units' in value and "value" in value:
+            value['unit'] = value['units']
+            del(value['units'])
+        if "unit" in value and "value" in value:
+            if "uncertainty" in value:
+                try:
+                    result = pq.UncertainQuantity(value["value"],
+                                                  value["unit"],
+                                                  value["uncertainty"])
+                except Exception:
+                    pass
+            else:
+                try:
+                    result = pq.Quantity(value["value"], value["unit"])
+                except Exception:
+                    pass
+        else:
+            try:
+                for key, value in result.items():
+                    result[key] = convert_from_firebase(value)
+            except AttributeError:
+                pass
+    if isinstance(result, str):
+        if result == 'NaN':
+            result = np.nan
+    elif isinstance(result, list):
+        result = [v if v != 'NaN' else np.nan for v in result]
+    return result
+
+
+def convert_to_firebase(value):
+    """
+    Converts quantities to dictionary
+    """
+    if isinstance(value, dict):
+        if all(isinstance(key, int) or (isinstance(key, str) and key.isnumeric()) for key in value):
+            value["_force_dict"] = True
+    if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
+        if value.ndim >= 1:
+            value = value.tolist()
+    if isinstance(value, list):
+        value = [convert_to_firebase(val) for val in value]
+
+    result = value
+
+    if isinstance(value, pq.Quantity):
+        try:
+            val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
+        except TypeError:
+            val = value.magnitude.tolist()
+        result = {"value": val,
+                  "unit": value.dimensionality.string}
+        if isinstance(value, pq.UncertainQuantity):
+            assert(value.dimensionality == value.uncertainty.dimensionality)
+            result["uncertainty"] = value.uncertainty.magnitude.tolist()
+    elif isinstance(value, np.integer):
+        result = int(value)
+    elif isinstance(value, np.float):
+        result = float(value)
+    else:
+        # try if dictionary like objects can be converted if not return the
+        # original object
+        # Note, this might fail if .items() returns a strange combination of
+        # objects
+        try:
+            new_result = {}
+            for key, val in value.items():
+                new_key = convert_to_firebase(key)
+                new_result[new_key] = convert_to_firebase(val)
+            result = new_result
+        except AttributeError:
+            pass
+    try:
+        if not isinstance(value, list) and np.isnan(result):
+            result = 'NaN'
+    except TypeError:
+        pass
+    return result
+    
 
 def refresh_token():
     global auth, user
@@ -916,6 +921,3 @@ def refresh_token():
               "Try running expipe.configure() again.\n"
               "For more info see:\n\n"
               "\texpipe.configure?\n\n")
-
-
-_init_module()

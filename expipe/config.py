@@ -110,7 +110,7 @@ def ensure_testing():
         settings = debug_settings
     assert("allow_tests" in settings and settings["allow_tests"])
     expipe.settings = settings
-    expipe.core._init_module()
+
 
 class Settings:
     def __init__(self):
