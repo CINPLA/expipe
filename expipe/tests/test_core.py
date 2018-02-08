@@ -34,10 +34,9 @@ def test_action_manager():
     action_manager = project.actions
 
     assert project == action_manager.project
+
     assert db["actions"]["retina"] == action_manager.to_dict()
-    assert db["actions"]["retina"].items() == action_manager.items()
-    assert all(k in db["actions"]["retina"].values() for k in action_manager.values())
-    assert all(k in db["actions"]["retina"].keys() for k in action_manager.keys())
+    assert set(list(db["actions"]["retina"].keys())) == set(list(action_manager.keys()))
     assert all(k in action_manager for k in ("ret_1", "ret_2"))
 
     with pytest.raises(KeyError):

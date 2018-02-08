@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import os
 import os.path as op
 import requests
+import collections
 
 import quantities as pq
 import numpy as np
@@ -22,33 +23,34 @@ class ActionManager:
         self._db = FirebaseBackend('/actions/' + project.id)
 
     def __getitem__(self, name):
-        result = self._db.get(name)
-        if not result:
+        if not self._db.exists(name):
             raise KeyError("Action '" + name + "' does not exist.")
         return Action(project=self.project, action_id=name)
 
     def __iter__(self):
-        for key in self.keys():
-            yield Action(project=self.project, action_id=key)
+        keys = self._db.get(shallow=True)
+        for key in keys:
+            yield key
+
+    def __len__(self):
+        keys = self._db.get(shallow=True)
+        return len(keys)
 
     def __contains__(self, name):
-        return name in self.keys()
-
-    def keys(self):
-        result = self._db.get_keys() or list()
-        return result
+        return name in self._db.get(shallow=True)
 
     def to_dict(self):
         result = self._db.get() or dict()
         return result
 
     def items(self):
-        result = self._db.get() or dict()
-        return result.items()
+        return collections.abc.ItemsView(self)
+
+    def keys(self):
+        return collections.abc.KeysView(self)
 
     def values(self):
-        result = self._db.get() or dict()
-        return result.values()
+        return collections.abc.ValuesView(self)
 
 
 class ModuleManager:

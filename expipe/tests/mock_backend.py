@@ -17,7 +17,7 @@ def create_mock_backend(data=None):
             else:
                 return False
 
-        def get(self, name=None):
+        def get(self, name=None, shallow=False):
             try:
                 if name is None:
                     value = dpath.util.get(glob=self.path, obj=self.data)
