@@ -682,7 +682,7 @@ class FirebaseBackend:
         if value is None:
             value = name
         print("URL", url)
-        response = requests.push(url, json=value)  # QUESTION: should this be post?
+        response = requests.post(url, json=value) 
         print("Push result", response.json())
         assert(response.status_code == 200)
         value = response.json()
