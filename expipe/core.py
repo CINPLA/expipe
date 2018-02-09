@@ -921,21 +921,3 @@ def convert_to_firebase(value):
     except TypeError:
         pass
     return result
-
-
-def refresh_token():
-    global auth, user
-    config = expipe.settings['firebase']['config']
-    firebase = pyrebase.initialize_app(config)
-    try:
-        email = expipe.settings['firebase']['email']
-        password = expipe.settings['firebase']['password']
-        auth = firebase.auth()
-        user = None
-        if email and password:
-            user = auth.sign_in_with_email_and_password(email, password)
-    except KeyError:
-        print("Could not find email and password in configuration.\n"
-              "Try running expipe.configure() again.\n"
-              "For more info see:\n\n"
-              "\texpipe.configure?\n\n")
