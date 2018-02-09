@@ -30,7 +30,7 @@ test:
     - coverage
     - codecov
   imports:
-    - pylgn
+    - expipe
   commands:
     - coverage run --source expipe --omit expipe/_version.py -m py.test -s
     - coverage report
