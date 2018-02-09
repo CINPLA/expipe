@@ -21,7 +21,20 @@ requirements:
     - pyyaml
     - numpy
 
-# NOTE cannot do tests here beacuse of pyrebase from pip (issues with noarch), but is tested in travis
+test:
+  source_files:
+    - expipe
+  requires:
+    - pytest
+    - dpath
+    - coverage
+    - codecov
+  imports:
+    - pylgn
+  commands:
+    - coverage run --source expipe --omit expipe/_version.py -m py.test -s
+    - coverage report
+    - codecov
 
 about:
   home: https://github.com/CINPLA/expipe/
