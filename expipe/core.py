@@ -66,7 +66,7 @@ class ModuleManager:
         elif isinstance(parent, Project):
             module_path = '/'.join(['project_modules', parent.id])
         else:
-            raise IOError("Parent of type '{}' cannot have modules.".format(type(parent)))
+            raise TypeError("Parent of type '{}' cannot have modules.".format(type(parent)))
 
         self.parent = parent
         self._db = FirebaseBackend(module_path)
@@ -125,7 +125,7 @@ class Message:
             raise TypeError('Module name must be string')
 
         if not isinstance(action, Action):
-            raise IOError("Parent must be of type Action, given type {}".format(type(action)))
+            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
 
         path = '/'.join(['action_messages', action.project.id, action.id, message_id])
 
@@ -155,7 +155,7 @@ class MessageManager:
     """
     def __init__(self, action):
         if not isinstance(action, Action):
-            raise IOError("Parent must be of type Action, given type {}".format(type(action)))
+            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
 
         path = "/".join(["action_messages", action.project.id, action.id])
         self._db = FirebaseBackend(path)

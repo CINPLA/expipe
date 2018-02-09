@@ -131,7 +131,7 @@ def test_module_manager():
     with pytest.raises(KeyError):
         module_manager["ret_3"]
 
-    with pytest.raises(IOError):
+    with pytest.raises(TypeError):
         expipe.core.ModuleManager(parent=None)
 
 
