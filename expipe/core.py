@@ -175,7 +175,16 @@ class MessageManager:
 # Main classes
 ######################################################################################################
 class Project:
+    """
+    Expipe project object
+    """
     def __init__(self, project_id):
+        """
+        Parameters
+        ----------
+        project_id: str
+            Name of the project
+        """
         self.id = project_id
         self._db_actions = FirebaseBackend('/actions/' + project_id)
         self._db_modules = FirebaseBackend('/project_modules/' + project_id)
@@ -185,23 +194,44 @@ class Project:
         return ActionManager(self)
 
     def require_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
+        """
+        Get an action, creating it if it doesn’t exist.
+        """
+        exists = self._db_actions.exists(name)
+        if exists:
+            return Action(self, name)
+        else:
             dtime = datetime.today().strftime(datetime_format)
             self._db_actions.update(name, {"registered": dtime})
+            return Action(self, name)
+
+    def create_action(self, name):
+        """
+        Create and return an action
+        """
+        exists = self._db_actions.exists(name)
+        if exists:
+            raise NameError("Action {} already exists in project {}".format(name, self.id))
+
+        dtime = datetime.today().strftime(datetime_format)
+        self._db_actions.update(name, {"registered": dtime})
+
         return Action(self, name)
 
     def get_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
-            raise NameError('Action "' + name + '" does not exist')
+        """
+        Get an existing action
+        """
+        exists = self._db_actions.exists(name)
+        if not exists:
+            raise NameError("Action {} does not exist in project {}".format(name, self.id))
         return Action(self, name)
 
     def delete_action(self, name):
-        action_data = self._db_actions.get(name)
-        if action_data is None:
-            raise NameError('Action "' + name + '" does not exist.')
-        action = Action(self, name)
+        """
+        Delete an action
+        """
+        action = self.get_action(name)
         action.delete_messages()
         for module in list(action.modules.keys()):
             action.delete_module(module)
