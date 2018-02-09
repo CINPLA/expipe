@@ -487,6 +487,34 @@ def test_delete_action():
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
+def test_require_create_get_action():
+    project = expipe.core.require_project(pytest.PROJECT_ID)
+
+    # Get a non-existing action
+    with pytest.raises(NameError):
+        action = project.get_action(pytest.ACTION_ID)
+
+    # Create an existing action
+    action = project.create_action(pytest.ACTION_ID)
+    with pytest.raises(NameError):
+        action = project.create_action(pytest.ACTION_ID)
+
+    # Require an existing action
+    action_req = project.require_action(pytest.ACTION_ID)
+    assert action_req.id == action.id
+
+    # delete action
+    project.delete_action(pytest.ACTION_ID)
+    with pytest.raises(NameError):
+        action = project.get_action(pytest.ACTION_ID)
+
+    # Require a non-existing action
+    action_req = project.require_action(pytest.ACTION_ID)
+    action = project.get_action(pytest.ACTION_ID)
+    assert action_req.id == action.id
+
+
+@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
 def test_fill_the_project():
     import quantities as pq
     from datetime import datetime, timedelta

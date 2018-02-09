@@ -31,16 +31,16 @@ class ActionManager:
         return Action(project=self.project, action_id=name)
 
     def __iter__(self):
-        keys = self._db.get(shallow=True)
+        keys = self._db.get(shallow=True) or []
         for key in keys:
             yield key
 
     def __len__(self):
-        keys = self._db.get(shallow=True)
+        keys = self._db.get(shallow=True) or []
         return len(keys)
 
     def __contains__(self, name):
-        return name in self._db.get(shallow=True)
+        return name in (self._db.get(shallow=True) or [])
 
     def items(self):
         return collections.abc.ItemsView(self)
@@ -77,16 +77,16 @@ class ModuleManager:
         return Module(parent=self.parent, module_id=name)
 
     def __iter__(self):
-        keys = self._db.get(shallow=True)
+        keys = self._db.get(shallow=True) or []
         for key in keys:
             yield key
 
     def __len__(self):
-        keys = self._db.get(shallow=True)
+        keys = self._db.get(shallow=True) or []
         return len(keys)
 
     def __contains__(self, name):
-        return name in self._db.get(shallow=True)
+        return name in (self._db.get(shallow=True) or [])
 
     def items(self):
         # TODO check if this works for _inherits as well
