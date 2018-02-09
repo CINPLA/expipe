@@ -77,6 +77,9 @@ class ModuleManager:
     def __getitem__(self, name):
         if not self._db.exists(name):
             raise KeyError("Module '{}' does not exist".format(name))
+        return self._get(name)
+
+    def _get(self, name):
         return Module(parent=self.parent, module_id=name)
 
     def __iter__(self):
@@ -159,6 +162,7 @@ class MessageManager:
 # Main classes
 ######################################################################################################
 class Project:
+    # TODO: shares require_module and create_module with the Action class
     """
     Expipe project object
     """
@@ -189,8 +193,8 @@ class Project:
         exists = self._db_actions.exists(name)
         if exists:
             return self.actions._get(name)
-        else:
-            return self._create_action(name)
+
+        return self._create_action(name)
 
     def create_action(self, name):
         """
@@ -230,24 +234,31 @@ class Project:
         Get a module, creating it if it doesn’t exist.
         """
         warnings.warn("The 'overwrite' argument is deprecated.")
-        return self.create_module(
+
+        if name is None:
+            name, contents = _load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            return self.modules._get(name)
+
+        return _create_module(
+            parent=self,
             name=name,
-            template=template,
-            contents=contents,
-            overwrite=overwrite
+            contents=contents
         )
 
     def create_module(self, name=None, template=None, contents=None, overwrite=False):
         """
         Create and return a module. Fails if the target name already exists.
         """
+        # TODO: what if name is noen
         if name is None:
             name, contents = _load_template(template)
 
         if self._db_modules.exists(name) and not overwrite:
             raise NameError("Module {} already exist in project {}. ".format(name, self.id))
 
-        return _require_module(
+        return _create_module(
             parent=self,
             name=name,
             contents=contents
@@ -400,11 +411,17 @@ class Action:
         Get a module, creating it if it doesn’t exist.
         """
         warnings.warn("The 'overwrite' argument is deprecated.")
-        return self.create_module(
+
+        if name is None:
+            name, contents = _load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            return self.modules._get(name)
+
+        return _create_module(
+            parent=self,
             name=name,
-            template=template,
-            contents=contents,
-            overwrite=overwrite
+            contents=contents
         )
 
     def create_module(self, name=None, template=None, contents=None, overwrite=False):
@@ -417,7 +434,7 @@ class Action:
         if self._db_modules.exists(name) and not overwrite:
             raise NameError("Module {} already exist in project {}. ".format(name, self.id))
 
-        return _require_module(
+        return _create_module(
             parent=self,
             name=name,
             contents=contents
@@ -887,7 +904,7 @@ def _load_template(template):
     return name, contents
 
 
-def _require_module(parent, name, contents):
+def _create_module(parent, name, contents):
     module = Module(parent=parent, module_id=name)
 
     if not isinstance(contents, (dict, list, np.ndarray)):

@@ -3,6 +3,9 @@ from unittest import mock
 import expipe
 from mock_backend import create_mock_backend
 
+# TODO test _assert_message_dtype
+# TODO test _load_template
+# TODO test _create_module
 # TODO test filerecord and Datafile and whatever it is for?
 # TODO test if you can give template identifier which is not unique
 # TODO support numeric keys without being list
