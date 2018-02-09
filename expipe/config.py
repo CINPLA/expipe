@@ -11,6 +11,7 @@ test_settings_file_path = os.path.join(config_dir, 'test-config.yaml')
 default_settings = {
     'data_path': os.path.join(os.path.join(os.path.expanduser('~'), 'expipe_data')),
     'database_version': 1,
+    "username": "nobody",
     'firebase': {
         'email': '',
         'password': '',
@@ -27,6 +28,7 @@ debug_settings = {
     'allow_tests': 'true',
     'database_version': 1,
     'data_path': '/tmp/expipe_data',
+    "username": "nobody",
     'firebase': {
         'email': 'debug-bot@cinpla.com',
         'password': 'noneed',
