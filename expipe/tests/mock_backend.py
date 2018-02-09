@@ -54,6 +54,7 @@ def create_mock_backend(data=None):
             import numpy as np
             name = str(np.random.random())
             self.set(name=name, value=value)
+            return {"name": name}
 
         def delete(self, name):
             dpath.util.delete(glob=self.path + "/" + str(name), obj=self.data)
