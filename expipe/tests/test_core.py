@@ -142,12 +142,12 @@ def test_module_to_dict():
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.core.require_project(pytest.PROJECT_ID)
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents)
 
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents)
 
     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
         d = DictDiffer(module_dict, module_contents)
@@ -164,9 +164,9 @@ def test_module_quantities():
 
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
@@ -180,9 +180,9 @@ def test_module_array():
 
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], list)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
@@ -195,17 +195,17 @@ def test_module_get_require_equal_path():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
 
-    project_module2 = project.get_module(pytest.MODULE_ID)
+    project_module2 = project.modules[pytest.MODULE_ID]
     assert project_module._db.path == project_module2._db.path
 
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
-    action_module2 = action.get_module(pytest.MODULE_ID)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
+    action_module2 = action.modules[pytest.MODULE_ID]
     assert action_module._db.path == action_module2._db.path
 
 
@@ -214,41 +214,41 @@ def test_module_list():
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=list_cont,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=list_cont,
+                                           overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict, list)
     assert all(a == b for a, b in zip(list_cont, mod_dict))
 
     module_contents = {'list': list_cont}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['list'], list)
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['almost_list1'], dict)
     diff = expipe.core.DictDiffer(module_contents, mod_dict)
     assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
@@ -266,23 +266,47 @@ def test_action_messages_setter():
     assert len(message_manager) == 0
 
     time = datetime(2017, 6, 1, 21, 42, 20)
-    msg_1 = {'message': 'sub1', 'user': 'usr1',
-             'datetime': time}
+    text = "my message"
+    user = "user1"
+
+    msg_1 = {'text': text, 'user': user, 'datetime': time}
 
     messages = [msg_1]
-    action.add_message(msg_1)
+    msg_object = action.create_message(text=text, user=user, datetime=time)
 
-    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+    assert isinstance(msg_object, expipe.core.Message)
+    assert msg_object.text == text
+    assert msg_object.user == user
+    assert msg_object.datetime == time
+
+    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
                 for m1, m2 in zip(messages, message_manager)])
 
-    msg_2 = {'message': 'sub2', 'user': 'usr2',
-             'datetime': time + timedelta(minutes=10)}
-
+    text = "my new message"
+    user = "user2"
+    msg_2 = {'text': text, 'user': user, 'datetime': time}
     messages.append(msg_2)
-    action.add_message(msg_2)
+    msg_object = action.create_message(text=text, user=user, datetime=time)
 
-    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+    assert isinstance(msg_object, expipe.core.Message)
+    assert msg_object.text == text
+    assert msg_object.user == user
+    assert msg_object.datetime == time
+
+    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
                 for m1, m2 in zip(messages, message_manager)])
+
+    text = "updated text"
+    user = "new user"
+    time = datetime(2019, 6, 1, 21, 42, 20)
+
+    msg_object.text = text
+    msg_object.user = user
+    msg_object.datetime = time
+
+    assert msg_object.text == text
+    assert msg_object.user == user
+    assert msg_object.datetime == time
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -297,27 +321,27 @@ def test_action_messages_dtype():
            'datetime': str(time + timedelta(minutes=10))}
 
     with pytest.raises(TypeError):
-        action.add_message(msg)
+        action.create_message(msg)
 
     # int not ok
     msg = {'message': 'sub2', 'user': 13,
            'datetime': time + timedelta(minutes=10)}
     with pytest.raises(TypeError):
-        action.add_message(msg)
+        action.create_message(msg)
 
     # int not ok
     msg = {'message': 12, 'user': "usr2",
            'datetime': time + timedelta(minutes=10)}
 
     with pytest.raises(TypeError):
-        action.add_message(msg)
+        action.create_message(msg)
 
     # None is not ok
     msg = {'message': "sub2", 'user': None,
            'datetime': time + timedelta(minutes=10)}
 
     with pytest.raises(TypeError):
-        action.add_message(msg)
+        action.create_message(msg)
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -329,27 +353,29 @@ def test_change_message():
     time = datetime(2017, 6, 1, 21, 42, 20)
 
     # add two messages
-    msg_1 = {'message': 'sub1', 'user': 'usr1',
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
              'datetime': time}
 
-    msg_2 = {'message': 'sub2', 'user': 'usr2',
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.add_message(msg_1)
-    action.add_message(msg_2)
+    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
                 for m1, m2 in zip([msg_1, msg_2], message_manager)])
 
     # change one of them
-    msg_3 = {'message': 'sub3', 'user': 'usr3',
+    msg_3 = {'text': 'sub3', 'user': 'usr3',
              'datetime': time + timedelta(minutes=10)}
 
     for i, message in enumerate(message_manager):
-        if message.content["user"] == "usr2":
-            message.content = msg_3
+        if message.user == "usr2":
+            message.text = msg_3["text"]
+            message.user = msg_3["user"]
+            message.datetime = msg_3["datetime"]
 
-    assert all([expipe.core.DictDiffer(m1, m2.content).changed() == set()
+    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
                 for m1, m2 in zip([msg_1, msg_3], message_manager)])
 
 
@@ -362,28 +388,27 @@ def test_create_delete_project_and_childs():
 
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=False)
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=False)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=False)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=False)
 
     expipe.delete_project(pytest.PROJECT_ID, remove_all_childs=True)
-    with pytest.raises(NameError):
+    with pytest.raises(KeyError):
         expipe.get_project(pytest.PROJECT_ID)
 
     # remake project, then the "old" action and project_module should be deleted
     project = expipe.require_project(pytest.PROJECT_ID)
-    with pytest.raises(NameError):
-        project.get_action(pytest.ACTION_ID)
-        project.get_module(pytest.MODULE_ID)
+    with pytest.raises(KeyError):
+        project.actions[pytest.ACTION_ID]
+        project.modules[pytest.MODULE_ID]
 
     # remake action, then the "old" action_module should be deleted
     action = project.require_action(pytest.ACTION_ID)
-    with pytest.raises(NameError):
-        # print(action.get_module(pytest.MODULE_ID))
-        action.get_module(pytest.MODULE_ID)
+    with pytest.raises(KeyError):
+        action.modules[pytest.MODULE_ID]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -393,22 +418,22 @@ def test_create_delete_project_not_childs():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
 
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
 
     expipe.delete_project(pytest.PROJECT_ID)
-    with pytest.raises(NameError):
+    with pytest.raises(KeyError):
         expipe.get_project(pytest.PROJECT_ID)
 
     # remake project, then the "old" action and action_module should be NOT be deleted
     project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.get_action(pytest.ACTION_ID)
-    action.get_module(pytest.MODULE_ID)
+    action = project.actions[pytest.ACTION_ID]
+    action.modules[pytest.MODULE_ID]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -420,7 +445,7 @@ def test_create_project():
 def test_create_action():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project.get_action(pytest.ACTION_ID)
+    project.actions[pytest.ACTION_ID]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -430,10 +455,10 @@ def test_create_action_module():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
-    action.get_module(pytest.MODULE_ID)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
+    action.modules[pytest.MODULE_ID]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -443,8 +468,8 @@ def test_create_project_module():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project.require_module(pytest.MODULE_ID, contents=module_contents, overwrite=True)
-    project.get_module(pytest.MODULE_ID)
+    project.create_module(pytest.MODULE_ID, contents=module_contents, overwrite=True)
+    project.modules[pytest.MODULE_ID]
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -455,26 +480,26 @@ def test_delete_action():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
-    action_module = action.require_module(pytest.MODULE_ID,
-                                          contents=module_contents,
-                                          overwrite=True)
+    action_module = action.create_module(pytest.MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
 
     time = datetime(2017, 6, 1, 21, 42, 20)
-    msg_1 = {'message': 'sub1', 'user': 'usr1',
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
              'datetime': time}
 
-    msg_2 = {'message': 'sub2', 'user': 'usr2',
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.add_message(msg_1)
-    action.add_message(msg_2)
+    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
     for attr in ['subjects', 'users', 'tags']:
         setattr(action, attr, ['sub1', 'sub2'])
     assert len(list(action.modules.keys())) != 0
     project.delete_action(action.id)
-    with pytest.raises(NameError):
-        project.get_action(pytest.ACTION_ID)
+    with pytest.raises(KeyError):
+        project.actions[pytest.ACTION_ID]
 
     # remake and assert that all is deleted
     action = project.require_action(pytest.ACTION_ID)
@@ -491,8 +516,8 @@ def test_require_create_get_action():
     project = expipe.core.require_project(pytest.PROJECT_ID)
 
     # Get a non-existing action
-    with pytest.raises(NameError):
-        action = project.get_action(pytest.ACTION_ID)
+    with pytest.raises(KeyError):
+        action = project.actions[pytest.ACTION_ID]
 
     # Create an existing action
     action = project.create_action(pytest.ACTION_ID)
@@ -505,12 +530,12 @@ def test_require_create_get_action():
 
     # delete action
     project.delete_action(pytest.ACTION_ID)
-    with pytest.raises(NameError):
-        action = project.get_action(pytest.ACTION_ID)
+    with pytest.raises(KeyError):
+        action = project.actions[pytest.ACTION_ID]
 
     # Require a non-existing action
     action_req = project.require_action(pytest.ACTION_ID)
-    action = project.get_action(pytest.ACTION_ID)
+    action = project.actions[pytest.ACTION_ID]
     assert action_req.id == action.id
 
 
@@ -526,9 +551,9 @@ def test_fill_the_project():
 
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
-    project_module = project.require_module(pytest.MODULE_ID,
-                                            contents=module_contents,
-                                            overwrite=True)
+    project_module = project.create_module(pytest.MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
@@ -540,8 +565,8 @@ def test_fill_the_project():
     # msg_2 = {'message': 'sub2', 'user': 'usr2',
     #          'datetime': time + timedelta(minutes=10)}
     #
-    # action.add_message(msg_1)
-    # action.add_message(msg_2)
+    # action.create_message(msg_1)
+    # action.create_message(msg_2)
 
     # orig_list = ['sub1', 'sub2']
     # for attr in ['subjects', 'users', 'tags']:

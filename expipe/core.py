@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
 import os
 import os.path as op
 import requests
 import collections
+import datetime as dt
 
 import quantities as pq
 import numpy as np
@@ -28,6 +28,9 @@ class ActionManager:
     def __getitem__(self, name):
         if not self._db.exists(name):
             raise KeyError("Action '{}' does not exist".format(name))
+        return self._get(name)
+
+    def _get(self, name):
         return Action(project=self.project, action_id=name)
 
     def __iter__(self):
@@ -105,7 +108,7 @@ class ModuleManager:
         return d
 
     def to_json(self, fname=None):
-        warnings.warn("module_manager.to_json() is depracated. Will be removed in next version!")
+        warnings.warn("module_manager.to_json() is deprecated. Will be removed in next version!")
         import json
         fname = fname or self.parent.id
 
@@ -117,36 +120,6 @@ class ModuleManager:
         print("Saving module '{}' to '{}'".format(self.parent.id, fname))
         with open(fname, 'w') as outfile:
             json.dump(self.to_dict(), outfile, sort_keys=True, indent=4)
-
-
-class Message:
-    def __init__(self, action, message_id):
-        if not isinstance(message_id, str):
-            raise TypeError('Module name must be string')
-
-        if not isinstance(action, Action):
-            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
-
-        path = '/'.join(['action_messages', action.project.id, action.id, message_id])
-
-        self.id = message_id
-        self.action = action
-        self._db = FirebaseBackend(path)
-
-    @property
-    def content(self):
-        content = self._db.get()
-        if content:
-            content['datetime'] = datetime.strptime(content['datetime'],
-                                                    datetime_format)
-        return content
-
-    @content.setter
-    def content(self, content):
-        _assert_message_dtype(content)
-        result = copy.deepcopy(content)
-        result['datetime'] = content['datetime'].strftime(datetime_format)
-        self._db.set(result)
 
 
 class MessageManager:
@@ -161,14 +134,25 @@ class MessageManager:
         self._db = FirebaseBackend(path)
         self.action = action
 
+    def __getitem__(self, name):
+        if not self._db.exists(name):
+            raise KeyError("Action '{}' does not exist".format(name))
+        return self._get(name)
+
     def __iter__(self):
-        keys = self._db.get(shallow=True) or []
+        keys = self.keys()
         for key in keys:
             yield Message(action=self.action, message_id=key)
 
     def __len__(self):
+        return len(self.keys())
+
+    def _get(self, name):
+        return Message(action=self.action, message_id=name)
+
+    def keys(self):
         keys = self._db.get(shallow=True) or []
-        return len(keys)
+        return keys
 
 
 ######################################################################################################
@@ -193,45 +177,44 @@ class Project:
     def actions(self):
         return ActionManager(self)
 
+    def _create_action(self, name):
+        dtime = dt.datetime.today().strftime(datetime_format)
+        self._db_actions.set(name=name, value={"registered": dtime})
+        return self.actions._get(name)
+
     def require_action(self, name):
         """
         Get an action, creating it if it doesn’t exist.
         """
         exists = self._db_actions.exists(name)
         if exists:
-            return Action(self, name)
+            return self.actions._get(name)
         else:
-            dtime = datetime.today().strftime(datetime_format)
-            self._db_actions.update(name, {"registered": dtime})
-            return Action(self, name)
+            return self._create_action(name)
 
     def create_action(self, name):
         """
-        Create and return an action
+        Create and return an action. Fails if the target name already exists.
         """
         exists = self._db_actions.exists(name)
         if exists:
             raise NameError("Action {} already exists in project {}".format(name, self.id))
 
-        dtime = datetime.today().strftime(datetime_format)
-        self._db_actions.update(name, {"registered": dtime})
-
-        return Action(self, name)
+        return self._create_action(name)
 
     def get_action(self, name):
         """
-        Get an existing action
+        This function is deprecated.
+        Get an existing action. Fails if the target name does not exists.
         """
-        exists = self._db_actions.exists(name)
-        if not exists:
-            raise NameError("Action {} does not exist in project {}".format(name, self.id))
-        return Action(self, name)
+        warnings.warn("project.get_action(name) is deprecated. Use project.actions[name] instead.")
+        return self.actions[name]
 
     def delete_action(self, name):
         """
-        Delete an action
+        Delete an action. Fails if the target name does not exists.
         """
-        action = self.get_action(name)
+        action = self.actions[name]
         action.delete_messages()
         for module in list(action.modules.keys()):
             action.delete_module(module)
@@ -242,21 +225,49 @@ class Project:
     def modules(self):
         return ModuleManager(self)
 
-    def require_module(self, name=None, template=None, contents=None,
-                       overwrite=False):
-        return _require_module(name=name, template=template, contents=contents,
-                               overwrite=overwrite, parent=self)
+    def require_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Get a module, creating it if it doesn’t exist.
+        """
+        warnings.warn("The 'overwrite' argument is deprecated.")
+        return self.create_module(
+            name=name,
+            template=template,
+            contents=contents,
+            overwrite=overwrite
+        )
+
+    def create_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Create and return a module. Fails if the target name already exists.
+        """
+        if name is None:
+            name, contents = _load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            raise NameError("Module {} already exist in project {}. ".format(name, self.id))
+
+        return _require_module(
+            parent=self,
+            name=name,
+            contents=contents
+        )
 
     def get_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise NameError('Module "' + name + '" does not exist')
-        return Module(self, name)
+        """
+        This function is deprecated.
+        Get a module. Fails if the target name does not exists.
+        """
+        warnings.warn("project.get_module(name) is deprecated. Use project.modules[name] instead.")
+        return self.modules[name]
 
     def delete_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise NameError('Module "' + name + '" does not exist.')
+        """
+        Delete a module. Fails if the target name does not exists.
+        """
+        exists = self._db_modules.exists(name)
+        if not exists:
+            raise KeyError("Module {} does not exist in project {}".format(name, self.id))
         self._db_modules.delete(name)
 
 
@@ -282,15 +293,25 @@ class Action:
     def messages(self):
         return MessageManager(self)
 
-    def add_message(self, contents):
-        _assert_message_dtype(contents)
-        result = copy.deepcopy(contents)  # TODO: Do we need deepcopy here?
-        result['datetime'] = contents['datetime'].strftime(datetime_format)
-        self._db_messages.push(result)
+    def create_message(self, text, user=None, datetime=None):
+        datetime = datetime or dt.datetime.now()
+        user = user or expipe.settings.get("username")
+
+        _assert_message_dtype(text=text, user=user, datetime=datetime)
+
+        datetime_str = dt.datetime.strftime(datetime, datetime_format)
+        message = {
+            "text": text,
+            "user": user,
+            "datetime": datetime_str
+        }
+
+        result = self._db_messages.push(message)
+        return self.messages[result["name"]]
 
     def delete_messages(self):
         for message in self.messages:
-            self._db_messages.delete(name=message.id)
+            self._db_messages.delete(name=message.name)
 
     @property
     def location(self):
@@ -329,11 +350,11 @@ class Action:
 
     @property
     def datetime(self):
-        return datetime.strptime(self._db_get('datetime'), datetime_format)
+        return dt.datetime.strptime(self._db_get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
-        if not isinstance(value, datetime):
+        if not isinstance(value, dt.datetime):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
@@ -374,21 +395,46 @@ class Action:
         # TODO consider adding support for non-shallow fetching
         return ModuleManager(self)
 
-    def require_module(self, name=None, template=None, contents=None,
-                       overwrite=False):
-        return _require_module(name=name, template=template, contents=contents,
-                               overwrite=overwrite, parent=self)
+    def require_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Get a module, creating it if it doesn’t exist.
+        """
+        warnings.warn("The 'overwrite' argument is deprecated.")
+        return self.create_module(
+            name=name,
+            template=template,
+            contents=contents,
+            overwrite=overwrite
+        )
+
+    def create_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Create and return a module.
+        """
+        if name is None:
+            name, contents = _load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            raise NameError("Module {} already exist in project {}. ".format(name, self.id))
+
+        return _require_module(
+            parent=self,
+            name=name,
+            contents=contents
+        )
 
     def get_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise NameError('Module "' + name + '" does not exist')
-        return Module(self, name)
+        """
+        This function is deprecated.
+        Get a module. Fails if the target name does not exists.
+        """
+        warnings.warn("action.get_module(name) is deprecated. Use action.modules[name] instead.")
+        return self.modules[name]
 
     def delete_module(self, name):
         result = self._db_modules.get(name)
         if result is None:
-            raise NameError('Module "' + name + '" does not exist.')
+            raise KeyError('Module "' + name + '" does not exist.')
         self._db_modules.delete(name)
 
     def require_filerecord(self, class_type=None, name=None):
@@ -463,15 +509,74 @@ class Module:
         return result
 
 
+class Message:
+    """
+    Message class
+    """
+    def __init__(self, action, message_id):
+        if not isinstance(message_id, str):
+            raise TypeError('Module name must be string')
+
+        if not isinstance(action, Action):
+            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
+
+        path = '/'.join(['action_messages', action.project.id, action.id, message_id])
+
+        self._name = message_id
+        self.action = action
+        self._db = FirebaseBackend(path)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def text(self):
+        return self._db.get(name="text")
+
+    @text.setter
+    def text(self, value):
+        _assert_message_text_dtype(value)
+        self._db.set(name="text", value=value)
+
+    @property
+    def user(self):
+        return self._db.get(name="user")
+
+    @user.setter
+    def user(self, value=None):
+        value = value or expipe.settings.get("username")
+        _assert_message_user_dtype(value)
+        self._db.set(name="user", value=value)
+
+    @property
+    def datetime(self):
+        value = self._db.get(name="datetime")
+        return dt.datetime.strptime(value, datetime_format)
+
+    @datetime.setter
+    def datetime(self, value):
+        _assert_message_datetime_dtype(value)
+        value_str = dt.datetime.strftime(value, datetime_format)
+        self._db.set(name="datetime", value=value_str)
+
+    def to_dict(self):
+        content = self._db.get()
+        if content:
+            content['datetime'] = dt.datetime.strptime(content['datetime'],
+                                                       datetime_format)
+        return content
+
+
 class FirebaseBackend:
     def __init__(self, path):
         self.path = path
         self.id_token = None
         self.refresh_token = None
-        self.token_expiration = datetime.now()
+        self.token_expiration = dt.datetime.now()
 
     def ensure_auth(self):
-        current_time = datetime.now()
+        current_time = dt.datetime.now()
         api_key = expipe.settings["firebase"]["config"]["apiKey"]
 
         if self.id_token is not None and self.refresh_token is not None:
@@ -503,7 +608,7 @@ class FirebaseBackend:
         assert("errors" not in value)
         self.refresh_token = value["refreshToken"]
         self.id_token = value["idToken"]
-        self.token_expiration = current_time + datetime.timedelta(0, int(value["expiresIn"]))
+        self.token_expiration = current_time + dt.timedelta(0, int(value["expiresIn"]))
 
     def build_url(self, name=None):
         if name is None:
@@ -565,6 +670,7 @@ class FirebaseBackend:
         assert(response.status_code == 200)
         value = response.json()
         assert("errors" not in value)
+        return value
 
     def delete(self, name):
         db.child(self.path).child(name).set({}, user["idToken"])
@@ -713,7 +819,7 @@ def get_template(template):
     template_contents = contents_db.get(template)
     result = template_db.get(template)
     if result is None:
-        raise NameError('Template "' + template + '" does not exist.')
+        raise KeyError('Template "' + template + '" does not exist.')
     name = result.get('identifier')
     if name is None:
         raise ValueError('Template "' + template + '" has no identifier.')
@@ -737,7 +843,7 @@ def get_project(project_id):
     project_db = FirebaseBackend("/projects")
     existing = project_db.exists(project_id)
     if not existing:
-        raise NameError("Project " + project_id + " does not exist.")
+        raise KeyError("Project " + project_id + " does not exist.")
     return Project(project_id)
 
 
@@ -745,7 +851,7 @@ def require_project(project_id):
     """Creates a new project with the provided id."""
     project_db = FirebaseBackend("/projects")
     existing = project_db.exists(project_id)
-    registered = datetime.today().strftime(datetime_format)
+    registered = dt.datetime.today().strftime(datetime_format)
     if not existing:
         project_db.set(name=project_id, value={"registered": registered})
 
@@ -771,64 +877,55 @@ def delete_project(project_id, remove_all_childs=False):
 ######################################################################################################
 # Helpers
 ######################################################################################################
-def _require_module(name=None, template=None, contents=None,
-                    overwrite=False, parent=None):
-    assert parent is not None
-    if name is None and template is not None:
-        template_path = "/".join(["templates", template])
-        name = FirebaseBackend(template_path).get('identifier')
-        if name is None:
-            raise ValueError('Template "' + template + '" has no identifier.')
-    if template is None and name is None:
-        raise ValueError('name and template cannot both be None.')
-    if contents is not None and template is not None:
-        raise ValueError('Cannot set contents if a template' +
-                         'is requested.')
-    if contents is not None:
-        if not isinstance(contents, (dict, list, np.ndarray)):
-            raise TypeError('Contents expected "dict" or "list" got "' +
-                            str(type(contents)) + '".')
+def _load_template(template):
+    template_path = "/".join(["templates", template])
+    name = FirebaseBackend(template_path).get('identifier')
+    template_cont_path = "/".join(["templates_contents", template])
+    contents = FirebaseBackend(template_cont_path).get()
+    if name is None:
+        raise ValueError('Template "' + template + '" has no identifier.')
+    return name, contents
 
+
+def _require_module(parent, name, contents):
     module = Module(parent=parent, module_id=name)
-    if module._db.exists():
-        if template is not None or contents is not None:
-            if not overwrite:
-                raise NameError('Set overwrite to true if you want to ' +
-                                'overwrite the contents of the module.')
 
-    if template is not None:
-        template_cont_path = "/".join(["templates_contents", template])
-        template_contents = FirebaseBackend(template_cont_path).get()
-        # TODO give error if template does not exist
-        module._db.set(template_contents)
-    if contents is not None:
-        if '_inherits' in contents:
-            heritage = FirebaseBackend(contents['_inherits']).get()
-            if heritage is None:
-                raise NameError(
-                    'Can not inherit {}'.format(contents['_inherits']))
-            d = DictDiffer(contents, heritage)
-            keys = [key for key in list(d.added()) + list(d.changed())]
-            diffcont = {key: contents[key] for key in keys}
-            module._db.set(diffcont)
-        else:
-            module._db.set(contents)
+    if not isinstance(contents, (dict, list, np.ndarray)):
+        raise TypeError('Contents expected "dict" or "list" got "' +
+                        str(type(contents)) + '".')
+
+    if '_inherits' in contents:
+        heritage = FirebaseBackend(contents['_inherits']).get()
+        if heritage is None:
+            raise NameError('Can not inherit {}'.format(contents['_inherits']))
+        d = DictDiffer(contents, heritage)
+        keys = [key for key in list(d.added()) + list(d.changed())]
+        contents = {key: contents[key] for key in keys}
+
+    module._db.set(contents)
     return module
 
 
-def _assert_message_dtype(message):
-    if not isinstance(message, dict):
-        raise TypeError('Expected "dict", got "' + str(type(message)) + '"')
-    if 'message' not in message and 'user' in message and 'datetime' in message:
-        raise ValueError('Message must be formated as ' +
-                         'dict(message="message", user="user", ' +
-                         'datetime="datetime"')
-    if not isinstance(message['message'], str):
-        raise TypeError('Message must be of type "str"')
-    if not isinstance(message['datetime'], datetime):
-        raise TypeError('Datetime must be of type "datetime"')
-    if not isinstance(message['user'], str):
-        raise TypeError('User must be of type "str"')
+def _assert_message_dtype(text, user, datetime):
+    _assert_message_text_dtype(text)
+    _assert_message_user_dtype(user)
+    _assert_message_datetime_dtype(datetime)
+
+
+def _assert_message_text_dtype(text):
+    if not isinstance(text, str):
+        raise TypeError("Text must be of type 'str', not {} {}".format(type(text), text))
+
+
+def _assert_message_user_dtype(user):
+    if not isinstance(user, str):
+        raise TypeError("User must be of type 'str', not {} {}".format(type(user), user))
+
+
+def _assert_message_datetime_dtype(datetime):
+    if not isinstance(datetime, dt.datetime):
+        raise TypeError("Datetime must be of type 'datetime', not {} {}".format(type(datetime),
+                                                                                datetime))
 
 
 class DictDiffer(object):
