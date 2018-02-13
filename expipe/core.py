@@ -342,7 +342,7 @@ class Action(ExpipeObject):
         datetime = datetime or dt.datetime.now()
         user = user or expipe.settings.get("username")
 
-        _assert_message_dtype(text=text, user=user, datetime=datetime)
+        self._assert_message_dtype(text=text, user=user, datetime=datetime)
 
         datetime_str = dt.datetime.strftime(datetime, datetime_format)
         message = {
@@ -357,6 +357,11 @@ class Action(ExpipeObject):
     def delete_messages(self):
         for message in self.messages:
             self._db_messages.delete(name=message.name)
+
+    def _assert_message_dtype(self, text, user, datetime):
+        _assert_message_text_dtype(text)
+        _assert_message_user_dtype(user)
+        _assert_message_datetime_dtype(datetime)
 
     @property
     def location(self):
@@ -997,12 +1002,6 @@ def delete_project(project_id, remove_all_childs=False):
 ######################################################################################################
 # Helpers
 ######################################################################################################
-def _assert_message_dtype(text, user, datetime):
-    _assert_message_text_dtype(text)
-    _assert_message_user_dtype(user)
-    _assert_message_datetime_dtype(datetime)
-
-
 def _assert_message_text_dtype(text):
     if not isinstance(text, str):
         raise TypeError("Text must be of type 'str', not {} {}".format(type(text), text))
