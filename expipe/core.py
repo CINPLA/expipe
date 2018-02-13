@@ -3,13 +3,12 @@ import os.path as op
 import requests
 import collections
 import datetime as dt
-from abc import ABC, abstractmethod
-
 import quantities as pq
 import numpy as np
 import warnings
-import expipe
 import copy
+import abc
+import expipe
 
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
@@ -575,31 +574,31 @@ class Message:
 ######################################################################################################
 # Backend
 ######################################################################################################
-class AbstractBackend(ABC):
+class AbstractBackend(abc.ABC):
     def __init__(self, path):
         self.path = path
 
-    @abstractmethod
+    @abc.abstractmethod
     def exists(self, name=None):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def get(self, name=None, shallow=False):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def set(self, name, value=None):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def push(self, value=None):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def delete(self, name):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def update(self, name, value=None):
         pass
 
@@ -1032,6 +1031,11 @@ def delete_project(project_id, remove_all_childs=False):
             for module in list(project.modules.keys()):
                 project.delete_module(module)
         project_db.delete(name=project_id)
+
+
+def load_database(backend):
+    database = None
+    return database
 
 
 ######################################################################################################
