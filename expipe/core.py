@@ -161,21 +161,107 @@ class MessageManager:
 ######################################################################################################
 # Main classes
 ######################################################################################################
-class Project:
-    # TODO: shares require_module and create_module with the Action class
+class ExpipeObject:
+    """
+    Parent class for expipe Project and expipe Action objects
+    """
+    def __init__(self, object_id, db_modules):
+        self.id = object_id
+        self._db_modules = db_modules
+
+    @property
+    def modules(self):
+        return ModuleManager(self)
+
+    def require_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Get a module, creating it if it doesn’t exist.
+        """
+        # TODO: what if both content and template is given, and also name?
+        warnings.warn("The 'overwrite' argument is deprecated.")
+
+        if name is None:
+            name, contents = self._load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            return self.modules._get(name)
+
+        return self._create_module(
+            name=name,
+            contents=contents
+        )
+
+    def create_module(self, name=None, template=None, contents=None, overwrite=False):
+        """
+        Create and return a module. Fails if the target name already exists.
+        """
+        # TODO: what if both content and template is given, and also name?
+        if name is None:
+            name, contents = self._load_template(template)
+
+        if self._db_modules.exists(name) and not overwrite:
+            raise NameError("Module {} already exist in {}. ".format(name, self.id))
+
+        return self._create_module(
+            name=name,
+            contents=contents
+        )
+
+    def get_module(self, name):
+        """
+        This function is deprecated.
+        Get a module. Fails if the target name does not exists.
+        """
+        warnings.warn("object.get_module(name) is deprecated. Use object.modules[name] instead.")
+        return self.modules[name]
+
+    def delete_module(self, name):
+        """
+        Delete a module. Fails if the target name does not exists.
+        """
+        exists = self._db_modules.exists(name)
+        if not exists:
+            raise KeyError("Module {} does not exist in {}".format(name, self.id))
+        self._db_modules.delete(name)
+
+    def _load_template(self, template):
+        template_path = "/".join(["templates", template])
+        name = FirebaseBackend(template_path).get('identifier')
+        template_cont_path = "/".join(["templates_contents", template])
+        contents = FirebaseBackend(template_cont_path).get()
+        if name is None:
+            raise ValueError('Template "' + template + '" has no identifier.')
+        return name, contents
+
+    def _create_module(self, name, contents):
+        module = Module(parent=self, module_id=name)
+
+        if not isinstance(contents, (dict, list, np.ndarray)):
+            raise TypeError('Contents expected "dict" or "list" got "' +
+                            str(type(contents)) + '".')
+
+        if '_inherits' in contents:
+            heritage = FirebaseBackend(contents['_inherits']).get()
+            if heritage is None:
+                raise NameError('Can not inherit {}'.format(contents['_inherits']))
+            d = DictDiffer(contents, heritage)
+            keys = [key for key in list(d.added()) + list(d.changed())]
+            contents = {key: contents[key] for key in keys}
+
+        module._db.set(contents)
+        return module
+
+
+class Project(ExpipeObject):
     """
     Expipe project object
     """
     def __init__(self, project_id):
-        """
-        Parameters
-        ----------
-        project_id: str
-            Name of the project
-        """
-        self.id = project_id
+        super(Project, self).__init__(
+            object_id=project_id,
+            db_modules=FirebaseBackend('/project_modules/' + project_id)
+        )
         self._db_actions = FirebaseBackend('/actions/' + project_id)
-        self._db_modules = FirebaseBackend('/project_modules/' + project_id)
 
     @property
     def actions(self):
@@ -225,74 +311,22 @@ class Project:
         self._db_actions.delete(name)
         del action
 
-    @property
-    def modules(self):
-        return ModuleManager(self)
 
-    def require_module(self, name=None, template=None, contents=None, overwrite=False):
-        """
-        Get a module, creating it if it doesn’t exist.
-        """
-        warnings.warn("The 'overwrite' argument is deprecated.")
-
-        if name is None:
-            name, contents = _load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
-            return self.modules._get(name)
-
-        return _create_module(
-            parent=self,
-            name=name,
-            contents=contents
-        )
-
-    def create_module(self, name=None, template=None, contents=None, overwrite=False):
-        """
-        Create and return a module. Fails if the target name already exists.
-        """
-        # TODO: what if name is noen
-        if name is None:
-            name, contents = _load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
-            raise NameError("Module {} already exist in project {}. ".format(name, self.id))
-
-        return _create_module(
-            parent=self,
-            name=name,
-            contents=contents
-        )
-
-    def get_module(self, name):
-        """
-        This function is deprecated.
-        Get a module. Fails if the target name does not exists.
-        """
-        warnings.warn("project.get_module(name) is deprecated. Use project.modules[name] instead.")
-        return self.modules[name]
-
-    def delete_module(self, name):
-        """
-        Delete a module. Fails if the target name does not exists.
-        """
-        exists = self._db_modules.exists(name)
-        if not exists:
-            raise KeyError("Module {} does not exist in project {}".format(name, self.id))
-        self._db_modules.delete(name)
-
-
-class Action:
+class Action(ExpipeObject):
+    """
+    Expipe action object
+    """
     def __init__(self, project, action_id):
+        super(Action, self).__init__(
+            object_id=action_id,
+            db_modules=FirebaseBackend("/".join(["action_modules", project.id, action_id]))
+        )
         self.project = project
-        self.id = action_id
-        path = "/".join(["actions", self.project.id, self.id])
-        self._db = FirebaseBackend(path)
-        modules_path = "/".join(["action_modules", self.project.id, self.id])
-        self._db_modules = FirebaseBackend(modules_path)
-        messages_path = "/".join(["action_messages", self.project.id, self.id])
-        self._db_messages = FirebaseBackend(messages_path)
         self._action_dirty = True
+        path = "/".join(["actions", self.project.id, self.id])
+        messages_path = "/".join(["action_messages", self.project.id, self.id])
+        self._db = FirebaseBackend(path)
+        self._db_messages = FirebaseBackend(messages_path)
 
     def _db_get(self, name):
         if self._action_dirty:
@@ -400,59 +434,6 @@ class Action:
                             str([type(v) for v in value]))
         value = list(set(value))
         self._db.set('tags', value)
-
-    @property
-    def modules(self):
-        # TODO consider adding support for non-shallow fetching
-        return ModuleManager(self)
-
-    def require_module(self, name=None, template=None, contents=None, overwrite=False):
-        """
-        Get a module, creating it if it doesn’t exist.
-        """
-        warnings.warn("The 'overwrite' argument is deprecated.")
-
-        if name is None:
-            name, contents = _load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
-            return self.modules._get(name)
-
-        return _create_module(
-            parent=self,
-            name=name,
-            contents=contents
-        )
-
-    def create_module(self, name=None, template=None, contents=None, overwrite=False):
-        """
-        Create and return a module.
-        """
-        if name is None:
-            name, contents = _load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
-            raise NameError("Module {} already exist in project {}. ".format(name, self.id))
-
-        return _create_module(
-            parent=self,
-            name=name,
-            contents=contents
-        )
-
-    def get_module(self, name):
-        """
-        This function is deprecated.
-        Get a module. Fails if the target name does not exists.
-        """
-        warnings.warn("action.get_module(name) is deprecated. Use action.modules[name] instead.")
-        return self.modules[name]
-
-    def delete_module(self, name):
-        result = self._db_modules.get(name)
-        if result is None:
-            raise KeyError('Module "' + name + '" does not exist.')
-        self._db_modules.delete(name)
 
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
@@ -1016,35 +997,6 @@ def delete_project(project_id, remove_all_childs=False):
 ######################################################################################################
 # Helpers
 ######################################################################################################
-def _load_template(template):
-    template_path = "/".join(["templates", template])
-    name = FirebaseBackend(template_path).get('identifier')
-    template_cont_path = "/".join(["templates_contents", template])
-    contents = FirebaseBackend(template_cont_path).get()
-    if name is None:
-        raise ValueError('Template "' + template + '" has no identifier.')
-    return name, contents
-
-
-def _create_module(parent, name, contents):
-    module = Module(parent=parent, module_id=name)
-
-    if not isinstance(contents, (dict, list, np.ndarray)):
-        raise TypeError('Contents expected "dict" or "list" got "' +
-                        str(type(contents)) + '".')
-
-    if '_inherits' in contents:
-        heritage = FirebaseBackend(contents['_inherits']).get()
-        if heritage is None:
-            raise NameError('Can not inherit {}'.format(contents['_inherits']))
-        d = DictDiffer(contents, heritage)
-        keys = [key for key in list(d.added()) + list(d.changed())]
-        contents = {key: contents[key] for key in keys}
-
-    module._db.set(contents)
-    return module
-
-
 def _assert_message_dtype(text, user, datetime):
     _assert_message_text_dtype(text)
     _assert_message_user_dtype(user)
