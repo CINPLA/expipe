@@ -6,9 +6,11 @@ import copy
 def create_mock_backend(data=None):
     data = {} if data is None else data
 
-    class MockBackend:
+    class MockBackend(expipe.core.AbstractBackend):
         def __init__(self, path):
-            self.path = path
+            super(MockBackend, self).__init__(
+                path=path
+            )
             self.data = data
 
         def exists(self, name=None):
@@ -32,14 +34,14 @@ def create_mock_backend(data=None):
             value = expipe.core.convert_from_firebase(value)
             return value
 
-        def get_keys(self, name=None):
-            if name is None:
-                value = dpath.util.get(glob=self.path, obj=self.data)
-            else:
-                if not isinstance(name, str):
-                    raise TypeError('Expected "str", not "{}"'.format(type(name)))
-                value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
-            return value.keys()
+        # def get_keys(self, name=None):
+        #     if name is None:
+        #         value = dpath.util.get(glob=self.path, obj=self.data)
+        #     else:
+        #         if not isinstance(name, str):
+        #             raise TypeError('Expected "str", not "{}"'.format(type(name)))
+        #         value = dpath.util.get(glob=self.path + "/" + name, obj=self.data)
+        #     return value.keys()
 
         def set(self, name, value=None):
             if value is None:

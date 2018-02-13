@@ -3,6 +3,7 @@ import os.path as op
 import requests
 import collections
 import datetime as dt
+from abc import ABC, abstractmethod
 
 import quantities as pq
 import numpy as np
@@ -571,9 +572,43 @@ class Message:
         return content
 
 
-class FirebaseBackend:
+######################################################################################################
+# Backend
+######################################################################################################
+class AbstractBackend(ABC):
     def __init__(self, path):
         self.path = path
+
+    @abstractmethod
+    def exists(self, name=None):
+        pass
+
+    @abstractmethod
+    def get(self, name=None, shallow=False):
+        pass
+
+    @abstractmethod
+    def set(self, name, value=None):
+        pass
+
+    @abstractmethod
+    def push(self, value=None):
+        pass
+
+    @abstractmethod
+    def delete(self, name):
+        pass
+
+    @abstractmethod
+    def update(self, name, value=None):
+        pass
+
+
+class FirebaseBackend(AbstractBackend):
+    def __init__(self, path):
+        super(FirebaseBackend, self).__init__(
+            path=path
+        )
         self.id_token = None
         self.refresh_token = None
         self.token_expiration = dt.datetime.now()
@@ -647,8 +682,8 @@ class FirebaseBackend:
         value = convert_from_firebase(value)
         return value
 
-    def get_keys(self, name=None):
-        return self.get(name, shallow=True)
+    # def get_keys(self, name=None):
+    #     return self.get(name, shallow=True)
 
     def set(self, name, value=None):
         self.ensure_auth()
