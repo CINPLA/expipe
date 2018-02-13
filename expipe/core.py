@@ -682,7 +682,7 @@ class FirebaseBackend:
         if value is None:
             value = name
         print("URL", url)
-        response = requests.post(url, json=value) 
+        response = requests.post(url, json=value)
         print("Push result", response.json())
         assert(response.status_code == 200)
         value = response.json()
@@ -800,6 +800,128 @@ class ProperyList:
 ######################################################################################################
 # utilities
 ######################################################################################################
+class DictDiffer(object):
+    """
+    A dictionary difference calculator
+    Originally posted as:
+    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
+
+    Calculate the difference between two dictionaries as:
+    (1) items added
+    (2) items removed
+    (3) keys same in both but changed values
+    (4) keys same in both and unchanged values
+    """
+    def __init__(self, current_dict, past_dict):
+        self.current_dict, self.past_dict = current_dict, past_dict
+        self.current_keys, self.past_keys = [
+            set(d.keys()) for d in (current_dict, past_dict)
+        ]
+        self.intersect = self.current_keys.intersection(self.past_keys)
+
+    def added(self):
+        return self.current_keys - self.intersect
+
+    def removed(self):
+        return self.past_keys - self.intersect
+
+    def changed(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] != self.current_dict[o])
+
+    def unchanged(self):
+        return set(o for o in self.intersect
+                   if self.past_dict[o] == self.current_dict[o])
+
+
+def convert_from_firebase(value):
+    """
+    Converts quantities back from dictionary
+    """
+    result = value
+    if isinstance(value, dict):
+        if "_force_dict" in value:
+            del value["_force_dict"]
+        if 'units' in value and "value" in value:
+            value['unit'] = value['units']
+            del(value['units'])
+        if "unit" in value and "value" in value:
+            if "uncertainty" in value:
+                try:
+                    result = pq.UncertainQuantity(value["value"],
+                                                  value["unit"],
+                                                  value["uncertainty"])
+                except Exception:
+                    pass
+            else:
+                try:
+                    result = pq.Quantity(value["value"], value["unit"])
+                except Exception:
+                    pass
+        else:
+            try:
+                for key, value in result.items():
+                    result[key] = convert_from_firebase(value)
+            except AttributeError:
+                pass
+    if isinstance(result, str):
+        if result == 'NaN':
+            result = np.nan
+    elif isinstance(result, list):
+        result = [v if v != 'NaN' else np.nan for v in result]
+    return result
+
+
+def convert_to_firebase(value):
+    """
+    Converts quantities to dictionary
+    """
+    if isinstance(value, dict):
+        if all(isinstance(key, int) or (isinstance(key, str) and key.isnumeric()) for key in value):
+            value["_force_dict"] = True
+    if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
+        if value.ndim >= 1:
+            value = value.tolist()
+    if isinstance(value, list):
+        value = [convert_to_firebase(val) for val in value]
+
+    result = value
+
+    if isinstance(value, pq.Quantity):
+        try:
+            val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
+        except TypeError:
+            val = value.magnitude.tolist()
+        result = {"value": val,
+                  "unit": value.dimensionality.string}
+        if isinstance(value, pq.UncertainQuantity):
+            assert(value.dimensionality == value.uncertainty.dimensionality)
+            result["uncertainty"] = value.uncertainty.magnitude.tolist()
+    elif isinstance(value, np.integer):
+        result = int(value)
+    elif isinstance(value, np.float):
+        result = float(value)
+    else:
+        # try if dictionary like objects can be converted if not return the
+        # original object
+        # Note, this might fail if .items() returns a strange combination of
+        # objects
+        try:
+            new_result = {}
+            for key, val in value.items():
+                new_key = convert_to_firebase(key)
+                new_result[new_key] = convert_to_firebase(val)
+            result = new_result
+        except AttributeError:
+            pass
+    try:
+        if not isinstance(value, list) and np.isnan(result):
+            result = 'NaN'
+    except TypeError:
+        pass
+    return result
+
+
 def require_template(template, contents=None, overwrite=False):
     template_db = FirebaseBackend("/templates")
     contents_db = FirebaseBackend("/templates_contents")
@@ -943,125 +1065,3 @@ def _assert_message_datetime_dtype(datetime):
     if not isinstance(datetime, dt.datetime):
         raise TypeError("Datetime must be of type 'datetime', not {} {}".format(type(datetime),
                                                                                 datetime))
-
-
-class DictDiffer(object):
-    """
-    A dictionary difference calculator
-    Originally posted as:
-    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
-
-    Calculate the difference between two dictionaries as:
-    (1) items added
-    (2) items removed
-    (3) keys same in both but changed values
-    (4) keys same in both and unchanged values
-    """
-    def __init__(self, current_dict, past_dict):
-        self.current_dict, self.past_dict = current_dict, past_dict
-        self.current_keys, self.past_keys = [
-            set(d.keys()) for d in (current_dict, past_dict)
-        ]
-        self.intersect = self.current_keys.intersection(self.past_keys)
-
-    def added(self):
-        return self.current_keys - self.intersect
-
-    def removed(self):
-        return self.past_keys - self.intersect
-
-    def changed(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] != self.current_dict[o])
-
-    def unchanged(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] == self.current_dict[o])
-
-
-def convert_from_firebase(value):
-    """
-    Converts quantities back from dictionary
-    """
-    result = value
-    if isinstance(value, dict):
-        if "_force_dict" in value:
-            del value["_force_dict"]
-        if 'units' in value and "value" in value:
-            value['unit'] = value['units']
-            del(value['units'])
-        if "unit" in value and "value" in value:
-            if "uncertainty" in value:
-                try:
-                    result = pq.UncertainQuantity(value["value"],
-                                                  value["unit"],
-                                                  value["uncertainty"])
-                except Exception:
-                    pass
-            else:
-                try:
-                    result = pq.Quantity(value["value"], value["unit"])
-                except Exception:
-                    pass
-        else:
-            try:
-                for key, value in result.items():
-                    result[key] = convert_from_firebase(value)
-            except AttributeError:
-                pass
-    if isinstance(result, str):
-        if result == 'NaN':
-            result = np.nan
-    elif isinstance(result, list):
-        result = [v if v != 'NaN' else np.nan for v in result]
-    return result
-
-
-def convert_to_firebase(value):
-    """
-    Converts quantities to dictionary
-    """
-    if isinstance(value, dict):
-        if all(isinstance(key, int) or (isinstance(key, str) and key.isnumeric()) for key in value):
-            value["_force_dict"] = True
-    if isinstance(value, np.ndarray) and not isinstance(value, pq.Quantity):
-        if value.ndim >= 1:
-            value = value.tolist()
-    if isinstance(value, list):
-        value = [convert_to_firebase(val) for val in value]
-
-    result = value
-
-    if isinstance(value, pq.Quantity):
-        try:
-            val = ['NaN' if np.isnan(r) else r for r in value.magnitude]
-        except TypeError:
-            val = value.magnitude.tolist()
-        result = {"value": val,
-                  "unit": value.dimensionality.string}
-        if isinstance(value, pq.UncertainQuantity):
-            assert(value.dimensionality == value.uncertainty.dimensionality)
-            result["uncertainty"] = value.uncertainty.magnitude.tolist()
-    elif isinstance(value, np.integer):
-        result = int(value)
-    elif isinstance(value, np.float):
-        result = float(value)
-    else:
-        # try if dictionary like objects can be converted if not return the
-        # original object
-        # Note, this might fail if .items() returns a strange combination of
-        # objects
-        try:
-            new_result = {}
-            for key, val in value.items():
-                new_key = convert_to_firebase(key)
-                new_result[new_key] = convert_to_firebase(val)
-            result = new_result
-        except AttributeError:
-            pass
-    try:
-        if not isinstance(value, list) and np.isnan(result):
-            result = 'NaN'
-    except TypeError:
-        pass
-    return result
