@@ -12,6 +12,11 @@ import expipe
 
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
+verbose = False
+
+def vprint(*arg):
+    if verbose:
+        print(*arg)
 
 
 ######################################################################################################
@@ -161,7 +166,7 @@ class ModuleManager:
         if op.exists(fname):
             raise FileExistsError("The filename '{}' exists, choose another".format(fname))
 
-        print("Saving module '{}' to '{}'".format(self.parent.id, fname))
+        vprint("Saving module '{}' to '{}'".format(self.parent.id, fname))
         with open(fname, 'w') as outfile:
             json.dump(self.to_dict(), outfile, sort_keys=True, indent=4)
 
@@ -686,7 +691,7 @@ class Module:
         if op.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
-        print('Saving module "' + self.id + '" to "' + fname + '"')
+        vprint('Saving module "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
             json.dump(self.to_dict(), outfile,
                       sort_keys=True, indent=4)
@@ -880,9 +885,9 @@ class FirebaseBackend(AbstractBackend):
         url = self.build_url(name)
         if shallow:
             url += "&shallow=true"
-        print("URL", url)
+        vprint("URL", url)
         response = requests.get(url)
-        print("Get result", response.json())
+        vprint("Get result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         assert("errors" not in value)
@@ -897,9 +902,9 @@ class FirebaseBackend(AbstractBackend):
         url = self.build_url(name)
         if value is None:
             value = name
-        print("URL", url)
+        vprint("URL", url)
         response = requests.put(url, json=value)
-        print("Set result", response.json())
+        vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         assert("errors" not in value)
@@ -909,9 +914,9 @@ class FirebaseBackend(AbstractBackend):
         url = self.build_url(name)
         if value is None:
             value = name
-        print("URL", url)
+        vprint("URL", url)
         response = requests.post(url, json=value)
-        print("Push result", response.json())
+        vprint("Push result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         assert("errors" not in value)
@@ -926,9 +931,9 @@ class FirebaseBackend(AbstractBackend):
         if value is None:
             value = name
         value = convert_to_firebase(value)
-        print("URL", url)
+        vprint("URL", url)
         response = requests.patch(url, json=value)
-        print("Set result", response.json())
+        vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         assert("errors" not in value)

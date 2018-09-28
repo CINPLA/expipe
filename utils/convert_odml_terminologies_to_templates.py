@@ -2,14 +2,14 @@ from xmljson import yahoo as yh
 from xml.etree.ElementTree import fromstring
 import json
 import re
-import expipe.io
+import expipe
 import os
 import sys
 
 def convert(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-    
+
 odml_terminologies_path = sys.argv[1]
 
 root_path = os.path.join(odml_terminologies_path, "v1.0")
@@ -30,10 +30,10 @@ for foldername in os.listdir(root_path):
         with open(os.path.join(folder_path, filename)) as f:
             xmldata = f.read()
             data = yh.data(fromstring(xmldata))
-        
+
         if filename in ["blackrock.xml", "stimulusTypes.xml"]:
             continue
-        
+
         name = foldername + "_" + filename.replace(".xml", "")
 
         data = data['odML']['section']
@@ -46,7 +46,7 @@ for foldername in os.listdir(root_path):
         except KeyError:
             print("ERROR on property")
             continue
-            
+
         try:
             if not isinstance(properties, list):
                 properties = [properties]
@@ -73,10 +73,10 @@ for foldername in os.listdir(root_path):
             }
             template_contents = result
             del(template_contents["name"])
-            
+
             # upload to Firebase (WARNING: this overwrites any changes made on the server!)
-            expipe.io.core.db.child("templates").child(name).set(template, expipe.io.core.user["idToken"])
-            expipe.io.core.db.child("templates_contents").child(name).set(template_contents, expipe.io.core.user["idToken"])
+            expipe.core.db.child("templates").child(name).set(template, expipe.core.user["idToken"])
+            expipe.core.db.child("templates_contents").child(name).set(template_contents, expipe.core.user["idToken"])
         except Exception as e:
             print("ERROR on something")
             print(e)
