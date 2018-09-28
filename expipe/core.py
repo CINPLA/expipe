@@ -59,9 +59,51 @@ class ActionManager:
         return result
 
 
+class EntityManager:
+    """
+    Manager class for retrieving entities in a project
+    """
+    def __init__(self, project):
+        self.project = project
+        self._db = FirebaseBackend('/entities/' + project.id)
+
+    def __getitem__(self, name):
+        if not self._db.exists(name):
+            raise KeyError("Entity '{}' does not exist".format(name))
+        return self._get(name)
+
+    def _get(self, name):
+        return Entity(project=self.project, entity_id=name)
+
+    def __iter__(self):
+        keys = self._db.get(shallow=True) or []
+        for key in keys:
+            yield key
+
+    def __len__(self):
+        keys = self._db.get(shallow=True) or []
+        return len(keys)
+
+    def __contains__(self, name):
+        return name in (self._db.get(shallow=True) or [])
+
+    def items(self):
+        return collections.abc.ItemsView(self)
+
+    def keys(self):
+        return collections.abc.KeysView(self)
+
+    def values(self):
+        return collections.abc.ValuesView(self)
+
+    def to_dict(self):
+        result = self._db.get() or dict()
+        return result
+
+
 class ModuleManager:
     """
-    Manager class for retrieving modules in a project or an action
+    Manager class for retrieving modules in a project, entity or an action
     """
     def __init__(self, parent):
         if isinstance(parent, Action):
@@ -126,15 +168,19 @@ class ModuleManager:
 
 class MessageManager:
     """
-    Manager class for messages in an action
+    Manager class for messages in an action or entity
     """
-    def __init__(self, action):
-        if not isinstance(action, Action):
-            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
-
-        path = "/".join(["action_messages", action.project.id, action.id])
+    def __init__(self, parent):
+        if isinstance(parent, Action):
+            path = "/".join(["action_messages", parent.project.id, parent.id])
+        elif isinstance(parent, Entity):
+            path = "/".join(["entity_messages", parent.project.id, parent.id])
+        else:
+            raise TypeError(
+                "Parent must be of type Action, given type" +
+                " {}".format(type(parent)))
         self._db = FirebaseBackend(path)
-        self.action = action
+        self.parent = parent
 
     def __getitem__(self, name):
         if not self._db.exists(name):
@@ -144,13 +190,13 @@ class MessageManager:
     def __iter__(self):
         keys = self.keys()
         for key in keys:
-            yield Message(action=self.action, message_id=key)
+            yield Message(parent=self.parent, message_id=key)
 
     def __len__(self):
         return len(self.keys())
 
     def _get(self, name):
-        return Message(action=self.action, message_id=name)
+        return Message(parent=self.parent, message_id=name)
 
     def keys(self):
         keys = self._db.get(shallow=True) or []
@@ -253,6 +299,7 @@ class Project(ExpipeObject):
             db_modules=FirebaseBackend('/project_modules/' + project_id)
         )
         self._db_actions = FirebaseBackend('/actions/' + project_id)
+        self._db_entities = FirebaseBackend('/entities/' + project_id)
 
     @property
     def actions(self):
@@ -301,6 +348,172 @@ class Project(ExpipeObject):
             action.delete_module(module)
         self._db_actions.delete(name)
         del action
+
+    @property
+    def entities(self):
+        return EntityManager(self)
+
+    def _create_entity(self, name):
+        dtime = dt.datetime.today().strftime(datetime_format)
+        self._db_entities.set(name=name, value={"registered": dtime})
+        return self.entities._get(name)
+
+    def require_entity(self, name):
+        """
+        Get an entity, creating it if it doesn’t exist.
+        """
+        exists = self._db_entities.exists(name)
+        if exists:
+            return self.entities._get(name)
+
+        return self._create_entity(name)
+
+    def create_entity(self, name):
+        """
+        Create and return an entity. Fails if the target name already exists.
+        """
+        exists = self._db_entities.exists(name)
+        if exists:
+            raise NameError("Entity {} already exists in project {}".format(name, self.id))
+
+        return self._create_entity(name)
+
+    def get_entity(self, name):
+        """
+        This function is deprecated.
+        Get an existing entity. Fails if the target name does not exists.
+        """
+        warnings.warn("project.get_entity(name) is deprecated. Use project.entities[name] instead.")
+        return self.entities[name]
+
+    def delete_entity(self, name):
+        """
+        Delete an entity. Fails if the target name does not exists.
+        """
+        entity = self.entities[name]
+        entity.delete_messages()
+        for module in list(entity.modules.keys()):
+            entity.delete_module(module)
+        self._db_entities.delete(name)
+        del entity
+
+
+class Entity(ExpipeObject):
+    """
+    Expipe entity object
+    """
+    def __init__(self, project, entity_id):
+        super(Entity, self).__init__(
+            object_id=entity_id,
+            db_modules=FirebaseBackend("/".join(["entity_modules", project.id, entity_id]))
+        )
+        self.project = project
+        self._entity_dirty = True
+        path = "/".join(["entities", self.project.id, self.id])
+        messages_path = "/".join(["entity_messages", self.project.id, self.id])
+        self._db = FirebaseBackend(path)
+        self._db_messages = FirebaseBackend(messages_path)
+
+    def _db_get(self, name):
+        if self._entity_dirty:
+            self._data = self._db.get()
+            self._entity_dirty = False
+        return self._data.get(name)
+
+    @property
+    def messages(self):
+        return MessageManager(self)
+
+    def create_message(self, text, user=None, datetime=None):
+        datetime = datetime or dt.datetime.now()
+        user = user or expipe.settings.get("username")
+
+        self._assert_message_dtype(text=text, user=user, datetime=datetime)
+
+        datetime_str = dt.datetime.strftime(datetime, datetime_format)
+        message = {
+            "text": text,
+            "user": user,
+            "datetime": datetime_str
+        }
+
+        result = self._db_messages.push(message)
+        return self.messages[result["name"]]
+
+    def delete_messages(self):
+        for message in self.messages:
+            self._db_messages.delete(name=message.name)
+
+    def _assert_message_dtype(self, text, user, datetime):
+        _assert_message_text_dtype(text)
+        _assert_message_user_dtype(user)
+        _assert_message_datetime_dtype(datetime)
+
+    @property
+    def location(self):
+        return self._db_get('location')
+
+    @location.setter
+    def location(self, value):
+        if not isinstance(value, str):
+            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
+        self._db.set('location', value)
+
+    @property
+    def type(self):
+        return self._db_get('type')
+
+    @type.setter
+    def type(self, value):
+        if not isinstance(value, str):
+            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
+        self._db.set('type', value)
+
+    @property
+    def datetime(self):
+        return dt.datetime.strptime(self._db_get('datetime'), datetime_format)
+
+    @datetime.setter
+    def datetime(self, value):
+        if not isinstance(value, dt.datetime):
+            raise TypeError('Expected "datetime" got "' + str(type(value)) +
+                            '".')
+        dtime = value.strftime(datetime_format)
+        self._db.set('datetime', dtime)
+
+    @property
+    def users(self):
+        return ProperyList(self._db, 'users', dtype=str, unique=True,
+                           data=self._db_get('users'))
+
+    @users.setter
+    def users(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise TypeError('Expected contents to be "str" got ' +
+                            str([type(v) for v in value]))
+        value = list(set(value))
+        self._db.set('users', value)
+
+    @property
+    def tags(self):
+        return ProperyList(self._db, 'tags', dtype=str, unique=True,
+                           data=self._db_get('tags'))
+
+    @tags.setter
+    def tags(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise TypeError('Expected contents to be "str" got ' +
+                            str([type(v) for v in value]))
+        value = list(set(value))
+        self._db.set('tags', value)
+
+    def require_filerecord(self, class_type=None, name=None):
+        class_type = class_type or Filerecord
+        return class_type(self, name)
 
 
 class Action(ExpipeObject):
@@ -375,19 +588,19 @@ class Action(ExpipeObject):
         self._db.set('type', value)
 
     @property
-    def subjects(self):
-        return ProperyList(self._db, 'subjects', dtype=str, unique=True,
-                           data=self._db_get('subjects'))
+    def entities(self):
+        return ProperyList(self._db, 'entities', dtype=str, unique=True,
+                           data=self._db_get('entities'))
 
-    @subjects.setter
-    def subjects(self, value):
+    @entities.setter
+    def entities(self, value):
         if not isinstance(value, list):
             raise TypeError('Expected "list", got "' + str(type(value)) + '"')
         if not all(isinstance(v, str) for v in value):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('subjects', value)
+        self._db.set('entities', value)
 
     @property
     def datetime(self):
@@ -447,6 +660,8 @@ class Module:
                              parent.id, self.id])
         elif isinstance(parent, Project):
             path = '/'.join(['project_modules', parent.id, self.id])
+        elif isinstance(parent, Entity):
+            path = '/'.join(['entity_modules', parent.id, self.id])
         else:
             raise IOError('Parent of type "' + type(parent) +
                           '" cannot have modules.')
@@ -500,17 +715,23 @@ class Message:
     """
     Message class
     """
-    def __init__(self, action, message_id):
+    def __init__(self, parent, message_id):
         if not isinstance(message_id, str):
             raise TypeError('Module name must be string')
 
-        if not isinstance(action, Action):
-            raise TypeError("Parent must be of type Action, given type {}".format(type(action)))
-
-        path = '/'.join(['action_messages', action.project.id, action.id, message_id])
+        if isinstance(parent, Action):
+            path = '/'.join(
+                ['action_messages', parent.project.id, parent.id, message_id])
+        if isinstance(parent, Entity):
+            path = '/'.join(
+                ['entity_messages', parent.project.id, parent.id, message_id])
+        else:
+            raise TypeError(
+                "Parent must be of type 'Action' or 'Entity', given" +
+                " type {}".format(type(parent)))
 
         self._name = message_id
-        self.action = action
+        self.parent = parent
         self._db = FirebaseBackend(path)
 
     @property
@@ -980,6 +1201,8 @@ def delete_project(project_id, remove_all_childs=False):
                 project.delete_action(action)
             for module in list(project.modules.keys()):
                 project.delete_module(module)
+            for entity in list(project.entities.keys()):
+                project.delete_entity(entity)
         project_db.delete(name=project_id)
 
 
