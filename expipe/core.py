@@ -95,7 +95,6 @@ class ModuleManager:
         return name in (self._db.get(shallow=True) or [])
 
     def items(self):
-        # TODO check if this works for _inherits as well
         return collections.abc.ItemsView(self)
 
     def keys(self):
@@ -239,14 +238,6 @@ class ExpipeObject:
         if not isinstance(contents, (dict, list, np.ndarray)):
             raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
-
-        if '_inherits' in contents:
-            heritage = FirebaseBackend(contents['_inherits']).get()
-            if heritage is None:
-                raise NameError('Can not inherit {}'.format(contents['_inherits']))
-            d = DictDiffer(contents, heritage)
-            keys = [key for key in list(d.added()) + list(d.changed())]
-            contents = {key: contents[key] for key in keys}
 
         module._db.set(contents)
         return module
@@ -467,13 +458,6 @@ class Module:
         d = self._db.get()
         if d is None:
             return {}
-        if '_inherits' in d:
-            inherit = FirebaseBackend(d['_inherits']).get()
-            if inherit is None:
-                raise ValueError('Module "' + self.id + '" is unable to ' +
-                                 'inherit "' + d['_inherits'] + '"')
-            inherit.update(d)
-            d = inherit
         return d
 
     def to_json(self, fname=None):
@@ -820,40 +804,6 @@ class ProperyList:
 ######################################################################################################
 # utilities
 ######################################################################################################
-class DictDiffer(object):
-    """
-    A dictionary difference calculator
-    Originally posted as:
-    http://stackoverflow.com/questions/1165352/fast-comparison-between-two-python-dictionary/1165552#1165552
-
-    Calculate the difference between two dictionaries as:
-    (1) items added
-    (2) items removed
-    (3) keys same in both but changed values
-    (4) keys same in both and unchanged values
-    """
-    def __init__(self, current_dict, past_dict):
-        self.current_dict, self.past_dict = current_dict, past_dict
-        self.current_keys, self.past_keys = [
-            set(d.keys()) for d in (current_dict, past_dict)
-        ]
-        self.intersect = self.current_keys.intersection(self.past_keys)
-
-    def added(self):
-        return self.current_keys - self.intersect
-
-    def removed(self):
-        return self.past_keys - self.intersect
-
-    def changed(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] != self.current_dict[o])
-
-    def unchanged(self):
-        return set(o for o in self.intersect
-                   if self.past_dict[o] == self.current_dict[o])
-
-
 def convert_from_firebase(value):
     """
     Converts quantities back from dictionary
