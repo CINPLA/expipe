@@ -187,6 +187,9 @@ class MessageManager:
             raise KeyError("Action '{}' does not exist".format(name))
         return self._get(name)
 
+    def __contains__(self, item):
+        return item in [a.to_dict() for a in self]
+
     def __iter__(self):
         keys = self.keys()
         for key in keys:
@@ -722,7 +725,7 @@ class Message:
         if isinstance(parent, Action):
             path = '/'.join(
                 ['action_messages', parent.project.id, parent.id, message_id])
-        if isinstance(parent, Entity):
+        elif isinstance(parent, Entity):
             path = '/'.join(
                 ['entity_messages', parent.project.id, parent.id, message_id])
         else:

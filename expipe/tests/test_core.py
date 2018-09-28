@@ -4,6 +4,7 @@ import expipe
 from mock_backend import create_mock_backend
 
 # TODO test _assert_message_dtype
+# TODO test entities
 # TODO test _load_template
 # TODO test _create_module
 # TODO test filerecord and Datafile and whatever it is for?
@@ -253,6 +254,15 @@ def test_module_list():
 ######################################################################################################
 # Message and MessageManager
 ######################################################################################################
+def contain_same(A, B):
+    cont = []
+    if len(A) != len(B):
+        return False
+    for a in A:
+        cont.append(a in B)
+    return sum(cont) == len(A)
+
+
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
 def test_action_messages_setter():
     from datetime import datetime, timedelta
@@ -276,7 +286,7 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert all([m1 == m2 for m1, m2 in zip(messages, message_manager)])
+    assert contain_same(messages, message_manager)
 
     text = "my new message"
     user = "user2"
@@ -289,7 +299,7 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert all([m1 == m2 for m1, m2 in zip(messages, message_manager)])
+    assert contain_same(messages, message_manager)
 
     text = "updated text"
     user = "new user"
@@ -357,12 +367,11 @@ def test_change_message():
     action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
     action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    assert all([m1 == m2.to_dict()
-                for m1, m2 in zip([msg_1, msg_2], message_manager)])
+    # assert all([m1 == m2.to_dict() for m1, m2 in zip([msg_1, msg_2], message_manager)])
 
     # change one of them
     msg_3 = {'text': 'sub3', 'user': 'usr3',
-             'datetime': time + timedelta(minutes=10)}
+             'datetime': time + timedelta(minutes=20)}
 
     for i, message in enumerate(message_manager):
         if message.user == "usr2":
@@ -370,8 +379,7 @@ def test_change_message():
             message.user = msg_3["user"]
             message.datetime = msg_3["datetime"]
 
-    assert all([m1 == m2.to_dict
-                for m1, m2 in zip([msg_1, msg_3], message_manager)])
+    assert contain_same([msg_1, msg_3], message_manager)
 
 
 ######################################################################################################
