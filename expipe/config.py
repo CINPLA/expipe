@@ -121,7 +121,7 @@ class Settings:
     def ensure_init(self):
         try:
             with open(settings_file_path) as settings_file:
-                settings = yaml.load(test_settings_file_path)
+                settings = yaml.load(settings_file)
                 deep_verification(default_settings, settings)
                 self.settings = settings
                 return True

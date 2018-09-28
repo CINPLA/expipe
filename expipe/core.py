@@ -617,7 +617,7 @@ class FirebaseBackend(AbstractBackend):
         api_key = expipe.settings["firebase"]["config"]["apiKey"]
 
         if self.id_token is not None and self.refresh_token is not None:
-            if current_time + timedelta(0, 10) < self.token_expiration and False:
+            if current_time + dt.timedelta(0, 10) < self.token_expiration and False:
                 return
             auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
             auth_data = {
