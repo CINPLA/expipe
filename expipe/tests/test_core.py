@@ -51,7 +51,7 @@ def test_action_attr():
     project = expipe.core.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    for attr in ['subjects', 'users', 'tags']:
+    for attr in ['entities', 'users', 'tags']:
         with pytest.raises(TypeError):
             setattr(action, attr, {'dict': 'I am'})
             setattr(action, attr, 'string I am')
@@ -71,7 +71,7 @@ def test_action_attr_list():
     action = project.require_action(pytest.ACTION_ID)
 
     orig_list = ['sub1', 'sub2']
-    for attr in ['subjects', 'users', 'tags']:
+    for attr in ['entities', 'users', 'tags']:
         prop_list = getattr(action, attr)
         assert isinstance(prop_list, expipe.core.ProperyList)
         prop_list.append('sub3')
@@ -90,7 +90,7 @@ def test_action_attr_list_dtype():
     project = expipe.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    for attr in ['subjects', 'users', 'tags']:
+    for attr in ['entities', 'users', 'tags']:
         with pytest.raises(TypeError):
             setattr(action, attr, ['sub1', 'sub2', 1])
         with pytest.raises(TypeError):
@@ -140,8 +140,6 @@ def test_module_manager():
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
 def test_module_to_dict():
-    from expipe.core import DictDiffer
-
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.core.require_project(pytest.PROJECT_ID)
@@ -153,10 +151,7 @@ def test_module_to_dict():
                                          contents=module_contents)
 
     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
-        d = DictDiffer(module_dict, module_contents)
-        assert d.changed() == set()
-        assert d.added() == set()
-        assert d.removed() == set()
+        assert module_dict == module_contents
 
 
 @mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
@@ -245,8 +240,7 @@ def test_module_list():
                                          overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['almost_list1'], dict)
-    diff = expipe.core.DictDiffer(module_contents, mod_dict)
-    assert diff.changed() == set(), '{}, {}'.format(module_contents, mod_dict)
+    assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
     action_module = action.create_module(pytest.MODULE_ID,
@@ -282,8 +276,7 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
-                for m1, m2 in zip(messages, message_manager)])
+    assert all([m1 == m2 for m1, m2 in zip(messages, message_manager)])
 
     text = "my new message"
     user = "user2"
@@ -296,8 +289,7 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
-                for m1, m2 in zip(messages, message_manager)])
+    assert all([m1 == m2 for m1, m2 in zip(messages, message_manager)])
 
     text = "updated text"
     user = "new user"
@@ -365,7 +357,7 @@ def test_change_message():
     action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
     action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
+    assert all([m1 == m2.to_dict()
                 for m1, m2 in zip([msg_1, msg_2], message_manager)])
 
     # change one of them
@@ -378,7 +370,7 @@ def test_change_message():
             message.user = msg_3["user"]
             message.datetime = msg_3["datetime"]
 
-    assert all([expipe.core.DictDiffer(m1, m2.to_dict()).changed() == set()
+    assert all([m1 == m2.to_dict
                 for m1, m2 in zip([msg_1, msg_3], message_manager)])
 
 
@@ -497,7 +489,7 @@ def test_delete_action():
     action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
     action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    for attr in ['subjects', 'users', 'tags']:
+    for attr in ['entities', 'users', 'tags']:
         setattr(action, attr, ['sub1', 'sub2'])
     assert len(list(action.modules.keys())) != 0
     project.delete_action(action.id)
@@ -508,7 +500,7 @@ def test_delete_action():
     action = project.require_action(pytest.ACTION_ID)
     assert len(list(action.modules.keys())) == 0
     assert len(list(action_module.keys())) == 0
-    for attr in ['subjects', 'users', 'tags']:
+    for attr in ['entities', 'users', 'tags']:
         a = getattr(action, attr).data
         assert a is None
     assert len(action.messages) == 0
@@ -572,7 +564,7 @@ def test_fill_the_project():
     # action.create_message(msg_2)
 
     # orig_list = ['sub1', 'sub2']
-    # for attr in ['subjects', 'users', 'tags']:
+    # for attr in ['entities', 'users', 'tags']:
     #     prop_list = getattr(action, attr)
     #     assert isinstance(prop_list, expipe.core.ProperyList)
     #     prop_list.append('sub3')
