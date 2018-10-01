@@ -113,6 +113,8 @@ class ModuleManager:
     def __init__(self, parent):
         if isinstance(parent, Action):
             module_path = '/'.join(['action_modules', parent.project.id, parent.id])
+        elif isinstance(parent, Entity):
+            module_path = '/'.join(['entity_modules', parent.project.id, parent.id])
         elif isinstance(parent, Project):
             module_path = '/'.join(['project_modules', parent.id])
         else:
@@ -231,7 +233,8 @@ class ExpipeObject:
         Get a module, creating it if it doesn’t exist.
         """
         # TODO: what if both content and template is given, and also name?
-        warnings.warn("The 'overwrite' argument is deprecated.")
+        if overwrite:
+            warnings.warn("The 'overwrite' argument is deprecated.")
 
         if name is None:
             name, contents = self._load_template(template)
@@ -292,8 +295,8 @@ class ExpipeObject:
         if not isinstance(contents, (dict, list, np.ndarray)):
             raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
-
-        module._db.set(contents)
+        contents = convert_to_firebase(contents)
+        module._db.set(name=None, value=contents)
         return module
 
 
@@ -669,7 +672,8 @@ class Module:
         elif isinstance(parent, Project):
             path = '/'.join(['project_modules', parent.id, self.id])
         elif isinstance(parent, Entity):
-            path = '/'.join(['entity_modules', parent.id, self.id])
+            path = '/'.join(['entity_modules', parent.project.id,
+                             parent.id, self.id])
         else:
             raise IOError('Parent of type "' + type(parent) +
                           '" cannot have modules.')
@@ -875,7 +879,7 @@ class FirebaseBackend(AbstractBackend):
     def exists(self, name=None):
         self.ensure_auth()
         value = self.get(name, shallow=True)
-        if value:
+        if value is not None:
             return True
         else:
             return False
@@ -890,6 +894,8 @@ class FirebaseBackend(AbstractBackend):
         vprint("Get result", response.json())
         assert(response.status_code == 200)
         value = response.json()
+        if value is None:
+            return value
         assert("errors" not in value)
         value = convert_from_firebase(value)
         return value
@@ -907,9 +913,10 @@ class FirebaseBackend(AbstractBackend):
         vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
-        assert("errors" not in value)
+        if value is not None:
+            assert("errors" not in value)
 
-    def push(self, name, value=None):
+    def push(self, name=None, value=None):
         self.ensure_auth()
         url = self.build_url(name)
         if value is None:
@@ -919,6 +926,8 @@ class FirebaseBackend(AbstractBackend):
         vprint("Push result", response.json())
         assert(response.status_code == 200)
         value = response.json()
+        if value is None:
+            return value
         assert("errors" not in value)
         return value
 
@@ -936,6 +945,8 @@ class FirebaseBackend(AbstractBackend):
         vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
+        if value is None:
+            return value
         assert("errors" not in value)
         value = convert_from_firebase(value)
         return value
