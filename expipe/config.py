@@ -5,8 +5,22 @@ import yaml
 import expipe
 
 config_dir = os.path.join(os.path.expanduser('~'), '.config', 'expipe')
-settings_file_path = os.path.join(config_dir, 'config.yaml')
-test_settings_file_path = os.path.join(config_dir, 'test-config.yaml')
+rc_file_path = os.path.join(config_dir, 'expiperc')
+
+
+_default_rc = {
+    'settings_file_path': os.path.join(config_dir, 'config.yaml'),
+    'test_settings_file_path': os.path.join(config_dir, 'test-config.yaml')
+}
+
+if not os.path.exists(rc_file_path):
+    with open(rc_file_path, "w") as f:
+        yaml.dump(_default_rc, f, default_flow_style=False)
+    rc_params = _default_rc
+else:
+    with open(rc_file_path, "r") as f:
+        rc_params = yaml.load(f)
+
 
 default_settings = {
     'data_path': os.path.join(os.path.join(os.path.expanduser('~'), 'expipe_data')),
@@ -78,13 +92,13 @@ def configure(data_path, email, password, url_prefix, api_key):
     api_key:
         Firebase API key
     """
-    settings_directory = os.path.dirname(settings_file_path)
+    settings_directory = os.path.dirname(rc_params['settings_file_path'])
 
     if not os.path.exists(settings_directory):
         os.makedirs(settings_directory)
     current_settings = {}
-    if os.path.exists(settings_file_path):
-        with open(settings_file_path, "r") as settings_file:
+    if os.path.exists(rc_params['settings_file_path']):
+        with open(rc_params['settings_file_path'], "r") as settings_file:
             current_settings = yaml.load(settings_file)
     current_settings.update({
         "data_path": data_path,
@@ -99,13 +113,13 @@ def configure(data_path, email, password, url_prefix, api_key):
             }
         }
     })
-    with open(settings_file_path, "w") as settings_file:
+    with open(rc_params['settings_file_path'], "w") as settings_file:
         yaml.dump(current_settings, settings_file, default_flow_style=False)
 
 
 def ensure_testing():
-    if os.path.exists(test_settings_file_path):
-        with open(test_settings_file_path) as settings_file:
+    if os.path.exists(rc_params['test_settings_file_path']):
+        with open(rc_params['test_settings_file_path']) as settings_file:
             settings = yaml.load(settings_file)
             deep_verification(default_settings, settings)
     else:
@@ -120,7 +134,7 @@ class Settings:
 
     def ensure_init(self):
         try:
-            with open(settings_file_path) as settings_file:
+            with open(rc_params['settings_file_path']) as settings_file:
                 settings = yaml.load(settings_file)
                 deep_verification(default_settings, settings)
                 self.settings = settings
