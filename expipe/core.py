@@ -270,7 +270,7 @@ class ExpipeObject:
     def modules(self):
         return ModuleManager(self)
 
-    def require_module(self, name=None, template=None, contents=None):
+    def require_module(self, name=None, template=None, contents=None, overwrite=False):
         """
         Get a module, creating it if it doesn’t exist.
         """
@@ -278,25 +278,30 @@ class ExpipeObject:
 
         if name is None:
             name, contents = self._load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
+        exists = self._db_modules.exists(name)
+        if exists and contents is None:
             return self.modules._get(name)
-
+        elif exists and contents is not None:
+            if overwrite is False:
+                raise NameError(
+                    "Module " + name + " already exists in " + self.id +
+                    ". use overwrite")
         return self._create_module(
             name=name,
             contents=contents
         )
 
-    def create_module(self, name=None, template=None, contents=None, overwrite=False):
+    def create_module(self, name=None, template=None, contents=None):
         """
         Create and return a module. Fails if the target name already exists.
         """
         # TODO: what if both content and template is given, and also name?
         if name is None:
             name, contents = self._load_template(template)
-
-        if self._db_modules.exists(name) and not overwrite:
-            raise NameError("Module {} already exist in {}. ".format(name, self.id))
+        exists = self._db_modules.exists(name)
+        if exists:
+            raise NameError(
+                "Module " + name + " already exists in " + self.id + ".")
 
         return self._create_module(
             name=name,
@@ -324,7 +329,7 @@ class ExpipeObject:
         if isinstance(self, Project):
             project = self
         elif isinstance(self, (Entity, Action)):
-            project = self.parent
+            project = self.project
         else:
             raise ValueError('Someting went wrong, unable to get project.')
         contents = project.templates[template].to_dict()
@@ -473,8 +478,10 @@ class Project(ExpipeObject):
             return self.templates._get(name)
         elif exists and contents is not None:
             if overwrite is False:
-                raise IOError('Template exists, set "overwrite" to True to ' +
-                    'set contents')
+                raise NameError(
+                    "Template " + name + " already exists in " + self.id +
+                    ". use overwrite")
+
         return self._create_template(name, contents)
 
     def create_template(self, name, contents):
@@ -483,7 +490,8 @@ class Project(ExpipeObject):
         """
         exists = self._db_templates.exists(name)
         if exists:
-            raise NameError("Template {} already exists in project {}".format(name, self.id))
+            raise NameError(
+                "Template " + name + " already exists in " + self.id + ".")
 
         return self._create_template(name, contents)
 
