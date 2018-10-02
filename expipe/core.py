@@ -617,10 +617,6 @@ class Entity(ExpipeObject):
         value = list(set(value))
         self._db.set('tags', value)
 
-    def require_filerecord(self, class_type=None, name=None):
-        class_type = class_type or Filerecord
-        return class_type(self, name)
-
 
 class Action(ExpipeObject):
     """
