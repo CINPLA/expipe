@@ -1104,8 +1104,8 @@ class Filerecord:
         self.action = action
 
         # TODO make into properties/functions in case settings change
-        self.exdir_path = op.join(action.project.id, action.id,
-                                  self.id + ".exdir")
+        self.exdir_path = op.join(
+            action.project.id, action.id, self.id + ".exdir")
         if 'data_path' in expipe.settings:
             self.local_path = op.join(expipe.settings["data_path"],
                                       self.exdir_path)

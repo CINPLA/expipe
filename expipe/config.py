@@ -149,4 +149,12 @@ class Settings:
         self.ensure_init()
         return self.settings[name]
 
+    def __contains__(self, name):
+        self.ensure_init()
+        return name in self.settings
+
+    def get(self, name):
+        self.ensure_init()
+        return self.settings.get(name)
+
 settings = Settings()
