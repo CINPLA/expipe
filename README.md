@@ -18,5 +18,5 @@ production and analysis of the data.
 
 ## Installation
 
-See the [documentation](http://cinpla.github.io/expipe)
+See the [documentation](https://expipe.readthedocs.io/)
 for more information on how to use expipe.
