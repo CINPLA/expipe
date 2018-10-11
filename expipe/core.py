@@ -170,6 +170,13 @@ class ModuleManager:
             raise KeyError("Module '{}' does not exist".format(name))
         return self._get(name)
 
+    def __setitem__(self, name, contents):
+        if not isinstance(contents, (dict, list, np.ndarray)):
+            raise TypeError('Contents expected "dict" or "list" got "' +
+                            str(type(contents)) + '".')
+        contents = convert_to_firebase(contents)
+        self._db.set(name=name, value=contents)
+
     def _get(self, name):
         return Module(parent=self.parent, module_id=name)
 
@@ -270,7 +277,7 @@ class ExpipeObject:
     def modules(self):
         return ModuleManager(self)
 
-    def require_module(self, name=None, template=None, contents=None, overwrite=False):
+    def require_module(self, name=None, template=None, contents=None):
         """
         Get a module, creating it if it doesn’t exist.
         """
@@ -279,19 +286,14 @@ class ExpipeObject:
         if name is None:
             name, contents = self._load_template(template)
         exists = self._db_modules.exists(name)
-        if exists and contents is None:
+        if exists:
             return self.modules._get(name)
-        elif exists and contents is not None:
-            if overwrite is False:
-                raise NameError(
-                    "Module " + name + " already exists in " + self.id +
-                    ". use overwrite")
         return self._create_module(
             name=name,
             contents=contents
         )
 
-    def create_module(self, name=None, template=None, contents=None):
+    def create_module(self, name=None, template=None, contents=None, overwrite=False):
         """
         Create and return a module. Fails if the target name already exists.
         """
@@ -299,22 +301,15 @@ class ExpipeObject:
         if name is None:
             name, contents = self._load_template(template)
         exists = self._db_modules.exists(name)
-        if exists:
+        if exists and not overwrite:
             raise NameError(
-                "Module " + name + " already exists in " + self.id + ".")
+                "Module " + name + " already exists in " + self.id +
+                ". use overwrite")
 
         return self._create_module(
             name=name,
             contents=contents
         )
-
-    def get_module(self, name):
-        """
-        This function is deprecated.
-        Get a module. Fails if the target name does not exists.
-        """
-        warnings.warn("object.get_module(name) is deprecated. Use object.modules[name] instead.")
-        return self.modules[name]
 
     def delete_module(self, name):
         """
@@ -381,23 +376,18 @@ class Project(ExpipeObject):
 
         return self._create_action(name)
 
-    def create_action(self, name):
+    def create_action(self, name, overwrite=False):
         """
         Create and return an action. Fails if the target name already exists.
         """
         exists = self._db_actions.exists(name)
-        if exists:
-            raise NameError("Action {} already exists in project {}".format(name, self.id))
-
+        if exists and not overwrite:
+            raise NameError(
+                "Action " + name + " already exists in " + self.id +
+                ". use overwrite")
+        elif exists and overwrite:
+            self.delete_action(name)
         return self._create_action(name)
-
-    def get_action(self, name):
-        """
-        This function is deprecated.
-        Get an existing action. Fails if the target name does not exists.
-        """
-        warnings.warn("project.get_action(name) is deprecated. Use project.actions[name] instead.")
-        return self.actions[name]
 
     def delete_action(self, name):
         """
@@ -429,23 +419,18 @@ class Project(ExpipeObject):
 
         return self._create_entity(name)
 
-    def create_entity(self, name):
+    def create_entity(self, name, overwrite=False):
         """
         Create and return an entity. Fails if the target name already exists.
         """
         exists = self._db_entities.exists(name)
-        if exists:
-            raise NameError("Entity {} already exists in project {}".format(name, self.id))
-
+        if exists and not overwrite:
+            raise NameError(
+                "Entity " + name + " already exists in " + self.id +
+                ". use overwrite")
+        elif exists and overwrite:
+            self.delete_entity(name)
         return self._create_entity(name)
-
-    def get_entity(self, name):
-        """
-        This function is deprecated.
-        Get an existing entity. Fails if the target name does not exists.
-        """
-        warnings.warn("project.get_entity(name) is deprecated. Use project.entities[name] instead.")
-        return self.entities[name]
 
     def delete_entity(self, name):
         """
@@ -469,29 +454,25 @@ class Project(ExpipeObject):
         self._db_templates.set(name=name, value=contents)
         return self.templates._get(name)
 
-    def require_template(self, name, contents=None, overwrite=False):
+    def require_template(self, name, contents=None):
         """
         Get an template, creating it if it doesn’t exist.
         """
         exists = self._db_templates.exists(name)
-        if exists and contents is None:
+        if exists:
             return self.templates._get(name)
-        elif exists and contents is not None:
-            if overwrite is False:
-                raise NameError(
-                    "Template " + name + " already exists in " + self.id +
-                    ". use overwrite")
 
         return self._create_template(name, contents)
 
-    def create_template(self, name, contents):
+    def create_template(self, name, contents, overwrite=False):
         """
         Create and return an template. Fails if the target name already exists.
         """
         exists = self._db_templates.exists(name)
-        if exists:
+        if exists and not overwrite:
             raise NameError(
-                "Template " + name + " already exists in " + self.id + ".")
+                "Template " + name + " already exists in " + self.id +
+                ". use overwrite")
 
         return self._create_template(name, contents)
 
@@ -758,25 +739,32 @@ class Module:
             raise TypeError('Module name must be string')
         self.id = module_id
         if isinstance(parent, Action):
-            path = '/'.join(['action_modules', parent.project.id,
+            self.path = '/'.join(['action_modules', parent.project.id,
                              parent.id, self.id])
         elif isinstance(parent, Project):
-            path = '/'.join(['project_modules', parent.id, self.id])
+            self.path = '/'.join(['project_modules', parent.id, self.id])
         elif isinstance(parent, Entity):
-            path = '/'.join(['entity_modules', parent.project.id,
+            self.path = '/'.join(['entity_modules', parent.project.id,
                              parent.id, self.id])
+        elif isinstance(parent, Module):
+            self.path = '/'.join([parent.path, self.id])
         else:
-            raise IOError('Parent of type "' + type(parent) +
-                          '" cannot have modules.')
-        self._db = FirebaseBackend(path)
+            raise IOError(
+                'Parent of type "' + type(parent) + '" cannot have modules.')
+        self._db = FirebaseBackend(self.path)
 
     # TODO module reference id
 
+    def __getitem__(self, name):
+        return Module(self, name)
+
+    def __setitem__(self, name, contents):
+        contents = convert_to_firebase(contents)
+        self._db.set(name=name, value=contents)
+
     def to_dict(self):
-        d = self._db.get()
-        if d is None:
-            return {}
-        return d
+        result = self._get_module_content() or {}
+        return result
 
     def to_json(self, fname=None):
         import json
@@ -1049,7 +1037,7 @@ class FirebaseBackend(AbstractBackend):
     # def get_keys(self, name=None):
     #     return self.get(name, shallow=True)
 
-    def set(self, name, value=None):
+    def set(self, name=None, value=None):
         self.ensure_auth()
         url = self.build_url(name)
         if value is None:
@@ -1078,7 +1066,7 @@ class FirebaseBackend(AbstractBackend):
         return value
 
     def delete(self, name):
-        db.child(self.path).child(name).set({}, user["idToken"])
+        self.set(name, {})
 
     def update(self, name, value=None):
         self.ensure_auth()
