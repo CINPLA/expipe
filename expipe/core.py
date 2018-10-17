@@ -10,7 +10,6 @@ import copy
 import abc
 import expipe
 
-
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 verbose = False
 
@@ -18,37 +17,25 @@ def vprint(*arg):
     if verbose:
         print(*arg)
 
-
-######################################################################################################
-# Managers
-######################################################################################################
-class ActionManager:
+class ObjectManager:
     """
-    Manager class for retrieving actions in a project
+    Common class for all collections of objects, such as
+    actions, modules, entities, templates, etc.
     """
-    def __init__(self, project):
-        self.project = project
-        self._db = FirebaseBackend('/actions/' + project.id)
+    def __init__(self, backend):
+        self.backend = backend
 
     def __getitem__(self, name):
-        if not self._db.exists(name):
-            raise KeyError("Action '{}' does not exist".format(name))
-        return self._get(name)
-
-    def _get(self, name):
-        return Action(project=self.project, action_id=name)
+        return backend.__getitem__(name)
 
     def __iter__(self):
-        keys = self._db.get(shallow=True) or []
-        for key in keys:
-            yield key
+        return backend.__iter__()
 
     def __len__(self):
-        keys = self._db.get(shallow=True) or []
-        return len(keys)
+        return backend.__len__()
 
     def __contains__(self, name):
-        return name in (self._db.get(shallow=True) or [])
+        return backend.__contains__()
 
     def items(self):
         return collections.abc.ItemsView(self)
@@ -60,222 +47,20 @@ class ActionManager:
         return collections.abc.ValuesView(self)
 
     def to_dict(self):
-        result = self._db.get() or dict()
+        result = self._backend.get() or dict()
         return result
 
-
-class EntityManager:
-    """
-    Manager class for retrieving entities in a project
-    """
-    def __init__(self, project):
-        self.project = project
-        self._db = FirebaseBackend('/entities/' + project.id)
-
-    def __getitem__(self, name):
-        if not self._db.exists(name):
-            raise KeyError("Entity '{}' does not exist".format(name))
-        return self._get(name)
-
-    def _get(self, name):
-        return Entity(project=self.project, entity_id=name)
-
-    def __iter__(self):
-        keys = self._db.get(shallow=True) or []
-        for key in keys:
-            yield key
-
-    def __len__(self):
-        keys = self._db.get(shallow=True) or []
-        return len(keys)
-
-    def __contains__(self, name):
-        return name in (self._db.get(shallow=True) or [])
-
-    def items(self):
-        return collections.abc.ItemsView(self)
-
-    def keys(self):
-        return collections.abc.KeysView(self)
-
-    def values(self):
-        return collections.abc.ValuesView(self)
-
-    def to_dict(self):
-        result = self._db.get() or dict()
-        return result
-
-
-class TemplateManager:
-    """
-    Manager class for retrieving entities in a project
-    """
-    def __init__(self, project):
-        self.project = project
-        self._db = FirebaseBackend('/templates/' + project.id)
-
-    def __getitem__(self, name):
-        if not self._db.exists(name):
-            raise KeyError("Template '{}' does not exist".format(name))
-        return self._get(name)
-
-    def _get(self, name):
-        return Template(project=self.project, template_id=name)
-
-    def __iter__(self):
-        keys = self._db.get(shallow=True) or []
-        for key in keys:
-            yield key
-
-    def __len__(self):
-        keys = self._db.get(shallow=True) or []
-        return len(keys)
-
-    def __contains__(self, name):
-        return name in (self._db.get(shallow=True) or [])
-
-    def items(self):
-        return collections.abc.ItemsView(self)
-
-    def keys(self):
-        return collections.abc.KeysView(self)
-
-    def values(self):
-        return collections.abc.ValuesView(self)
-
-    def to_dict(self):
-        result = self._db.get() or dict()
-        return result
-
-
-class ModuleManager:
-    """
-    Manager class for retrieving modules in a project, entity or an action
-    """
-    def __init__(self, parent):
-        if isinstance(parent, Action):
-            module_path = '/'.join(['action_modules', parent.project.id, parent.id])
-        elif isinstance(parent, Entity):
-            module_path = '/'.join(['entity_modules', parent.project.id, parent.id])
-        elif isinstance(parent, Project):
-            module_path = '/'.join(['project_modules', parent.id])
-        else:
-            raise TypeError("Parent of type '{}' cannot have modules.".format(type(parent)))
-
-        self.parent = parent
-        self._db = FirebaseBackend(module_path)
-
-    def __getitem__(self, name):
-        if not self._db.exists(name):
-            raise KeyError("Module '{}' does not exist".format(name))
-        return self._get(name)
-
-    def __setitem__(self, name, contents):
-        if not isinstance(contents, (dict, list, np.ndarray)):
-            raise TypeError('Contents expected "dict" or "list" got "' +
-                            str(type(contents)) + '".')
-        contents = convert_to_firebase(contents)
-        self._db.set(name=name, value=contents)
-
-    def _get(self, name):
-        return Module(parent=self.parent, module_id=name)
-
-    def __iter__(self):
-        keys = self._db.get(shallow=True) or []
-        for key in keys:
-            yield key
-
-    def __len__(self):
-        keys = self._db.get(shallow=True) or []
-        return len(keys)
-
-    def __contains__(self, name):
-        return name in (self._db.get(shallow=True) or [])
-
-    def items(self):
-        return collections.abc.ItemsView(self)
-
-    def keys(self):
-        return collections.abc.KeysView(self)
-
-    def values(self):
-        return collections.abc.ValuesView(self)
-
-    def to_dict(self):
-        d = {}
-        for name in self.keys():
-            d[name] = self[name].to_dict()
-        return d
-
-    def to_json(self, fname=None):
-        warnings.warn("module_manager.to_json() is deprecated. Will be removed in next version!")
-        import json
-        fname = fname or self.parent.id
-
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError("The filename '{}' exists, choose another".format(fname))
-
-        vprint("Saving module '{}' to '{}'".format(self.parent.id, fname))
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile, sort_keys=True, indent=4)
-
-
-class MessageManager:
-    """
-    Manager class for messages in an action or entity
-    """
-    def __init__(self, parent):
-        if isinstance(parent, Action):
-            path = "/".join(["action_messages", parent.project.id, parent.id])
-        elif isinstance(parent, Entity):
-            path = "/".join(["entity_messages", parent.project.id, parent.id])
-        else:
-            raise TypeError(
-                "Parent must be of type Action, given type" +
-                " {}".format(type(parent)))
-        self._db = FirebaseBackend(path)
-        self.parent = parent
-
-    def __getitem__(self, name):
-        if not self._db.exists(name):
-            raise KeyError("Action '{}' does not exist".format(name))
-        return self._get(name)
-
-    def __contains__(self, item):
-        return item in [a.to_dict() for a in self]
-
-    def __iter__(self):
-        keys = self.keys()
-        for key in keys:
-            yield Message(parent=self.parent, message_id=key)
-
-    def __len__(self):
-        return len(self.keys())
-
-    def _get(self, name):
-        return Message(parent=self.parent, message_id=name)
-
-    def keys(self):
-        keys = self._db.get(shallow=True) or []
-        return keys
-
-
-######################################################################################################
-# Main classes
-######################################################################################################
 class ExpipeObject:
     """
     Parent class for expipe Project and expipe Action objects
     """
-    def __init__(self, object_id, db_modules):
+    def __init__(self, object_id, backend):
         self.id = object_id
-        self._db_modules = db_modules
+        self._backend = backend
 
     @property
     def modules(self):
-        return ModuleManager(self)
+        return ObjectManager(self._backend.modules)
 
     def require_module(self, name=None, template=None, contents=None):
         """
@@ -285,9 +70,8 @@ class ExpipeObject:
 
         if name is None:
             name, contents = self._load_template(template)
-        exists = self._db_modules.exists(name)
-        if exists:
-            return self.modules._get(name)
+        if name in self.modules:
+            return self.modules[name]
         return self._create_module(
             name=name,
             contents=contents
@@ -300,7 +84,7 @@ class ExpipeObject:
         # TODO: what if both content and template is given, and also name?
         if name is None:
             name, contents = self._load_template(template)
-        exists = self._db_modules.exists(name)
+        exists = self._backend.modules.exists(name)
         if exists and not overwrite:
             raise NameError(
                 "Module " + name + " already exists in " + self.id +
@@ -315,10 +99,10 @@ class ExpipeObject:
         """
         Delete a module. Fails if the target name does not exists.
         """
-        exists = self._db_modules.exists(name)
+        exists = self._backend.modules.exists(name)
         if not exists:
             raise KeyError("Module {} does not exist in {}".format(name, self.id))
-        self._db_modules.delete(name)
+        self._backend.modules.delete(name)
 
     def _load_template(self, template):
         if isinstance(self, Project):
@@ -340,7 +124,7 @@ class ExpipeObject:
             raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
         contents = convert_to_firebase(contents)
-        module._db.set(name=None, value=contents)
+        module._backend.set(name=None, value=contents)
         return module
 
 
@@ -348,45 +132,39 @@ class Project(ExpipeObject):
     """
     Expipe project object
     """
-    def __init__(self, project_id):
+    def __init__(self, object_id, backend):
         super(Project, self).__init__(
-            object_id=project_id,
-            db_modules=FirebaseBackend('/project_modules/' + project_id)
+            object_id,
+            backend
         )
-        self._db_actions = FirebaseBackend('/actions/' + project_id)
-        self._db_entities = FirebaseBackend('/entities/' + project_id)
-        self._db_templates = FirebaseBackend('/templates/' + project_id)
 
     @property
     def actions(self):
-        return ActionManager(self)
+        return ObjectManager(self._backend.actions)
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
-        self._db_actions.set(name=name, value={"registered": dtime})
-        return self.actions._get(name)
+        self._backend.actions[name] = {"registered": dtime}
+        return self.actions[name]
 
     def require_action(self, name):
         """
         Get an action, creating it if it doesn’t exist.
         """
-        exists = self._db_actions.exists(name)
-        if exists:
-            return self.actions._get(name)
+        if name in self.actions:
+            return self.actions[name]
 
         return self._create_action(name)
 
-    def create_action(self, name, overwrite=False):
+    def create_action(self, name):
         """
         Create and return an action. Fails if the target name already exists.
         """
-        exists = self._db_actions.exists(name)
-        if exists and not overwrite:
+        if name in self.actions:
             raise NameError(
                 "Action " + name + " already exists in " + self.id +
                 ". use overwrite")
-        elif exists and overwrite:
-            self.delete_action(name)
+
         return self._create_action(name)
 
     def delete_action(self, name):
@@ -397,25 +175,24 @@ class Project(ExpipeObject):
         action.delete_messages()
         for module in list(action.modules.keys()):
             action.delete_module(module)
-        self._db_actions.delete(name)
+        self._backend.actions.delete(name)
         del action
 
     @property
     def entities(self):
-        return EntityManager(self)
+        return ObjectManager(self._backend.entities)
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
-        self._db_entities.set(name=name, value={"registered": dtime})
-        return self.entities._get(name)
+        self.entities[name] = {"registered": dtime}
+        return self.entities[name]
 
     def require_entity(self, name):
         """
         Get an entity, creating it if it doesn’t exist.
         """
-        exists = self._db_entities.exists(name)
-        if exists:
-            return self.entities._get(name)
+        if name in self.entities:
+            return self.entities.[name]
 
         return self._create_entity(name)
 
@@ -423,13 +200,11 @@ class Project(ExpipeObject):
         """
         Create and return an entity. Fails if the target name already exists.
         """
-        exists = self._db_entities.exists(name)
-        if exists and not overwrite:
+        if name in self.entities:
             raise NameError(
                 "Entity " + name + " already exists in " + self.id +
                 ". use overwrite")
-        elif exists and overwrite:
-            self.delete_entity(name)
+
         return self._create_entity(name)
 
     def delete_entity(self, name):
@@ -440,7 +215,9 @@ class Project(ExpipeObject):
         entity.delete_messages()
         for module in list(entity.modules.keys()):
             entity.delete_module(module)
-        self._db_entities.delete(name)
+
+        # TODO could perhaps be del self.entities[name]?
+        self._backend.entities.delete(name)
         del entity
 
     @property
@@ -451,25 +228,23 @@ class Project(ExpipeObject):
         dtime = dt.datetime.today().strftime(datetime_format)
         contents.update({"registered": dtime})
         assert 'identifier' in contents
-        self._db_templates.set(name=name, value=contents)
-        return self.templates._get(name)
+        self.templates[name] = contents
+        return self.templates[name]
 
     def require_template(self, name, contents=None):
         """
         Get an template, creating it if it doesn’t exist.
         """
-        exists = self._db_templates.exists(name)
-        if exists:
-            return self.templates._get(name)
+        if name in self.templates:
+            return self.templates.[name]
 
         return self._create_template(name, contents)
 
-    def create_template(self, name, contents, overwrite=False):
+    def create_template(self, name, contents):
         """
         Create and return an template. Fails if the target name already exists.
         """
-        exists = self._db_templates.exists(name)
-        if exists and not overwrite:
+        if name in self.templates:
             raise NameError(
                 "Template " + name + " already exists in " + self.id +
                 ". use overwrite")
@@ -481,7 +256,9 @@ class Project(ExpipeObject):
         Delete an template. Fails if the target name does not exists.
         """
         template = self.templates[name]
-        self._db_templates.delete(name)
+
+        # TODO perhaps change this to `del self.templates[name]`?
+        self._backend.templates.delete(name)
         del template
 
 
@@ -489,23 +266,12 @@ class Entity(ExpipeObject):
     """
     Expipe entity object
     """
-    def __init__(self, project, entity_id):
+    def __init__(self, project, entity_id, backend):
         super(Entity, self).__init__(
-            object_id=entity_id,
-            db_modules=FirebaseBackend("/".join(["entity_modules", project.id, entity_id]))
+            entity_id,
+            backend
         )
         self.project = project
-        self._entity_dirty = True
-        path = "/".join(["entities", self.project.id, self.id])
-        messages_path = "/".join(["entity_messages", self.project.id, self.id])
-        self._db = FirebaseBackend(path)
-        self._db_messages = FirebaseBackend(messages_path)
-
-    def _db_get(self, name):
-        if self._entity_dirty:
-            self._data = self._db.get()
-            self._entity_dirty = False
-        return self._data.get(name)
 
     @property
     def messages(self):
@@ -524,12 +290,12 @@ class Entity(ExpipeObject):
             "datetime": datetime_str
         }
 
-        result = self._db_messages.push(message)
+        result = self._backend_messages.push(message)
         return self.messages[result["name"]]
 
     def delete_messages(self):
         for message in self.messages:
-            self._db_messages.delete(name=message.name)
+            self._backend_messages.delete(name=message.name)
 
     def _assert_message_dtype(self, text, user, datetime):
         _assert_message_text_dtype(text)
@@ -538,27 +304,27 @@ class Entity(ExpipeObject):
 
     @property
     def location(self):
-        return self._db_get('location')
+        return self._backend_get('location')
 
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._db.set('location', value)
+        self._backend.set('location', value)
 
     @property
     def type(self):
-        return self._db_get('type')
+        return self._backend_get('type')
 
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._db.set('type', value)
+        self._backend.set('type', value)
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._db_get('datetime'), datetime_format)
+        return dt.datetime.strptime(self._backend_get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -566,12 +332,12 @@ class Entity(ExpipeObject):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
-        self._db.set('datetime', dtime)
+        self._backend.set('datetime', dtime)
 
     @property
     def users(self):
-        return ProperyList(self._db, 'users', dtype=str, unique=True,
-                           data=self._db_get('users'))
+        return ProperyList(self._backend, 'users', dtype=str, unique=True,
+                           data=self._backend_get('users'))
 
     @users.setter
     def users(self, value):
@@ -581,12 +347,12 @@ class Entity(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('users', value)
+        self._backend.set('users', value)
 
     @property
     def tags(self):
-        return ProperyList(self._db, 'tags', dtype=str, unique=True,
-                           data=self._db_get('tags'))
+        return ProperyList(self._backend, 'tags', dtype=str, unique=True,
+                           data=self._backend_get('tags'))
 
     @tags.setter
     def tags(self, value):
@@ -596,7 +362,7 @@ class Entity(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('tags', value)
+        self._backend.set('tags', value)
 
 
 class Action(ExpipeObject):
@@ -606,18 +372,18 @@ class Action(ExpipeObject):
     def __init__(self, project, action_id):
         super(Action, self).__init__(
             object_id=action_id,
-            db_modules=FirebaseBackend("/".join(["action_modules", project.id, action_id]))
+            db_modules=FirebaseObject("/".join(["action_modules", project.id, action_id]))
         )
         self.project = project
         self._action_dirty = True
         path = "/".join(["actions", self.project.id, self.id])
         messages_path = "/".join(["action_messages", self.project.id, self.id])
-        self._db = FirebaseBackend(path)
-        self._db_messages = FirebaseBackend(messages_path)
+        self._backend = FirebaseObject(path)
+        self._backend_messages = FirebaseObject(messages_path)
 
-    def _db_get(self, name):
+    def _backend_get(self, name):
         if self._action_dirty:
-            self._data = self._db.get()
+            self._data = self._backend.get()
             self._action_dirty = False
         return self._data.get(name)
 
@@ -638,12 +404,12 @@ class Action(ExpipeObject):
             "datetime": datetime_str
         }
 
-        result = self._db_messages.push(message)
+        result = self._backend_messages.push(message)
         return self.messages[result["name"]]
 
     def delete_messages(self):
         for message in self.messages:
-            self._db_messages.delete(name=message.name)
+            self._backend_messages.delete(name=message.name)
 
     def _assert_message_dtype(self, text, user, datetime):
         _assert_message_text_dtype(text)
@@ -652,28 +418,28 @@ class Action(ExpipeObject):
 
     @property
     def location(self):
-        return self._db_get('location')
+        return self._backend_get('location')
 
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._db.set('location', value)
+        self._backend.set('location', value)
 
     @property
     def type(self):
-        return self._db_get('type')
+        return self._backend_get('type')
 
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._db.set('type', value)
+        self._backend.set('type', value)
 
     @property
     def entities(self):
-        return ProperyList(self._db, 'entities', dtype=str, unique=True,
-                           data=self._db_get('entities'))
+        return ProperyList(self._backend, 'entities', dtype=str, unique=True,
+                           data=self._backend_get('entities'))
 
     @entities.setter
     def entities(self, value):
@@ -683,11 +449,11 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('entities', value)
+        self._backend.set('entities', value)
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._db_get('datetime'), datetime_format)
+        return dt.datetime.strptime(self._backend_get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -695,12 +461,12 @@ class Action(ExpipeObject):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
-        self._db.set('datetime', dtime)
+        self._backend.set('datetime', dtime)
 
     @property
     def users(self):
-        return ProperyList(self._db, 'users', dtype=str, unique=True,
-                           data=self._db_get('users'))
+        return ProperyList(self._backend, 'users', dtype=str, unique=True,
+                           data=self._backend_get('users'))
 
     @users.setter
     def users(self, value):
@@ -710,12 +476,12 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('users', value)
+        self._backend.set('users', value)
 
     @property
     def tags(self):
-        return ProperyList(self._db, 'tags', dtype=str, unique=True,
-                           data=self._db_get('tags'))
+        return ProperyList(self._backend, 'tags', dtype=str, unique=True,
+                           data=self._backend_get('tags'))
 
     @tags.setter
     def tags(self, value):
@@ -725,7 +491,7 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._db.set('tags', value)
+        self._backend.set('tags', value)
 
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord
@@ -751,7 +517,7 @@ class Module:
         else:
             raise IOError(
                 'Parent of type "' + type(parent) + '" cannot have modules.')
-        self._db = FirebaseBackend(self.path)
+        self._backend = FirebaseObject(self.path)
 
     # TODO module reference id
 
@@ -760,7 +526,7 @@ class Module:
 
     def __setitem__(self, name, contents):
         contents = convert_to_firebase(contents)
-        self._db.set(name=name, value=contents)
+        self._backend.set(name=name, value=contents)
 
     def to_dict(self):
         result = self._get_module_content() or {}
@@ -794,7 +560,7 @@ class Module:
         return result.values()
 
     def _get_module_content(self):
-        result = self._db.get()
+        result = self._backend.get()
         if isinstance(result, list):
             if len(result) > 0:
                 raise TypeError('Got nonempty list, expected dict')
@@ -813,10 +579,10 @@ class Template:
         else:
             raise IOError('Parent of type "' + type(project) +
                           '" cannot have templates.')
-        self._db = FirebaseBackend(path)
+        self._backend = FirebaseObject(path)
 
     def to_dict(self):
-        d = self._db.get()
+        d = self._backend.get()
         if d is None:
             return {}
         return d
@@ -849,7 +615,7 @@ class Template:
         return result.values()
 
     def _get_template_content(self):
-        result = self._db.get()
+        result = self._backend.get()
         if isinstance(result, list):
             if len(result) > 0:
                 raise TypeError('Got nonempty list, expected dict')
@@ -878,7 +644,7 @@ class Message:
 
         self._name = message_id
         self.parent = parent
-        self._db = FirebaseBackend(path)
+        self._backend = FirebaseObject(path)
 
     @property
     def name(self):
@@ -886,36 +652,36 @@ class Message:
 
     @property
     def text(self):
-        return self._db.get(name="text")
+        return self._backend.get(name="text")
 
     @text.setter
     def text(self, value):
         _assert_message_text_dtype(value)
-        self._db.set(name="text", value=value)
+        self._backend.set(name="text", value=value)
 
     @property
     def user(self):
-        return self._db.get(name="user")
+        return self._backend.get(name="user")
 
     @user.setter
     def user(self, value=None):
         value = value or expipe.settings.get("username")
         _assert_message_user_dtype(value)
-        self._db.set(name="user", value=value)
+        self._backend.set(name="user", value=value)
 
     @property
     def datetime(self):
-        value = self._db.get(name="datetime")
+        value = self._backend.get(name="datetime")
         return dt.datetime.strptime(value, datetime_format)
 
     @datetime.setter
     def datetime(self, value):
         _assert_message_datetime_dtype(value)
         value_str = dt.datetime.strftime(value, datetime_format)
-        self._db.set(name="datetime", value=value_str)
+        self._backend.set(name="datetime", value=value_str)
 
     def to_dict(self):
-        content = self._db.get()
+        content = self._backend.get()
         if content:
             content['datetime'] = dt.datetime.strptime(content['datetime'],
                                                        datetime_format)
@@ -925,165 +691,29 @@ class Message:
 ######################################################################################################
 # Backend
 ######################################################################################################
-class AbstractBackend(abc.ABC):
+
+
+class FileSystemBackend(AbstractBackend):
     def __init__(self, path):
-        self.path = path
-
-    @abc.abstractmethod
-    def exists(self, name=None):
-        pass
-
-    @abc.abstractmethod
-    def get(self, name=None, shallow=False):
-        pass
-
-    @abc.abstractmethod
-    def set(self, name, value=None):
-        pass
-
-    @abc.abstractmethod
-    def push(self, value=None):
-        pass
-
-    @abc.abstractmethod
-    def delete(self, name):
-        pass
-
-    @abc.abstractmethod
-    def update(self, name, value=None):
-        pass
-
-
-class FirebaseBackend(AbstractBackend):
-    def __init__(self, path):
-        super(FirebaseBackend, self).__init__(
+        super(FileSystemBackend, self).__init__(
             path=path
         )
-        self.id_token = None
-        self.refresh_token = None
-        self.token_expiration = dt.datetime.now()
 
-    def ensure_auth(self):
-        current_time = dt.datetime.now()
-        api_key = expipe.settings["firebase"]["config"]["apiKey"]
+        self.path = pathlib.Path(path)
+        self.root, self.config = self.discover_config(path)
 
-        if self.id_token is not None and self.refresh_token is not None:
-            if current_time + dt.timedelta(0, 10) < self.token_expiration and False:
-                return
-            auth_url = "https://securetoken.googleapis.com/v1/token?key={}".format(api_key)
-            auth_data = {
-                "grant_type": "refresh_token",
-                "refresh_token": self.refresh_token
-            }
+    def discover_config(self, path):
+        current_path = pathlib.Path(path)
+        config_filename = current_path / "expipe.yaml"
 
-            response = requests.post(auth_url, json=auth_data)
-            value = response.json()
-            assert(response.status_code == 200)
-            assert("errors" not in value)
-            self.id_token = value["id_token"]
-            self.refresh_token = value["refresh_token"]
-            return
+        if not os.path.exists(config_filename):
+            if current_path == pathlib.root:
+                raise Exception("ERROR: No expipe.yaml found in current folder or parents.")
 
-        auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
-        auth_data = {
-            "email": expipe.settings["firebase"]["email"],
-            "password": expipe.settings["firebase"]["password"],
-            "returnSecureToken": True
-        }
-        response = requests.post(auth_url, json=auth_data)
-        assert(response.status_code == 200)
-        value = response.json()
-        assert("errors" not in value)
-        self.refresh_token = value["refreshToken"]
-        self.id_token = value["idToken"]
-        self.token_expiration = current_time + dt.timedelta(0, int(value["expiresIn"]))
+            return discover_config(current_path.parent())
 
-    def build_url(self, name=None):
-        if name is None:
-            full_path = self.path
-        else:
-            full_path = "/".join([self.path, name])
-        database_url = expipe.settings["firebase"]["config"]["databaseURL"]
-        return "{database_url}/{name}.json?auth={id_token}".format(
-            database_url=database_url,
-            name=full_path,
-            id_token=self.id_token
-        )
-
-    def exists(self, name=None):
-        self.ensure_auth()
-        value = self.get(name, shallow=True)
-        if value is not None:
-            return True
-        else:
-            return False
-
-    def get(self, name=None, shallow=False):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if shallow:
-            url += "&shallow=true"
-        vprint("URL", url)
-        response = requests.get(url)
-        vprint("Get result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        if value is None:
-            return value
-        assert("errors" not in value)
-        value = convert_from_firebase(value)
-        return value
-
-    # def get_keys(self, name=None):
-    #     return self.get(name, shallow=True)
-
-    def set(self, name=None, value=None):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if value is None:
-            value = name
-        vprint("URL", url)
-        response = requests.put(url, json=value)
-        vprint("Set result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        if value is not None:
-            assert("errors" not in value)
-
-    def push(self, name=None, value=None):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if value is None:
-            value = name
-        vprint("URL", url)
-        response = requests.post(url, json=value)
-        vprint("Push result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        if value is None:
-            return value
-        assert("errors" not in value)
-        return value
-
-    def delete(self, name):
-        self.set(name, {})
-
-    def update(self, name, value=None):
-        self.ensure_auth()
-        url = self.build_url(name)
-        if value is None:
-            value = name
-        value = convert_to_firebase(value)
-        vprint("URL", url)
-        response = requests.patch(url, json=value)
-        vprint("Set result", response.json())
-        assert(response.status_code == 200)
-        value = response.json()
-        if value is None:
-            return value
-        assert("errors" not in value)
-        value = convert_from_firebase(value)
-        return value
+        with open(config_filename) as f:
+            return current_path, yaml.load(f)
 
 
 class Filerecord:
@@ -1107,19 +737,19 @@ class Filerecord:
 
         # TODO if not exists and not required, return error
         ref_path = "/".join(["files", action.project.id, action.id])
-        self._db = FirebaseBackend(ref_path)
-        if not self._db.get(self.id):
-            self._db.update(self.id, {"path": self.exdir_path})
+        self._backend = FirebaseObject(ref_path)
+        if not self._backend.get(self.id):
+            self._backend.update(self.id, {"path": self.exdir_path})
 
 
 class ProperyList:
     def __init__(self, db_instance, name, dtype=None, unique=False,
                  data=None):
-        self._db = db_instance
+        self._backend = db_instance
         self.name = name
         self.dtype = dtype
         self.unique = unique
-        self.data = data or self._db.get(self.name)
+        self.data = data or self._backend.get(self.name)
 
     def __iter__(self):
         data = self.data or []
@@ -1150,7 +780,7 @@ class ProperyList:
         data.append(result)
         if self.unique:
             data = list(set(data))
-        self._db.set(self.name, data)
+        self._backend.set(self.name, data)
 
     def extend(self, value):
         data = self.data or []
@@ -1158,7 +788,7 @@ class ProperyList:
         data.extend(result)
         if self.unique:
             data = list(set(data))
-        self._db.set(self.name, data)
+        self._backend.set(self.name, data)
 
     def dtype_manager(self, value, iter_value=False, retrieve=False):
         if value is None or self.dtype is None:
@@ -1265,35 +895,52 @@ def convert_to_firebase(value):
         pass
     return result
 
+# Entry API
 
-def get_project(project_id):
-    project_db = FirebaseBackend("/projects")
-    existing = project_db.exists(project_id)
+def _discover_backend(backend):
+    if not backend:
+        # TODO replace with some type of default backend discovery
+        backend = FirebaseBackend()
+    return backend
+
+def projects():
+    backend = _discover_backend(backend)
+    return ObjectManager(backend.project_manager())
+
+def get_project(project_id, backend=None):
+    backend = _discover_backend(backend)
+
+    existing = backend.projects.exists(project_id)
+
     if not existing:
         raise KeyError("Project " + project_id + " does not exist.")
+
+    return Project(project_id, backend.projects.get(project_id))
+
+
+def require_project(project_id, backend=None):
+    """Creates a new project with the provided id if it does not already exist."""
+    backend = _discover_backend(backend)
+
+    if project_id not in backend.projects:
+        registered = dt.datetime.today().strftime(datetime_format)
+        backend.create_project(project_id, contents={"registered": registered})
+
     return Project(project_id)
 
 
-def require_project(project_id):
-    """Creates a new project with the provided id."""
-    project_db = FirebaseBackend("/projects")
-    existing = project_db.exists(project_id)
-    registered = dt.datetime.today().strftime(datetime_format)
-    if not existing:
-        project_db.set(name=project_id, value={"registered": registered})
-
-    return Project(project_id)
-
-
-def delete_project(project_id, remove_all_childs=False):
+def delete_project(project_id, remove_all_childs=False, backend=None):
     """Deletes a project named after the provided id."""
-    project_db = FirebaseBackend("/projects")
-    existing = project_db.exists(project_id)
+    backend = _discover_backend(backend)
+
+    existing = backend.projects.exists(project_id)
+
     if not existing:
         raise NameError('Project "' + project_id + '" does not exist.')
     else:
         if remove_all_childs:
-            project = Project(project_id)
+            project = Project(project_id, backend)
+
             for action in list(project.actions.keys()):
                 project.delete_action(action)
             for module in list(project.modules.keys()):
@@ -1302,7 +949,8 @@ def delete_project(project_id, remove_all_childs=False):
                 project.delete_entity(entity)
             for template in list(project.templates.keys()):
                 project.delete_template(template)
-        project_db.delete(name=project_id)
+
+        project_backend.delete_project(name=project_id)
 
 
 def load_database(backend):
