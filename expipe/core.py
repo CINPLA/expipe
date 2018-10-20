@@ -17,25 +17,50 @@ def vprint(*arg):
     if verbose:
         print(*arg)
 
-class ObjectManager:
+
+class ListManager:
     """
-    Common class for all collections of objects, such as
+    Common class for lists of objects, such as messages.
+    """
+    def __init__(self, backend):
+        self._backend = backend
+
+    def __getitem__(self, index):
+        return self._backend.__getitem__(name)
+
+    def __iter__(self):
+        return self._backend.__iter__()
+
+    def __len__(self):
+        return self._backend.__len__()
+
+    def __contains__(self, name):
+        return self._backend.__contains__(name)
+
+    def to_list(self):
+        result = self._backend.to_list() or dict()
+        return result
+
+
+class MapManager:
+    """
+    Common class for all maps of objects, such as
     actions, modules, entities, templates, etc.
     """
     def __init__(self, backend):
-        self.backend = backend
+        self._backend = backend
 
     def __getitem__(self, name):
-        return backend.__getitem__(name)
+        return self._backend.__getitem__(name)
 
     def __iter__(self):
-        return backend.__iter__()
+        return self._backend.__iter__()
 
     def __len__(self):
-        return backend.__len__()
+        return self._backend.__len__()
 
     def __contains__(self, name):
-        return backend.__contains__()
+        return self._backend.__contains__(name)
 
     def items(self):
         return collections.abc.ItemsView(self)
@@ -60,7 +85,7 @@ class ExpipeObject:
 
     @property
     def modules(self):
-        return ObjectManager(self._backend.modules)
+        return MapManager(self._backend.modules)
 
     def require_module(self, name=None, template=None, contents=None):
         """
@@ -140,7 +165,7 @@ class Project(ExpipeObject):
 
     @property
     def actions(self):
-        return ObjectManager(self._backend.actions)
+        return MapManager(self._backend.actions)
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -180,7 +205,7 @@ class Project(ExpipeObject):
 
     @property
     def entities(self):
-        return ObjectManager(self._backend.entities)
+        return MapManager(self._backend.entities)
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -276,7 +301,7 @@ class Entity(ExpipeObject):
     @property
     def messages(self):
         # TODO Messages do not fit this pattern - they are a list, not a map
-        return ObjectManager(self._backend.messages)
+        return MapManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -906,7 +931,7 @@ def _discover_backend(backend):
 
 def projects():
     backend = _discover_backend(backend)
-    return ObjectManager(backend.project_manager())
+    return MapManager(backend.project_manager())
 
 def get_project(project_id, backend=None):
     backend = _discover_backend(backend)
