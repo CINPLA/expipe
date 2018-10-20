@@ -275,7 +275,8 @@ class Entity(ExpipeObject):
 
     @property
     def messages(self):
-        return MessageManager(self)
+        # TODO Messages do not fit this pattern - they are a list, not a map
+        return ObjectManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
