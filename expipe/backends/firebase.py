@@ -1,5 +1,7 @@
 from ..backend import *
 import requests
+from ..core import Project
+import datetime as dt
 
 def convert_from_firebase(value):
     """
@@ -120,7 +122,7 @@ class FirebaseBackend(AbstractBackend):
         self.refresh_token = None
         self.token_expiration = dt.datetime.now()
 
-    def project_manager(self):
+    def projects(self):
         return FirebaseObjectManager("projects", Project, FirebaseProject, self)
 
 
@@ -129,10 +131,20 @@ class FirebaseProject:
         self._name = name
         self._attribute_manager = FirebaseObject("/".join("projects", name))
         self._action_manager = FirebaseObjectManager("/".join("actions", name), Action, FirebaseAction, self)
+        self._action_manager = FirebaseObjectManager("/".join("entities", name), Entity, FirebaseEntity, self)
+        self._action_manager = FirebaseObjectManager("/".join("templates", name), Template, FirebaseTemplate, self)
 
     @property
     def actions(self):
         return self._action_manager
+
+    @property
+    def entities(self):
+        return self._entities_manager
+
+    @property
+    def templates(self):
+        return self._templates_manager
 
     @property
     def attributes(self):
@@ -316,4 +328,3 @@ class FirebaseObject(AbstractObject):
         assert("errors" not in value)
         value = convert_from_firebase(value)
         return value
-

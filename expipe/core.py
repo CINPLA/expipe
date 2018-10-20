@@ -836,7 +836,7 @@ def require_project(project_id, backend=None):
         registered = dt.datetime.today().strftime(datetime_format)
         backend.create_project(project_id, contents={"registered": registered})
 
-    return Project(project_id)
+    return Project(project_id, backend)
 
 
 def delete_project(project_id, remove_all_childs=False, backend=None):

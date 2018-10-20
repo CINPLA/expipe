@@ -17,7 +17,7 @@ class AbstractProject(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def entitys(self):
+    def entities(self):
         pass
 
     @property
@@ -25,7 +25,7 @@ class AbstractProject(abc.ABC):
     def modules(self):
         pass
 
-class AbstractAttributeManager(abc.ABC):
+class AbstractObject(abc.ABC):
     @abc.abstractmethod
     def exists(self, name=None):
         pass
