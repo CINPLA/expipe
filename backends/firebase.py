@@ -1,4 +1,5 @@
 from ..backend import *
+import requests
 
 class FirebaseObjectManager(AbstractObjectManager):
     def __init__(self, path, object_type, backend_type, backend):

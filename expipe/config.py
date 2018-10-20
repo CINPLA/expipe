@@ -1,6 +1,9 @@
 import os
 
-import yaml
+try:
+    import ruamel.yaml as yaml
+except ImportError:
+    import ruamel_yaml as yaml
 
 import expipe
 
@@ -19,7 +22,7 @@ if not os.path.exists(rc_file_path):
     rc_params = _default_rc
 else:
     with open(rc_file_path, "r") as f:
-        rc_params = yaml.load(f)
+        rc_params = yaml.safe_load(f)
 
 
 default_settings = {
