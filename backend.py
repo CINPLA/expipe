@@ -77,6 +77,32 @@ class AbstractObjectManager(abc.ABC):
         pass
 
 
+class AbstractListManager(abc.ABC):
+    @abc.abstractmethod
+    def __getitem__(self, index):
+        pass
+
+    @abc.abstractmethod
+    def __setitem__(self, index):
+        pass
+
+    @abc.abstractmethod
+    def __iter__(self):
+        pass
+
+    @abc.abstractmethod
+    def __len__(self):
+        pass
+
+    @abc.abstractmethod
+    def __contains__(self, name):
+        pass
+
+    @abc.abstractmethod
+    def to_list(self):
+        pass
+
+
 class AbstractProject(abc.ABC):
     @property
     @abc.abstractmethod
