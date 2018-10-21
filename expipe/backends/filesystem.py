@@ -63,6 +63,7 @@ class FileSystemObject(AbstractObject):
             object_type=object_type
         )
         if object_type.__name__ in ['Module', 'Template', 'Message']:
+            print('::::::::',object_type.__name__)
             self._suffix = '.yaml'
         elif object_type.__name__ in ['Action', 'Entity', 'Template', 'Project']:
             self._suffix = ''
