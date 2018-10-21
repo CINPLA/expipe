@@ -63,7 +63,6 @@ class FileSystemObject(AbstractObject):
             object_type=object_type
         )
         if object_type.__name__ in ['Module', 'Template', 'Message']:
-            print('::::::::',object_type.__name__)
             self._suffix = '.yaml'
         elif object_type.__name__ in ['Action', 'Entity', 'Template', 'Project']:
             self._suffix = ''
@@ -73,21 +72,19 @@ class FileSystemObject(AbstractObject):
         if name is None:
             path = self.path
         else:
-            path = (self.path / name).with_suffix(self._suffix)
+            path = self.path / name
+        path = path.with_suffix(self._suffix)
         return path.exists()
 
-    def get(self, name=None, shallow=False):
+    def get(self, name=None, shallow=False): # TODO shallow
         if name is None:
             path = self.path
         else:
             path = self.path / name
-        path = path.with_suffix(self._suffix)
-        if path.is_dir():
+        try:
+            result = yaml_load(path.with_suffix(self._suffix))
+        except (IsADirectoryError, FileNotFoundError): # TODO will this work in all cases???
             result = [str(p.stem) for p in path.iterdir()]
-        else:
-            print('**************', path)
-            assert path.suffix == '.yaml'
-            result = yaml_load(path)
 
         print('get', result)
         return result
@@ -106,7 +103,11 @@ class FileSystemObject(AbstractObject):
 
     def delete(self, name):
         path = (self.path / name).with_suffix(self._suffix)
-        os.remove(path)
+        if path.is_dir():
+            path.rmdir()
+        else:
+            assert path.suffix == '.yaml'
+            path.unlink()
 
     def update(self, name, value=None):
         path = (self.path / name).with_suffix(self._suffix)

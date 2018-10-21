@@ -24,4 +24,5 @@ def test_create(create_filesystem_root):
                                          contents=module_contents,
                                          overwrite=True)
     action_module2 = action.modules[pytest.ACTION_MODULE_ID]
-    assert action_module._db.path == action_module2._db.path
+    assert action_module._backend.path == action_module2._backend.path
+    assert action_module.to_dict() == action_module2.to_dict()
