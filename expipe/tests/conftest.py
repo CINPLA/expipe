@@ -3,7 +3,6 @@ import expipe
 import os
 import shutil
 import pathlib
-import yaml
 
 expipe.ensure_testing()
 
@@ -13,6 +12,8 @@ MAIN_ID = 'main-' + unique_id
 PROJECT_ID = 'project-' + unique_id
 ACTION_ID = 'action-' + unique_id
 MODULE_ID = 'module-' + unique_id
+PROJECT_MODULE_ID = 'project-module-' + unique_id
+ACTION_MODULE_ID = 'action-module-' + unique_id
 
 
 def pytest_namespace():
@@ -20,26 +21,21 @@ def pytest_namespace():
         'MAIN_ID': MAIN_ID,
         "PROJECT_ID": PROJECT_ID,
         "ACTION_ID": ACTION_ID,
-        "MODULE_ID": MODULE_ID
+        "MODULE_ID": MODULE_ID,
+        "PROJECT_MODULE_ID": PROJECT_MODULE_ID,
+        "ACTION_MODULE_ID": ACTION_MODULE_ID
     }
 
 
-def dump(f, data):
-    with f.open("w", encoding="utf-8") as fh:
-        yaml.dump(
-            data, fh,
-            default_flow_style=False,
-            allow_unicode=True
-        )
-
 @pytest.fixture(scope='function')
 def create_filesystem_root():
+    from expipe.backends.filesystem import yaml_dump
     path = pathlib.Path('/tmp') / MAIN_ID
     if path.exists():
         shutil.rmtree(str(path))
     os.makedirs(str(path))
 
-    dump(path / 'expipe.yaml', {'username': 'Test User'})
+    yaml_dump(path / 'expipe.yaml', {'username': 'Test User'})
 
 
 @pytest.fixture(scope='function')

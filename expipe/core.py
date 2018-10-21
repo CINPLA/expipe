@@ -71,7 +71,7 @@ class MapManager:
         return collections.abc.ValuesView(self)
 
     def to_dict(self):
-        result = self._backend.get() or dict()
+        result = self._backend.contents.get() or dict()
         return result
 
 class ExpipeObject:
@@ -108,8 +108,7 @@ class ExpipeObject:
         # TODO: what if both content and template is given, and also name?
         if name is None:
             name, contents = self._load_template(template)
-        exists = self._backend.modules.exists(name)
-        if exists and not overwrite:
+        if name in self._backend.modules and not overwrite:
             raise NameError(
                 "Module " + name + " already exists in " + self.id +
                 ". use overwrite")
@@ -123,8 +122,7 @@ class ExpipeObject:
         """
         Delete a module. Fails if the target name does not exists.
         """
-        exists = self._backend.modules.exists(name)
-        if not exists:
+        if name not in self._backend.modules:
             raise KeyError("Module {} does not exist in {}".format(name, self.id))
         self._backend.modules.delete(name)
 
@@ -142,14 +140,11 @@ class ExpipeObject:
         return name, contents
 
     def _create_module(self, name, contents):
-        module = Module(parent=self, module_id=name)
-
         if not isinstance(contents, (dict, list, np.ndarray)):
             raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
-        contents = convert_to_firebase(contents)
-        module._backend.set(name=None, value=contents)
-        return module
+        self._backend.modules[name] = contents
+        return self.modules[name]
 
 
 class Project(ExpipeObject):
@@ -290,12 +285,11 @@ class Entity(ExpipeObject):
     """
     Expipe entity object
     """
-    def __init__(self, project, entity_id, backend):
+    def __init__(self, entity_id, backend):
         super(Entity, self).__init__(
             entity_id,
             backend
         )
-        self.project = project
 
     @property
     def messages(self):
@@ -394,21 +388,15 @@ class Action(ExpipeObject):
     """
     Expipe action object
     """
-    def __init__(self, project, action_id):
+    def __init__(self, action_id, backend):
         super(Action, self).__init__(
-            object_id=action_id,
-            db_modules=FirebaseObject("/".join(["action_modules", project.id, action_id]))
+            action_id,
+            backend
         )
-        self.project = project
-        self._action_dirty = True
-        path = "/".join(["actions", self.project.id, self.id])
-        messages_path = "/".join(["action_messages", self.project.id, self.id])
-        self._backend = FirebaseObject(path)
-        self._backend_messages = FirebaseObject(messages_path)
 
     def _backend_get(self, name):
         if self._action_dirty:
-            self._data = self._backend.get()
+            self._data = self._backend.attributes.get()
             self._action_dirty = False
         return self._data.get(name)
 
@@ -524,33 +512,14 @@ class Action(ExpipeObject):
 
 
 class Module:
-    def __init__(self, parent, module_id):
-        self.parent = parent
-        if not isinstance(module_id, str):
-            raise TypeError('Module name must be string')
+    def __init__(self, module_id, backend):
         self.id = module_id
-        if isinstance(parent, Action):
-            self.path = '/'.join(['action_modules', parent.project.id,
-                             parent.id, self.id])
-        elif isinstance(parent, Project):
-            self.path = '/'.join(['project_modules', parent.id, self.id])
-        elif isinstance(parent, Entity):
-            self.path = '/'.join(['entity_modules', parent.project.id,
-                             parent.id, self.id])
-        elif isinstance(parent, Module):
-            self.path = '/'.join([parent.path, self.id])
-        else:
-            raise IOError(
-                'Parent of type "' + type(parent) + '" cannot have modules.')
-        self._backend = FirebaseObject(self.path)
-
-    # TODO module reference id
+        self._backend = backend
 
     def __getitem__(self, name):
-        return Module(self, name)
+        return Module(name, self._backend)
 
     def __setitem__(self, name, contents):
-        contents = convert_to_firebase(contents)
         self._backend.set(name=name, value=contents)
 
     def to_dict(self):
@@ -585,7 +554,7 @@ class Module:
         return result.values()
 
     def _get_module_content(self):
-        result = self._backend.get()
+        result = self._backend.contents.get()
         if isinstance(result, list):
             if len(result) > 0:
                 raise TypeError('Got nonempty list, expected dict')
@@ -594,23 +563,13 @@ class Module:
 
 
 class Template:
-    def __init__(self, project, template_id):
-        self.project = project
-        if not isinstance(template_id, str):
-            raise TypeError('Module name must be string')
+    def __init__(self, template_id, backend):
         self.id = template_id
-        if isinstance(project, Project):
-            path = '/'.join(['templates', project.id, self.id])
-        else:
-            raise IOError('Parent of type "' + type(project) +
-                          '" cannot have templates.')
-        self._backend = FirebaseObject(path)
+        self._backend = backend
 
     def to_dict(self):
-        d = self._backend.get()
-        if d is None:
-            return {}
-        return d
+        result = self._get_template_content() or {}
+        return result
 
     def to_json(self, fname=None):
         import json
@@ -640,7 +599,7 @@ class Template:
         return result.values()
 
     def _get_template_content(self):
-        result = self._backend.get()
+        result = self._backend.contents.get()
         if isinstance(result, list):
             if len(result) > 0:
                 raise TypeError('Got nonempty list, expected dict')
@@ -652,24 +611,9 @@ class Message:
     """
     Message class
     """
-    def __init__(self, parent, message_id):
-        if not isinstance(message_id, str):
-            raise TypeError('Module name must be string')
-
-        if isinstance(parent, Action):
-            path = '/'.join(
-                ['action_messages', parent.project.id, parent.id, message_id])
-        elif isinstance(parent, Entity):
-            path = '/'.join(
-                ['entity_messages', parent.project.id, parent.id, message_id])
-        else:
-            raise TypeError(
-                "Parent must be of type 'Action' or 'Entity', given" +
-                " type {}".format(type(parent)))
-
-        self._name = message_id
-        self.parent = parent
-        self._backend = FirebaseObject(path)
+    def __init__(self, message_id, backend):
+        self.id = message_id
+        self._backend = backend
 
     @property
     def name(self):
@@ -677,7 +621,7 @@ class Message:
 
     @property
     def text(self):
-        return self._backend.get(name="text")
+        return self._backend.contents.get(name="text")
 
     @text.setter
     def text(self, value):
@@ -686,7 +630,7 @@ class Message:
 
     @property
     def user(self):
-        return self._backend.get(name="user")
+        return self._backend.contents.get(name="user")
 
     @user.setter
     def user(self, value=None):
@@ -696,7 +640,7 @@ class Message:
 
     @property
     def datetime(self):
-        value = self._backend.get(name="datetime")
+        value = self._backend.contents.get(name="datetime")
         return dt.datetime.strptime(value, datetime_format)
 
     @datetime.setter
@@ -706,7 +650,7 @@ class Message:
         self._backend.set(name="datetime", value=value_str)
 
     def to_dict(self):
-        content = self._backend.get()
+        content = self._backend.contents.get()
         if content:
             content['datetime'] = dt.datetime.strptime(content['datetime'],
                                                        datetime_format)
@@ -735,7 +679,7 @@ class Filerecord:
         # TODO if not exists and not required, return error
         ref_path = "/".join(["files", action.project.id, action.id])
         self._backend = FirebaseObject(ref_path)
-        if not self._backend.get(self.id):
+        if not self._backend.contents.get(self.id):
             self._backend.update(self.id, {"path": self.exdir_path})
 
 
@@ -746,7 +690,7 @@ class ProperyList:
         self.name = name
         self.dtype = dtype
         self.unique = unique
-        self.data = data or self._backend.get(self.name)
+        self.data = data or self._backend.contents.get(self.name)
 
     def __iter__(self):
         data = self.data or []
@@ -820,12 +764,20 @@ def projects():
 def get_project(project_id, backend=None):
     backend = _discover_backend(backend)
 
-    existing = backend.projects.exists(project_id)
-
-    if not existing:
+    if project_id not in backend.projects:
         raise KeyError("Project " + project_id + " does not exist.")
 
-    return Project(project_id, backend.projects.get(project_id))
+    return backend.projects[project_id]
+
+
+def create_project(project_id, backend=None):
+    backend = _discover_backend(backend)
+
+    registered = dt.datetime.today().strftime(datetime_format)
+    project = backend.create_project(
+        project_id, contents={"registered": registered})
+
+    return project
 
 
 def require_project(project_id, backend=None):
@@ -833,10 +785,9 @@ def require_project(project_id, backend=None):
     backend = _discover_backend(backend)
 
     if project_id not in backend.projects:
-        registered = dt.datetime.today().strftime(datetime_format)
-        backend.create_project(project_id, contents={"registered": registered})
+        return create_project(project_id, backend)
 
-    return Project(project_id, backend)
+    return get_project(project_id, backend)
 
 
 def delete_project(project_id, remove_all_childs=False, backend=None):

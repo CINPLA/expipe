@@ -4,21 +4,24 @@ import expipe
 
 
 
-def test_module_get_require_equal_path(create_filesystem_root):
+def test_create(create_filesystem_root):
     module_contents = {'species': {'value': 'rat'}}
     backend = expipe.backends.FileSystemBackend('/tmp/' + pytest.MAIN_ID)
     project = expipe.core.require_project(pytest.PROJECT_ID, backend)
+    assert isinstance(project, expipe.core.Project)
+    print('test', project._backend.path)
     action = project.require_action(pytest.ACTION_ID)
 
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents,
                                            overwrite=True)
 
-    project_module2 = project.modules[pytest.MODULE_ID]
-    assert project_module._db.path == project_module2._db.path
+    project_module2 = project.modules[pytest.PROJECT_MODULE_ID]
+    assert project_module._backend.path == project_module2._backend.path
+    assert project_module.to_dict() == project_module2.to_dict()
 
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents,
                                          overwrite=True)
-    action_module2 = action.modules[pytest.MODULE_ID]
+    action_module2 = action.modules[pytest.ACTION_MODULE_ID]
     assert action_module._db.path == action_module2._db.path

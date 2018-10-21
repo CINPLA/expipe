@@ -1,7 +1,7 @@
 import abc
 
 class AbstractBackend(abc.ABC):
-    def __init__(self):
+    def __init__(self, path):
         pass
 
     @property
@@ -26,6 +26,9 @@ class AbstractProject(abc.ABC):
         pass
 
 class AbstractObject(abc.ABC):
+    def __init__(self, path, object_type):
+        pass
+
     @abc.abstractmethod
     def exists(self, name=None):
         pass
