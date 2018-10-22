@@ -41,7 +41,7 @@ class FileSystemBackend(AbstractBackend):
         print('create project', project_id)
         path = self.path / project_id
         path.mkdir()
-        for p in ['actions', 'entities', 'templates']:
+        for p in ['actions', 'entities', 'modules', 'templates']:
             (path / p).mkdir()
         attributes = path / 'attributes.yaml'
         yaml_dump(attributes, contents)
@@ -128,6 +128,7 @@ class FileSystemObjectManager(AbstractObjectManager):
         self._db = FileSystemObject(self.path, object_type)
         self._object_type = object_type
         self._backend_type = backend_type
+        self.path.mkdir(exist_ok=True)
 
     def __getitem__(self, name):
         if not self._db.exists(name):
@@ -167,7 +168,7 @@ class FileSystemProject:
         self._template_manager = FileSystemObjectManager(
             self.path / "templates", Template, FileSystemTemplate, self)
         self._module_manager = FileSystemObjectManager(
-            self.path, Module, FileSystemModule, self)
+            self.path / "modules", Module, FileSystemModule, self)
 
     @property
     def modules(self):
@@ -198,7 +199,7 @@ class FileSystemAction:
         self._message_manager = FileSystemObjectManager(
             path, Message, FileSystemMessage, self)
         self._module_manager = FileSystemObjectManager(
-            path, Module, FileSystemModule, self)
+            path / "modules", Module, FileSystemModule, self)
 
     @property
     def modules(self):
@@ -220,7 +221,7 @@ class FileSystemEntity:
         self._message_manager = FileSystemObjectManager(
             path, Message, FileSystemMessage, self)
         self._module_manager = FileSystemObjectManager(
-            path, Module, FileSystemModule, self)
+            path / "modules", Module, FileSystemModule, self)
 
     @property
     def modules(self):
