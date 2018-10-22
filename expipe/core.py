@@ -10,6 +10,7 @@ import abc
 import expipe
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
+datetime_key_format = '%Y%m%dT%H%M%S'
 verbose = False
 
 def vprint(*arg):
@@ -416,9 +417,13 @@ class Action(ExpipeObject):
             "user": user,
             "datetime": datetime_str
         }
+        datetime_key_str = dt.datetime.strftime(datetime, datetime_key_format)
 
-        result = self._backend_messages.push(message)
-        return self.messages[result["name"]]
+        if datetime_key_str in self._backend.messages:
+            raise KeyError("Message with the same datetime already exists '{}'".format(datetime_key_str))
+
+        self._backend.messages[datetime_key_str] = message
+        return self._backend.messages[datetime_key_str]
 
     def delete_messages(self):
         for message in self.messages:

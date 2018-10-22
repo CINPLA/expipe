@@ -197,7 +197,7 @@ class FileSystemAction:
         self.path = path
         self._attribute_manager = FileSystemObject(path, Action)
         self._message_manager = FileSystemObjectManager(
-            path, Message, FileSystemMessage, self)
+            path / "messages", Message, FileSystemMessage, self)
         self._module_manager = FileSystemObjectManager(
             path / "modules", Module, FileSystemModule, self)
 
@@ -219,7 +219,7 @@ class FileSystemEntity:
         self.path = path
         self._attribute_manager = FileSystemObject(path, Entity)
         self._message_manager = FileSystemObjectManager(
-            path, Message, FileSystemMessage, self)
+            path / "messages", Message, FileSystemMessage, self)
         self._module_manager = FileSystemObjectManager(
             path / "modules", Module, FileSystemModule, self)
 

@@ -1,7 +1,7 @@
 import pytest
 from unittest import mock
 import expipe
-
+import datetime as dt
 
 
 def test_create(create_filesystem_root):
@@ -26,3 +26,7 @@ def test_create(create_filesystem_root):
     action_module2 = action.modules[pytest.ACTION_MODULE_ID]
     assert action_module._backend.path == action_module2._backend.path
     assert action_module.to_dict() == action_module2.to_dict()
+
+    action.create_message("blah", "blah")
+    with pytest.raises(KeyError):
+        action.create_message("blah", "blah")
