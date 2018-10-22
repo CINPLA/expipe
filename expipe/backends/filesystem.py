@@ -31,33 +31,24 @@ class FileSystemBackend(AbstractBackend):
             path=path
         )
         self.path = pathlib.Path(path)
-        self.root, self.config = self.discover_config(path)
 
-    @property
-    def projects(self):
-        return FileSystemObjectManager(self.root, Project, FileSystemProject, self)
+    def exists(self):
+        return self.path.exists()
 
-    def create_project(self, project_id, contents):
-        print('create project', project_id)
-        path = self.path / project_id
+    def get_project(self):
+        return Project(self.path.stem, FileSystemProject(self.path))
+
+    def create_project(self, contents):
+        path = self.path
         path.mkdir()
         for p in ['actions', 'entities', 'modules', 'templates']:
             (path / p).mkdir()
         attributes = path / 'attributes.yaml'
         yaml_dump(attributes, contents)
-        return Project(project_id, FileSystemProject(path))
-
-    def discover_config(self, path):
-        current_path = pathlib.Path(path)
-        config_filename = current_path / "expipe.yaml"
-        if not config_filename.exists():
-            if current_path.match(config_filename.root):
-                raise Exception(
-                    "ERROR: No expipe.yaml found in '" + str(self.path) + "' or parents.")
-
-            return self.discover_config(current_path.parent)
-
-        return current_path, yaml_load(config_filename)
+        config_contents = {"type": "project", "database_version": 1}
+        config = path / 'expipe.yaml'
+        yaml_dump(config, config_contents)
+        return Project(self.path.stem, FileSystemProject(path))
 
 
 class FileSystemObject(AbstractObject):

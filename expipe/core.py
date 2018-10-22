@@ -8,6 +8,7 @@ import warnings
 import copy
 import abc
 import expipe
+import pathlib
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 datetime_key_format = '%Y%m%dT%H%M%S'
@@ -403,7 +404,7 @@ class Action(ExpipeObject):
 
     @property
     def messages(self):
-        return MessageManager(self)
+        return MapManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -756,72 +757,48 @@ class ProperyList:
 ######################################################################################################
 # Entry API
 
-def _discover_backend(backend):
-    if not backend:
-        # TODO replace with some type of default backend discovery
-        backend = FirebaseBackend()
-    return backend
+def _discover_backend(url):
+    if isinstance(url, pathlib.Path):
+        return expipe.backends.filesystem.FileSystemBackend(url)
 
-def projects():
-    backend = _discover_backend(backend)
-    return MapManager(backend.project_manager())
+    # TODO implement detecting protocols like "firebase:blahblah"
+    if ":" in url:
+        raise NotImplementedError("We do not yet support other backends than the file system")
 
-def get_project(project_id, backend=None):
-    backend = _discover_backend(backend)
-
-    if project_id not in backend.projects:
-        raise KeyError("Project " + project_id + " does not exist.")
-
-    return backend.projects[project_id]
+    return expipe.backends.filesystem.FileSystemBackend(url)
 
 
-def create_project(project_id, backend=None):
-    backend = _discover_backend(backend)
+def get_project(url, backend=None):
+    backend = backend or _discover_backend(url)
+
+    if not backend.exists():
+        raise KeyError("Project " + url + " does not exist.")
+
+    return backend.get_project()
+
+
+def create_project(url, backend=None):
+    backend = backend or _discover_backend(url)
 
     registered = dt.datetime.today().strftime(datetime_format)
-    project = backend.create_project(
-        project_id, contents={"registered": registered})
-
-    return project
+    return backend.create_project(contents={"registered": registered})
 
 
-def require_project(project_id, backend=None):
+def require_project(url=None, backend=None):
     """Creates a new project with the provided id if it does not already exist."""
-    backend = _discover_backend(backend)
+    backend = backend or _discover_backend(url)
 
-    if project_id not in backend.projects:
-        return create_project(project_id, backend)
-
-    return get_project(project_id, backend)
-
-
-def delete_project(project_id, remove_all_childs=False, backend=None):
-    """Deletes a project named after the provided id."""
-    backend = _discover_backend(backend)
-
-    existing = backend.projects.exists(project_id)
-
-    if not existing:
-        raise NameError('Project "' + project_id + '" does not exist.')
+    if backend.exists():
+        return get_project(url, backend=backend)
     else:
-        if remove_all_childs:
-            project = Project(project_id, backend)
-
-            for action in list(project.actions.keys()):
-                project.delete_action(action)
-            for module in list(project.modules.keys()):
-                project.delete_module(module)
-            for entity in list(project.entities.keys()):
-                project.delete_entity(entity)
-            for template in list(project.templates.keys()):
-                project.delete_template(template)
-
-        project_backend.delete_project(name=project_id)
+        return create_project(url, backend=backend)
 
 
-def load_database(backend):
-    database = None
-    return database
+def delete_project(project_id, remove_all_children=False, backend=None):
+    # TODO implement
+    raise NotImplementedError("Delete is not implemented yet")
+    backend = backend or _discover_backend(url)
+    backend.delete_project(url, remove_all_children=remove_all_children)
 
 
 ######################################################################################################

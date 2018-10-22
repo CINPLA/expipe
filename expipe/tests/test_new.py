@@ -2,12 +2,13 @@ import pytest
 from unittest import mock
 import expipe
 import datetime as dt
-
+import pathlib
 
 def test_create(create_filesystem_root):
     module_contents = {'species': {'value': 'rat'}}
-    backend = expipe.backends.FileSystemBackend('/tmp/' + pytest.MAIN_ID)
-    project = expipe.core.require_project(pytest.PROJECT_ID, backend)
+    project = expipe.core.require_project(
+        pathlib.Path("/tmp") / pytest.MAIN_ID / pytest.PROJECT_ID
+    )
     assert isinstance(project, expipe.core.Project)
     print('test', project._backend.path)
     action = project.require_action(pytest.ACTION_ID)
@@ -30,3 +31,6 @@ def test_create(create_filesystem_root):
     action.create_message("blah", "blah")
     with pytest.raises(KeyError):
         action.create_message("blah", "blah")
+
+    for message in action.messages:
+        print(message)

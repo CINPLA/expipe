@@ -4,10 +4,18 @@ class AbstractBackend(abc.ABC):
     def __init__(self, path):
         pass
 
-    @property
     @abc.abstractmethod
-    def projects(self):
+    def exists(self):
         pass
+
+    @abc.abstractmethod
+    def get_project(self):
+        pass
+
+    @abc.abstractmethod
+    def create_project(self, contents):
+        pass
+
 
 class AbstractProject(abc.ABC):
     @property
