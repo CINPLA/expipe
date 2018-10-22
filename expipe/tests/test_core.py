@@ -124,11 +124,11 @@ def test_module_to_dict(create_url):
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.require_project(create_url)
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents)
 
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents)
 
     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
@@ -142,7 +142,7 @@ def test_module_quantities(create_url):
 
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents,
                                            overwrite=True)
     mod_dict = project_module.to_dict()
@@ -157,7 +157,7 @@ def test_module_array(create_url):
 
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents,
                                            overwrite=True)
     mod_dict = project_module.to_dict()
@@ -165,31 +165,31 @@ def test_module_array(create_url):
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-# def test_module_get_require_equal_path(create_url):
-    # module_contents = {'species': {'value': 'rat'}}
+def test_module_get_require_equal_path(create_url):
+    module_contents = {'species': {'value': 'rat'}}
 
-    # project = expipe.require_project(create_url)
-    # action = project.require_action(pytest.ACTION_ID)
+    project = expipe.require_project(create_url)
+    action = project.require_action(pytest.ACTION_ID)
 
-    # project_module = project.create_module(pytest.MODULE_ID,
-                                           # contents=module_contents,
-                                           # overwrite=True)
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
+                                           contents=module_contents,
+                                           overwrite=True)
 
-    # project_module2 = project.modules[pytest.MODULE_ID]
-    # assert project_module._db.path == project_module2._db.path
+    project_module2 = project.modules[pytest.PROJECT_MODULE_ID]
+    assert project_module._backend.path == project_module2._backend.path
 
-    # action_module = action.create_module(pytest.MODULE_ID,
-                                         # contents=module_contents,
-                                         # overwrite=True)
-    # action_module2 = action.modules[pytest.MODULE_ID]
-    # assert action_module._db.path == action_module2._db.path
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
+    action_module2 = action.modules[pytest.ACTION_MODULE_ID]
+    assert action_module._backend.path == action_module2._backend.path
 
 
 def test_module_list(create_url):
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=list_cont,
                                            overwrite=True)
     mod_dict = project_module.to_dict()
@@ -197,7 +197,7 @@ def test_module_list(create_url):
     assert all(a == b for a, b in zip(list_cont, mod_dict))
 
     module_contents = {'list': list_cont}
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents,
                                            overwrite=True)
     mod_dict = project_module.to_dict()
@@ -205,14 +205,14 @@ def test_module_list(create_url):
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents,
                                          overwrite=True)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents,
                                          overwrite=True)
     mod_dict = action_module.to_dict()
@@ -220,7 +220,7 @@ def test_module_list(create_url):
     assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents,
                                          overwrite=True)
     mod_dict = action_module.to_dict()
@@ -315,6 +315,7 @@ def test_action_messages_dtype(create_url):
 
 def test_change_message(create_url):
     from datetime import datetime, timedelta
+    format = expipe.core.datetime_key_format
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
@@ -327,83 +328,84 @@ def test_change_message(create_url):
     msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
-    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+    messages = {
+        datetime.strftime(time, format): msg_1,
+        datetime.strftime(time + timedelta(minutes=10), format): msg_2
+    }
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    # assert all([m1 == m2.to_dict() for m1, m2 in zip([msg_1, msg_2], message_manager)])
+    for message_id, message in message_manager.items():
+        assert messages[message_id] == message.to_dict()
 
     # change one of them
     msg_3 = {'text': 'sub3', 'user': 'usr3',
              'datetime': time + timedelta(minutes=20)}
 
+    messages[datetime.strftime(time + timedelta(minutes=10), format)] = msg_3
     for message_id in message_manager:
         message = message_manager[message_id]
-        print("MESSAGE", message_id)
-        print(message)
-        print("DONE")
         if message.user == "usr2":
             message.text = msg_3["text"]
             message.user = msg_3["user"]
             message.datetime = msg_3["datetime"]
 
+    for message_id, message in message_manager.items():
+        assert messages[message_id] == message.to_dict()
 
 ######################################################################################################
 # create/delete
 ######################################################################################################
 def test_create_delete_project_and_childs(create_url):
-    # TODO implement
-    return
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.require_project(create_url)
+    PROJECT_ID = project._backend.path
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=False)
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=False)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=False)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=False)
 
-    expipe.delete_project(pytest.PROJECT_ID, remove_all_childs=True)
+    expipe.delete_project(PROJECT_ID, remove_all_children=True)
     with pytest.raises(KeyError):
-        expipe.get_project(pytest.PROJECT_ID)
+        expipe.get_project(PROJECT_ID)
 
     # remake project, then the "old" action and project_module should be deleted
     project = expipe.require_project(create_url)
     with pytest.raises(KeyError):
         project.actions[pytest.ACTION_ID]
-        project.modules[pytest.MODULE_ID]
+        project.modules[pytest.PROJECT_MODULE_ID]
 
     # remake action, then the "old" action_module should be deleted
     action = project.require_action(pytest.ACTION_ID)
     with pytest.raises(KeyError):
-        action.modules[pytest.MODULE_ID]
+        action.modules[pytest.ACTION_MODULE_ID]
 
 
 def test_create_delete_project_not_childs(create_url):
-    # TODO implement
-    return
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.require_project(create_url)
+    PROJECT_ID = project._backend.path
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
 
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
-
-    expipe.delete_project(pytest.PROJECT_ID)
-    with pytest.raises(KeyError):
-        expipe.get_project(pytest.PROJECT_ID)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=True)
+    with pytest.raises(OSError): # TODO this may be backend specific
+        expipe.delete_project(PROJECT_ID)
+    expipe.get_project(PROJECT_ID)
 
     # remake project, then the "old" action and action_module should be NOT be deleted
     project = expipe.require_project(create_url)
     action = project.actions[pytest.ACTION_ID]
-    action.modules[pytest.MODULE_ID]
+    action.modules[pytest.ACTION_MODULE_ID]
+
 
 
 def test_create_project(create_url):
@@ -422,10 +424,10 @@ def test_create_action_module(create_url):
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.create_module(pytest.MODULE_ID,
+    action_module = action.create_module(pytest.ACTION_MODULE_ID,
                                          contents=module_contents,
                                          overwrite=True)
-    action.modules[pytest.MODULE_ID]
+    action.modules[pytest.ACTION_MODULE_ID]
 
 
 def test_create_project_module(create_url):
@@ -434,22 +436,19 @@ def test_create_project_module(create_url):
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
 
-    project.create_module(pytest.MODULE_ID, contents=module_contents, overwrite=True)
-    project.modules[pytest.MODULE_ID]
+    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=True)
+    project.modules[pytest.PROJECT_MODULE_ID]
 
 
 def test_delete_action(create_url):
-    # TODO implement this again
-    return
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.require_project(create_url)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',
@@ -458,8 +457,10 @@ def test_delete_action(create_url):
     msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
-    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
     for attr in ['entities', 'users', 'tags']:
         setattr(action, attr, ['sub1', 'sub2'])
@@ -471,16 +472,172 @@ def test_delete_action(create_url):
     # remake and assert that all is deleted
     action = project.require_action(pytest.ACTION_ID)
     assert len(list(action.modules.keys())) == 0
-    assert len(list(action_module.keys())) == 0
+    assert action_module.id not in action.modules
     for attr in ['entities', 'users', 'tags']:
         a = getattr(action, attr).data
         assert a is None
     assert len(action.messages) == 0
 
 
+def test_delete_entity(create_url):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(create_url)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+    entity_module = entity.create_module(pytest.ENTITY_MODULE_ID,
+                                         contents=module_contents,
+                                         overwrite=True)
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    entity.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    entity.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    for attr in ['entities', 'users', 'tags']:
+        setattr(entity, attr, ['sub1', 'sub2'])
+    assert len(list(entity.modules.keys())) != 0
+    project.delete_entity(entity.id)
+    with pytest.raises(KeyError):
+        project.entities[pytest.ENTITY_ID]
+
+    # remake and assert that all is deleted
+    entity = project.require_entity(pytest.ENTITY_ID)
+    assert len(list(entity.modules.keys())) == 0
+    assert entity_module.id not in entity.modules
+    for attr in ['users', 'tags']:
+        a = getattr(entity, attr).data
+        assert a is None
+    assert len(entity.messages) == 0
+
+
+def test_delete_entity_module(create_url):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(create_url)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID, contents=module_contents, overwrite=True)
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID + '1', contents=module_contents, overwrite=True)
+
+    # delete one
+    entity.delete_module(pytest.ENTITY_MODULE_ID)
+
+    with pytest.raises(KeyError):
+        entity.modules[pytest.ENTITY_MODULE_ID]
+    assert pytest.ENTITY_MODULE_ID + '1' in entity.modules
+
+
+def test_delete_entity_message(create_url):
+    from datetime import datetime, timedelta
+    format = expipe.core.datetime_key_format
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(create_url)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    msg_1_name = datetime.strftime(time, format)
+    msg_2_name = datetime.strftime(time + timedelta(minutes=10), format)
+
+    entity.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    entity.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    entity.delete_messages()
+    with pytest.raises(KeyError):
+        entity.messages[msg_1_name]
+    assert msg_2_name not in entity.messages
+
+
+def test_delete_action_module(create_url):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(create_url)
+    action = project.require_entity(pytest.ACTION_ID)
+    message_manager = action.messages
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID + '1', contents=module_contents, overwrite=True)
+
+    # delete one
+    action.delete_module(pytest.ACTION_MODULE_ID)
+
+    with pytest.raises(KeyError):
+        action.modules[pytest.ACTION_MODULE_ID]
+    assert pytest.ACTION_MODULE_ID + '1' in action.modules
+
+
+def test_delete_action_message(create_url):
+    from datetime import datetime, timedelta
+    format = expipe.core.datetime_key_format
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(create_url)
+    action = project.require_action(pytest.ACTION_ID)
+    message_manager = action.messages
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    msg_1_name = datetime.strftime(time, format)
+    msg_2_name = datetime.strftime(time + timedelta(minutes=10), format)
+
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    action.delete_messages()
+    with pytest.raises(KeyError):
+        action.messages[msg_1_name]
+    assert msg_2_name not in action.messages
+
+
+def test_delete_template(create_url):
+    from datetime import datetime, timedelta
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = expipe.require_project(create_url)
+    template = project.require_template(
+        pytest.TEMPLATE_ID, template_contents)
+    template = project.require_template(
+        pytest.TEMPLATE_ID + '1', template_contents)
+    project.delete_template(pytest.TEMPLATE_ID)
+
+    with pytest.raises(KeyError):
+        project.templates[pytest.TEMPLATE_ID]
+    assert pytest.TEMPLATE_ID + '1' in project.templates
+
+
 def test_require_create_get_action(create_url):
-    # TODO implement
-    return
     project = expipe.require_project(create_url)
 
     # Get a non-existing action
@@ -508,8 +665,6 @@ def test_require_create_get_action(create_url):
 
 
 def test_fill_the_project(create_url):
-    # TODO implement
-    return
     import quantities as pq
     from datetime import datetime, timedelta
 
@@ -520,31 +675,31 @@ def test_fill_the_project(create_url):
 
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
-    project_module = project.create_module(pytest.MODULE_ID,
+    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
                                            contents=module_contents,
                                            overwrite=True)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
-    # time = datetime(2017, 6, 1, 21, 42, 20)
-    # msg_1 = {'message': 'sub1', 'user': 'usr1',
-    #          'datetime': time}
-    #
-    # msg_2 = {'message': 'sub2', 'user': 'usr2',
-    #          'datetime': time + timedelta(minutes=10)}
-    #
-    # action.create_message(msg_1)
-    # action.create_message(msg_2)
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
 
-    # orig_list = ['sub1', 'sub2']
-    # for attr in ['entities', 'users', 'tags']:
-    #     prop_list = getattr(action, attr)
-    #     assert isinstance(prop_list, expipe.core.PropertyList)
-    #     prop_list.append('sub3')
-    #     orig_list.append('sub3')
-    #     setattr(action, attr, orig_list)
-    #     prop_list.extend(['sub3'])
-    #     orig_list.extend(['sub3'])
-    #     prop_list[1] = 'subsub'
-    #     orig_list[1] = 'subsub'
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    orig_list = ['sub1', 'sub2']
+    for attr in ['entities', 'users', 'tags']:
+        prop_list = getattr(action, attr)
+        assert isinstance(prop_list, expipe.core.PropertyList)
+        prop_list.append('sub3')
+        orig_list.append('sub3')
+        setattr(action, attr, orig_list)
+        prop_list.extend(['sub3'])
+        orig_list.extend(['sub3'])

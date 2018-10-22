@@ -124,9 +124,9 @@ class ExpipeObject:
         """
         Delete a module. Fails if the target name does not exists.
         """
-        if name not in self._backend.modules:
-            raise KeyError("Module {} does not exist in {}".format(name, self.id))
+        module = self.modules[name]
         self._backend.modules.delete(name)
+        del module
 
     def _load_template(self, template):
         if isinstance(self, Project):
@@ -193,10 +193,7 @@ class Project(ExpipeObject):
         Delete an action. Fails if the target name does not exists.
         """
         action = self.actions[name]
-        action.delete_messages()
-        for module in list(action.modules.keys()):
-            action.delete_module(module)
-        self._backend.actions.delete(name)
+        action = self._backend.actions.delete(name)
         del action
 
     @property
@@ -205,7 +202,7 @@ class Project(ExpipeObject):
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
-        self.entities[name] = {"registered": dtime}
+        self._backend.entities[name] = {"registered": dtime}
         return self.entities[name]
 
     def require_entity(self, name):
@@ -233,23 +230,18 @@ class Project(ExpipeObject):
         Delete an entity. Fails if the target name does not exists.
         """
         entity = self.entities[name]
-        entity.delete_messages()
-        for module in list(entity.modules.keys()):
-            entity.delete_module(module)
-
-        # TODO could perhaps be del self.entities[name]?
-        self._backend.entities.delete(name)
+        action = self._backend.entities.delete(name)
         del entity
 
     @property
     def templates(self):
-        return TemplateManager(self)
+        return MapManager(self._backend.templates)
 
     def _create_template(self, name, contents):
         dtime = dt.datetime.today().strftime(datetime_format)
         contents.update({"registered": dtime})
         assert 'identifier' in contents
-        self.templates[name] = contents
+        self._backend.templates[name] = contents
         return self.templates[name]
 
     def require_template(self, name, contents=None):
@@ -277,8 +269,6 @@ class Project(ExpipeObject):
         Delete an template. Fails if the target name does not exists.
         """
         template = self.templates[name]
-
-        # TODO perhaps change this to `del self.templates[name]`?
         self._backend.templates.delete(name)
         del template
 
@@ -295,7 +285,6 @@ class Entity(ExpipeObject):
 
     @property
     def messages(self):
-        # TODO Messages do not fit this pattern - they are a list, not a map
         return MapManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
@@ -310,13 +299,17 @@ class Entity(ExpipeObject):
             "user": user,
             "datetime": datetime_str
         }
+        datetime_key_str = dt.datetime.strftime(datetime, datetime_key_format)
 
-        result = self._backend_messages.push(message)
-        return self.messages[result["name"]]
+        if datetime_key_str in self._backend.messages:
+            raise KeyError("Message with the same datetime already exists '{}'".format(datetime_key_str))
+
+        self._backend.messages[datetime_key_str] = message
+        return self._backend.messages[datetime_key_str]
 
     def delete_messages(self):
         for message in self.messages:
-            self._backend_messages.delete(name=message.name)
+            self._backend.messages.delete(name=message)
 
     def _assert_message_dtype(self, text, user, datetime):
         _assert_message_text_dtype(text)
@@ -331,7 +324,7 @@ class Entity(ExpipeObject):
     def location(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.set('location', value)
+        self._backend.attributes.set('location', value)
 
     @property
     def type(self):
@@ -341,7 +334,7 @@ class Entity(ExpipeObject):
     def type(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.set('type', value)
+        self._backend.attributes.set('type', value)
 
     @property
     def datetime(self):
@@ -353,7 +346,7 @@ class Entity(ExpipeObject):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
-        self._backend.set('datetime', dtime)
+        self._backend.attributes.set('datetime', dtime)
 
     @property
     def users(self):
@@ -368,7 +361,7 @@ class Entity(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._backend.set('users', value)
+        self._backend.attributes.set('users', value)
 
     @property
     def tags(self):
@@ -383,7 +376,7 @@ class Entity(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._backend.set('tags', value)
+        self._backend.attributes.set('tags', value)
 
 
 class Action(ExpipeObject):
@@ -422,7 +415,7 @@ class Action(ExpipeObject):
 
     def delete_messages(self):
         for message in self.messages:
-            self._backend_messages.delete(name=message.name)
+            self._backend.messages.delete(name=message)
 
     def _assert_message_dtype(self, text, user, datetime):
         _assert_message_text_dtype(text)
@@ -766,7 +759,7 @@ def get_project(url, backend=None):
     backend = backend or _discover_backend(url)
 
     if not backend.exists():
-        raise KeyError("Project " + url + " does not exist.")
+        raise KeyError("Project " + str(url) + " does not exist.")
 
     return backend.get_project()
 
@@ -788,11 +781,12 @@ def require_project(url=None, backend=None):
         return create_project(url, backend=backend)
 
 
-def delete_project(project_id, remove_all_children=False, backend=None):
-    # TODO implement
-    raise NotImplementedError("Delete is not implemented yet")
+def delete_project(url=None, remove_all_children=False, backend=None):
     backend = backend or _discover_backend(url)
-    backend.delete_project(url, remove_all_children=remove_all_children)
+    if backend.exists():
+        backend.delete_project(remove_all_children=remove_all_children)
+    else:
+        raise KeyError("Project " + str(url) + " does not exist.")
 
 
 ######################################################################################################

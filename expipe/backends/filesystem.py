@@ -1,6 +1,7 @@
 from ..backend import *
 from ..core import *
 import pathlib
+import shutil
 import os
 
 try:
@@ -112,6 +113,18 @@ class FileSystemBackend(AbstractBackend):
         yaml_dump(config, config_contents)
         return Project(self.path.stem, FileSystemProject(path))
 
+    def delete_project(self, remove_all_children=False):
+        assert self.path != self.path.root
+        if remove_all_children:
+            shutil.rmtree(str(self.path))
+        else:
+            try:
+                self.path.rmdir()
+            except OSError as e:
+                raise OSError(
+                    str(e) + '. Carefully consider if you want to ' +
+                    '"remove_all_children"')
+
 
 class FileSystemObject(AbstractObject):
     def __init__(self, path, object_type, has_attributes=False):
@@ -190,6 +203,17 @@ class FileSystemObjectManager(AbstractObjectManager):
             (self.path / name).mkdir(exist_ok=True)
         yaml_dump(self.named_path(name), value)
 
+    def delete(self, name):
+        if self.has_attributes:
+            path = self.path / name
+        else:
+            path = (self.path / name).with_suffix(".yaml")
+        if path.is_dir():
+            assert path != self.path.root
+            shutil.rmtree(str(path))
+        else:
+            path.unlink()
+
 
 class FileSystemProject:
     def __init__(self, path):
@@ -210,7 +234,6 @@ class FileSystemProject:
 
     @property
     def actions(self):
-        print('actions', self.path)
         return self._action_manager
 
     @property
