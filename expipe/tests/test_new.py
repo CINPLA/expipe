@@ -4,11 +4,9 @@ import expipe
 import datetime as dt
 import pathlib
 
-def test_create(create_filesystem_root):
+def test_create(create_url):
     module_contents = {'species': {'value': 'rat'}}
-    project = expipe.core.require_project(
-        pathlib.Path("/tmp") / pytest.MAIN_ID / pytest.PROJECT_ID
-    )
+    project = expipe.core.require_project(create_url)
     assert isinstance(project, expipe.core.Project)
     print('test', project._backend.path)
     action = project.require_action(pytest.ACTION_ID)

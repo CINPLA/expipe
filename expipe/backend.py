@@ -83,10 +83,6 @@ class AbstractObjectManager(abc.ABC):
     def __contains__(self, name):
         pass
 
-    @abc.abstractmethod
-    def to_dict(self):
-        pass
-
 
 class AbstractListManager(abc.ABC):
     @abc.abstractmethod

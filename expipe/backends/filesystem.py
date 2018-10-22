@@ -52,114 +52,93 @@ class FileSystemBackend(AbstractBackend):
 
 
 class FileSystemObject(AbstractObject):
-    def __init__(self, path, object_type):
+    def __init__(self, path, object_type, has_attributes=False):
         super(FileSystemObject, self).__init__(
             path=path,
             object_type=object_type
         )
-        if object_type.__name__ in ['Module', 'Template', 'Message']:
-            self._suffix = '.yaml'
-        elif object_type.__name__ in ['Action', 'Entity', 'Template', 'Project']:
-            self._suffix = ''
         self.path = path
 
-    def exists(self, name=None):
+    def exists(self, name):
+        result = yaml_load(self.path)
+        return name in result
+
+    def get(self, name=None):
+        result = yaml_load(self.path)
         if name is None:
-            path = self.path
+            return result
         else:
-            path = self.path / name
-        path = path.with_suffix(self._suffix)
-        return path.exists()
+            return result[name]
 
-    def get(self, name=None, shallow=False): # TODO shallow
-        if name is None:
-            path = self.path
-        else:
-            path = self.path / name
-        try:
-            result = yaml_load(path.with_suffix(self._suffix))
-        except (IsADirectoryError, FileNotFoundError): # TODO will this work in all cases???
-            result = [str(p.stem) for p in path.iterdir()]
-
-        print('get', result)
-        return result
-
-    def set(self, name, value=None):
-        path = (self.path / name).with_suffix(self._suffix)
-        if self._suffix == '':
-            path.mkdir(exist_ok=True)
-            path = path / 'attributes.yaml'
-        print('set', path, value)
-        value = value or {}
-        yaml_dump(path, value)
+    def set(self, name, value):
+        yaml_dump(self.path, value)
 
     def push(self, value=None):
-        pass
+        raise NotImplementedError("Push not implemented on file system")
 
     def delete(self, name):
-        path = (self.path / name).with_suffix(self._suffix)
-        if path.is_dir():
-            path.rmdir()
-        else:
-            assert path.suffix == '.yaml'
-            path.unlink()
+        if value is not None:
+            result = self.get(name)
+            del result[name]
+        yaml_dump(self.path, result)
 
     def update(self, name, value=None):
-        path = (self.path / name).with_suffix(self._suffix)
         if value is not None:
             result = self.get(name)
             result.update(value)
-        yaml_dump(path, result)
+        yaml_dump(self.path, result)
 
 
 class FileSystemObjectManager(AbstractObjectManager):
-    def __init__(self, path, object_type, backend_type, backend):
+    def __init__(self, path, object_type, backend_type, has_attributes=False):
         self.path = pathlib.Path(path)
-        print('object manager',self.path)
-        self._db = FileSystemObject(self.path, object_type)
         self._object_type = object_type
         self._backend_type = backend_type
         self.path.mkdir(exist_ok=True)
+        self.has_attributes = has_attributes
+
+    def named_path(self, name):
+        if self.has_attributes:
+            return (self.path / name / "attributes.yaml")
+        else:
+            return (self.path / name).with_suffix(".yaml")
 
     def __getitem__(self, name):
-        if not self._db.exists(name):
+        if not self.named_path(name).exists():
             raise KeyError(
                 "{} '{}' ".format(self._object_type.__name__, name) +
                 "does not exist")
-        print('getit', self._object_type.__name__, name, self.path, self._backend_type.__name__)
         return self._object_type(name, self._backend_type(self.path / name))
 
     def __iter__(self):
-        keys = self._db.get(shallow=True) or []
+        keys = self.path.iterdir()
         for key in keys:
-            yield key
+            yield key.stem
 
     def __len__(self):
-        keys = self._db.get(shallow=True) or []
-        return len(keys)
+        return len(self.path.iterdir())
 
     def __contains__(self, name):
-        print('contain', self.path, name, name in (self._db.get(shallow=True) or []))
-        return name in (self._db.get(shallow=True) or [])
+        return self.named_path(name).exists()
 
     def __setitem__(self, name, value):
-        self._db.set(name, value)
+        if self.has_attributes:
+            (self.path / name).mkdir(exist_ok=True)
+        yaml_dump(self.named_path(name), value)
 
-    def to_dict(self):
-        return self._db.get()
 
 class FileSystemProject:
     def __init__(self, path):
         self.path = pathlib.Path(path)
         self._attribute_manager = FileSystemObject(self.path, Project)
         self._action_manager = FileSystemObjectManager(
-            self.path / "actions", Action, FileSystemAction, self)
+            self.path / "actions", Action, FileSystemAction, has_attributes=True)
         self._entity_manager = FileSystemObjectManager(
-            self.path / "entities", Entity, FileSystemEntity, self)
+            self.path / "entities", Entity, FileSystemEntity, has_attributes=True)
         self._template_manager = FileSystemObjectManager(
-            self.path / "templates", Template, FileSystemTemplate, self)
+            self.path / "templates", Template, FileSystemTemplate, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            self.path / "modules", Module, FileSystemModule, self)
+            self.path / "modules", Module, FileSystemModule, has_attributes=False)
 
     @property
     def modules(self):
@@ -186,11 +165,11 @@ class FileSystemProject:
 class FileSystemAction:
     def __init__(self, path):
         self.path = path
-        self._attribute_manager = FileSystemObject(path, Action)
+        self._attribute_manager = FileSystemObject(path / "attributes.yaml", Action)
         self._message_manager = FileSystemObjectManager(
-            path / "messages", Message, FileSystemMessage, self)
+            path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", Module, FileSystemModule, self)
+            path / "modules", Module, FileSystemModule, has_attributes=False)
 
     @property
     def modules(self):
@@ -208,11 +187,11 @@ class FileSystemAction:
 class FileSystemEntity:
     def __init__(self, path):
         self.path = path
-        self._attribute_manager = FileSystemObject(path, Entity)
+        self._attribute_manager = FileSystemObject(path / "attributes.yaml", Entity)
         self._message_manager = FileSystemObjectManager(
-            path / "messages", Message, FileSystemMessage, self)
+            path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", Module, FileSystemModule, self)
+            path / "modules", Module, FileSystemModule, has_attributes=False)
 
     @property
     def modules(self):
@@ -230,7 +209,7 @@ class FileSystemEntity:
 class FileSystemModule:
     def __init__(self, path):
         self.path = path
-        self._content_manager = FileSystemObject(path, Module)
+        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Module)
 
     @property
     def contents(self):
@@ -240,7 +219,7 @@ class FileSystemModule:
 class FileSystemMessage:
     def __init__(self, path):
         self.path = path
-        self._content_manager = FileSystemObject(path, Message)
+        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Message)
 
     @property
     def contents(self):
@@ -250,7 +229,7 @@ class FileSystemMessage:
 class FileSystemTemplate:
     def __init__(self, path):
         self.path = path
-        self._content_manager = FileSystemObject(path, Template)
+        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Template)
 
     @property
     def contents(self):

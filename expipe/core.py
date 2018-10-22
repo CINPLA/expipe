@@ -72,9 +72,9 @@ class MapManager:
     def values(self):
         return collections.abc.ValuesView(self)
 
-    def to_dict(self):
-        result = self._backend.contents.get() or dict()
-        return result
+    # def to_dict(self):
+        # result = self._backend.contents.get() or dict()
+        # return result
 
 class ExpipeObject:
     """
@@ -325,7 +325,7 @@ class Entity(ExpipeObject):
 
     @property
     def location(self):
-        return self._backend_get('location')
+        return self._backend.attributes.get('location')
 
     @location.setter
     def location(self, value):
@@ -335,7 +335,7 @@ class Entity(ExpipeObject):
 
     @property
     def type(self):
-        return self._backend_get('type')
+        return self._backend.attributes.get('type')
 
     @type.setter
     def type(self, value):
@@ -345,7 +345,7 @@ class Entity(ExpipeObject):
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._backend_get('datetime'), datetime_format)
+        return dt.datetime.strptime(self._backend.attributes.get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -358,7 +358,7 @@ class Entity(ExpipeObject):
     @property
     def users(self):
         return ProperyList(self._backend, 'users', dtype=str, unique=True,
-                           data=self._backend_get('users'))
+                           data=self._backend.attributes.get('users'))
 
     @users.setter
     def users(self, value):
@@ -373,7 +373,7 @@ class Entity(ExpipeObject):
     @property
     def tags(self):
         return ProperyList(self._backend, 'tags', dtype=str, unique=True,
-                           data=self._backend_get('tags'))
+                           data=self._backend.attributes.get('tags'))
 
     @tags.setter
     def tags(self, value):
@@ -395,12 +395,6 @@ class Action(ExpipeObject):
             action_id,
             backend
         )
-
-    def _backend_get(self, name):
-        if self._action_dirty:
-            self._data = self._backend.attributes.get()
-            self._action_dirty = False
-        return self._data.get(name)
 
     @property
     def messages(self):
@@ -437,28 +431,28 @@ class Action(ExpipeObject):
 
     @property
     def location(self):
-        return self._backend_get('location')
+        return self._backend.attributes.get('location')
 
     @location.setter
     def location(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.set('location', value)
+        self._backend.attributes.set('location', value)
 
     @property
     def type(self):
-        return self._backend_get('type')
+        return self._backend.attributes.get('type')
 
     @type.setter
     def type(self, value):
         if not isinstance(value, str):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.set('type', value)
+        self._backend.attributes.set('type', value)
 
     @property
     def entities(self):
         return ProperyList(self._backend, 'entities', dtype=str, unique=True,
-                           data=self._backend_get('entities'))
+                           data=self._backend.attributes.get('entities'))
 
     @entities.setter
     def entities(self, value):
@@ -468,11 +462,11 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._backend.set('entities', value)
+        self._backend.attributes.set('entities', value)
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._backend_get('datetime'), datetime_format)
+        return dt.datetime.strptime(self._backend.attributes.get('datetime'), datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -480,12 +474,12 @@ class Action(ExpipeObject):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
-        self._backend.set('datetime', dtime)
+        self._backend.attributes.set('datetime', dtime)
 
     @property
     def users(self):
         return ProperyList(self._backend, 'users', dtype=str, unique=True,
-                           data=self._backend_get('users'))
+                           data=self._backend.attributes.get('users'))
 
     @users.setter
     def users(self, value):
@@ -495,12 +489,12 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._backend.set('users', value)
+        self._backend.attributes.set('users', value)
 
     @property
     def tags(self):
         return ProperyList(self._backend, 'tags', dtype=str, unique=True,
-                           data=self._backend_get('tags'))
+                           data=self._backend.attributes.get('tags'))
 
     @tags.setter
     def tags(self, value):
@@ -510,7 +504,7 @@ class Action(ExpipeObject):
             raise TypeError('Expected contents to be "str" got ' +
                             str([type(v) for v in value]))
         value = list(set(value))
-        self._backend.set('tags', value)
+        self._backend.attributes.set('tags', value)
 
     def require_filerecord(self, class_type=None, name=None):
         class_type = class_type or Filerecord

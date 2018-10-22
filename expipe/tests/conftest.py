@@ -26,13 +26,19 @@ def pytest_namespace():
         "ACTION_MODULE_ID": ACTION_MODULE_ID
     }
 
+def pytest_addoption(parser):
+    parser.addoption("--firebase", action="store_true", default=False)
 
 @pytest.fixture(scope='function')
-def create_filesystem_root():
+def create_url(request):
+    if request.config.getoption("--firebase"):
+        raise NotImplementedError("Firebase test not implemented")
+
     path = pathlib.Path('/tmp') / MAIN_ID
     if path.exists():
         shutil.rmtree(str(path))
     os.makedirs(str(path))
+    return path / PROJECT_ID
 
 
 @pytest.fixture(scope='function')
