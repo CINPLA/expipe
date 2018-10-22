@@ -555,10 +555,10 @@ class Module:
 
     def _get_module_content(self):
         result = self._backend.contents.get()
-        if isinstance(result, list):
-            if len(result) > 0:
-                raise TypeError('Got nonempty list, expected dict')
-            result = None
+        # if isinstance(result, list):
+            # if len(result) > 0:
+                # raise TypeError('Got nonempty list, expected dict')
+            # result = None
         return result
 
 
@@ -626,7 +626,7 @@ class Message:
     @text.setter
     def text(self, value):
         _assert_message_text_dtype(value)
-        self._backend.set(name="text", value=value)
+        self._backend.contents.set(name="text", value=value)
 
     @property
     def user(self):
@@ -636,7 +636,7 @@ class Message:
     def user(self, value=None):
         value = value or expipe.settings.get("username")
         _assert_message_user_dtype(value)
-        self._backend.set(name="user", value=value)
+        self._backend.contents.set(name="user", value=value)
 
     @property
     def datetime(self):
@@ -647,7 +647,7 @@ class Message:
     def datetime(self, value):
         _assert_message_datetime_dtype(value)
         value_str = dt.datetime.strftime(value, datetime_format)
-        self._backend.set(name="datetime", value=value_str)
+        self._backend.contents.set(name="datetime", value=value_str)
 
     def to_dict(self):
         content = self._backend.contents.get()
