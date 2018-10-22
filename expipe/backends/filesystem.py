@@ -2,7 +2,11 @@ from ..backend import *
 from ..core import *
 import pathlib
 import os
-import ruamel.yaml as yaml
+
+try:
+    import ruamel.yaml as yaml
+except ImportError:
+    import ruamel_yaml as yaml
 
 
 def yaml_dump(f, data):
