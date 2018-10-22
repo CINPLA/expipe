@@ -23,6 +23,7 @@ def yaml_dump(f, data):
 def yaml_load(path):
     with path.open('r', encoding='utf-8') as f:
         result = yaml.load(f, Loader=yaml.Loader)
+    return result
 
 
 class FileSystemBackend(AbstractBackend):
@@ -64,20 +65,22 @@ class FileSystemObject(AbstractObject):
         return name in result
 
     def get(self, name=None):
-        result = yaml_load(self.path)
+        result = yaml_load(self.path) or {}
         if name is None:
             return result
         else:
-            return result[name]
+            return result.get(name)
 
     def set(self, name, value):
-        yaml_dump(self.path, value)
+        result = self.get()
+        result[name] = value
+        yaml_dump(self.path, result)
 
     def push(self, value=None):
         raise NotImplementedError("Push not implemented on file system")
 
     def delete(self, name):
-        if value is not None:
+        if name is not None:
             result = self.get(name)
             del result[name]
         yaml_dump(self.path, result)
@@ -85,7 +88,7 @@ class FileSystemObject(AbstractObject):
     def update(self, name, value=None):
         if value is not None:
             result = self.get(name)
-            result.update(value)
+            result[name].update(value)
         yaml_dump(self.path, result)
 
 

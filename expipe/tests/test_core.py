@@ -57,7 +57,7 @@ def test_action_attr_list(create_url):
     orig_list = ['sub1', 'sub2']
     for attr in ['entities', 'users', 'tags']:
         prop_list = getattr(action, attr)
-        assert isinstance(prop_list, expipe.core.ProperyList)
+        assert isinstance(prop_list, expipe.core.PropertyList)
         prop_list.append('sub3')
         orig_list.append('sub3')
         setattr(action, attr, orig_list)
@@ -552,7 +552,7 @@ def test_fill_the_project(create_url):
     # orig_list = ['sub1', 'sub2']
     # for attr in ['entities', 'users', 'tags']:
     #     prop_list = getattr(action, attr)
-    #     assert isinstance(prop_list, expipe.core.ProperyList)
+    #     assert isinstance(prop_list, expipe.core.PropertyList)
     #     prop_list.append('sub3')
     #     orig_list.append('sub3')
     #     setattr(action, attr, orig_list)

@@ -357,7 +357,7 @@ class Entity(ExpipeObject):
 
     @property
     def users(self):
-        return ProperyList(self._backend, 'users', dtype=str, unique=True,
+        return PropertyList(self._backend.attributes, 'users', dtype=str, unique=True,
                            data=self._backend.attributes.get('users'))
 
     @users.setter
@@ -372,7 +372,7 @@ class Entity(ExpipeObject):
 
     @property
     def tags(self):
-        return ProperyList(self._backend, 'tags', dtype=str, unique=True,
+        return PropertyList(self._backend.attributes, 'tags', dtype=str, unique=True,
                            data=self._backend.attributes.get('tags'))
 
     @tags.setter
@@ -451,7 +451,7 @@ class Action(ExpipeObject):
 
     @property
     def entities(self):
-        return ProperyList(self._backend, 'entities', dtype=str, unique=True,
+        return PropertyList(self._backend.attributes, 'entities', dtype=str, unique=True,
                            data=self._backend.attributes.get('entities'))
 
     @entities.setter
@@ -478,7 +478,7 @@ class Action(ExpipeObject):
 
     @property
     def users(self):
-        return ProperyList(self._backend, 'users', dtype=str, unique=True,
+        return PropertyList(self._backend.attributes, 'users', dtype=str, unique=True,
                            data=self._backend.attributes.get('users'))
 
     @users.setter
@@ -493,7 +493,7 @@ class Action(ExpipeObject):
 
     @property
     def tags(self):
-        return ProperyList(self._backend, 'tags', dtype=str, unique=True,
+        return PropertyList(self._backend.attributes, 'tags', dtype=str, unique=True,
                            data=self._backend.attributes.get('tags'))
 
     @tags.setter
@@ -683,14 +683,14 @@ class Filerecord:
             self._backend.update(self.id, {"path": self.exdir_path})
 
 
-class ProperyList:
+class PropertyList:
     def __init__(self, db_instance, name, dtype=None, unique=False,
                  data=None):
         self._backend = db_instance
         self.name = name
         self.dtype = dtype
         self.unique = unique
-        self.data = data or self._backend.contents.get(self.name)
+        self.data = data or self._backend.get(self.name)
 
     def __iter__(self):
         data = self.data or []
