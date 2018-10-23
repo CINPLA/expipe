@@ -1,19 +1,16 @@
 import abc
 
 class AbstractBackend(abc.ABC):
-    def __init__(self, path):
+    @abc.abstractmethod
+    def exists(self, name):
         pass
 
     @abc.abstractmethod
-    def exists(self):
+    def get_project(self, name):
         pass
 
     @abc.abstractmethod
-    def get_project(self):
-        pass
-
-    @abc.abstractmethod
-    def create_project(self, contents):
+    def create_project(self, name, contents):
         pass
 
 
@@ -34,9 +31,6 @@ class AbstractProject(abc.ABC):
         pass
 
 class AbstractObject(abc.ABC):
-    def __init__(self, path, object_type):
-        pass
-
     @abc.abstractmethod
     def exists(self, name=None):
         pass

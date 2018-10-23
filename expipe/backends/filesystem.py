@@ -89,20 +89,17 @@ def yaml_load(path):
 
 
 class FileSystemBackend(AbstractBackend):
-    def __init__(self, path):
-        super(FileSystemBackend, self).__init__(
-            path=path
-        )
-        self.path = pathlib.Path(path)
+    def __init__(self, root=None):
+        self.path = pathlib.Path(root)
 
-    def exists(self):
-        return self.path.exists()
+    def exists(self, name):
+        return (self.path / name).is_dir()
 
-    def get_project(self):
-        return Project(self.path.stem, FileSystemProject(self.path))
+    def get_project(self, name):
+        return Project(name, FileSystemProject(self.path / name))
 
-    def create_project(self, contents):
-        path = self.path
+    def create_project(self, name, contents):
+        path = self.path / name
         path.mkdir()
         for p in ['actions', 'entities', 'modules', 'templates']:
             (path / p).mkdir()
@@ -113,13 +110,17 @@ class FileSystemBackend(AbstractBackend):
         yaml_dump(config, config_contents)
         return Project(self.path.stem, FileSystemProject(path))
 
-    def delete_project(self, remove_all_children=False):
-        assert self.path != self.path.root
+    def delete_project(self, name, remove_all_children=False):
+        path = self.path / name
+        # Make sure we're not about to do anything stupid
+        assert path != self.path.root
+        assert path != pathlib.Path.home()
+
         if remove_all_children:
-            shutil.rmtree(str(self.path))
+            shutil.rmtree(str(path))
         else:
             try:
-                self.path.rmdir()
+                path.rmdir()
             except OSError as e:
                 raise OSError(
                     str(e) + '. Carefully consider if you want to ' +
@@ -128,10 +129,6 @@ class FileSystemBackend(AbstractBackend):
 
 class FileSystemObject(AbstractObject):
     def __init__(self, path, object_type, has_attributes=False):
-        super(FileSystemObject, self).__init__(
-            path=path,
-            object_type=object_type
-        )
         self.path = path
 
     def exists(self, name):

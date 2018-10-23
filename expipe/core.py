@@ -1,3 +1,4 @@
+import expipe
 import os
 import os.path as op
 import collections
@@ -7,16 +8,12 @@ import numpy as np
 import warnings
 import copy
 import abc
-import expipe
 import pathlib
+import re
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 datetime_key_format = '%Y%m%dT%H%M%S'
 verbose = False
-
-def vprint(*arg):
-    if verbose:
-        print(*arg)
 
 
 class ListManager:
@@ -527,7 +524,6 @@ class Module:
         if op.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
-        vprint('Saving module "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
             json.dump(self.to_dict(), outfile,
                       sort_keys=True, indent=4)
@@ -572,7 +568,6 @@ class Template:
         if op.exists(fname):
             raise FileExistsError('The filename "' + fname +
                                   '" exists, choose another')
-        vprint('Saving template "' + self.id + '" to "' + fname + '"')
         with open(fname, 'w') as outfile:
             json.dump(self.to_dict(), outfile,
                       sort_keys=True, indent=4)
@@ -739,55 +734,60 @@ class PropertyList:
         return value
 
 
-######################################################################################################
-# utilities
-######################################################################################################
 # Entry API
+class Database:
+    def __init__(self, backend):
+        self.backend = backend
 
-def _discover_backend(url):
-    if isinstance(url, pathlib.Path):
-        return expipe.backends.filesystem.FileSystemBackend(url)
+    def get_project(self, name):
+        if not self.backend.exists(name):
+            raise KeyError("Project does not exist.")
 
-    # TODO implement detecting protocols like "firebase:blahblah"
-    if ":" in url:
-        raise NotImplementedError("We do not yet support other backends than the file system")
-
-    return expipe.backends.filesystem.FileSystemBackend(url)
-
-
-def get_project(url, backend=None):
-    backend = backend or _discover_backend(url)
-
-    if not backend.exists():
-        raise KeyError("Project " + str(url) + " does not exist.")
-
-    return backend.get_project()
+        return self.backend.get_project(name)
 
 
-def create_project(url, backend=None):
-    backend = backend or _discover_backend(url)
-
-    registered = dt.datetime.today().strftime(datetime_format)
-    return backend.create_project(contents={"registered": registered})
+    def create_project(self, name):
+        registered = dt.datetime.today().strftime(datetime_format)
+        return self.backend.create_project(name, contents={"registered": registered})
 
 
-def require_project(url=None, backend=None):
-    """Creates a new project with the provided id if it does not already exist."""
-    backend = backend or _discover_backend(url)
-
-    if backend.exists():
-        return get_project(url, backend=backend)
-    else:
-        return create_project(url, backend=backend)
+    def require_project(self, name):
+        """Creates a new project with the provided id if it does not already exist."""
+        if self.backend.exists(name):
+            return self.get_project(name)
+        else:
+            return self.create_project(name)
 
 
-def delete_project(url=None, remove_all_children=False, backend=None):
-    backend = backend or _discover_backend(url)
-    if backend.exists():
-        backend.delete_project(remove_all_children=remove_all_children)
-    else:
-        raise KeyError("Project " + str(url) + " does not exist.")
+    def delete_project(self, name, remove_all_children=None):
+        if self.backend.exists(name):
+            self.backend.delete_project(name, remove_all_children=remove_all_children)
+        else:
+            raise KeyError("Project does not exist.")
 
+
+def load_file_system(config_name=None, root=None):
+    if not config_name and not root:
+        root = pathlib.Path.cwd()
+    elif config_name:
+        config = expipe.config._load_config_by_name("file_system", config_name)
+        config = expipe.config._extend_config(config)
+        root = config["file_system"]["root"]
+
+    backend = expipe.backends.filesystem.FileSystemBackend(root=root)
+    return Database(backend)
+
+def load_firebase(config_name=None):
+    config = expipe.config._load_config_by_name("firebase", config_name)
+    config = expipe.config._extend_config(config)
+    firebase_config = config["firebase"]
+    email = firebase_config["email"]
+    password = firebase_config["password"]
+    config_details = firebase_config["config"]
+    backend = expipe.backends.firebase.FirebaseBackend(
+        email=email, password=password, config=config_details
+    )
+    return Database(backend)
 
 ######################################################################################################
 # Helpers

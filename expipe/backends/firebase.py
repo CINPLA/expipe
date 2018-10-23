@@ -1,7 +1,75 @@
 from ..backend import *
 import requests
-from ..core import Project
+from ..core import *
 import datetime as dt
+import expipe
+try:
+    import ruamel.yaml as yaml
+except ImportError:
+    import ruamel_yaml as yaml
+
+def deep_verification(default, current, path=""):
+    for key in default:
+        next_path = key
+        if path:
+            next_path = path + "." + key
+
+        if key not in current:
+            print("WARNING: '{}' not found in settings.".format(next_path),
+                  "Please rerun expipe.configure().")
+        else:
+            if isinstance(default[key], dict):
+                if not isinstance(current[key], dict):
+                    print("WARNING: Expected '{}' to be dict in settings.".format(next_path),
+                          "Please rerun expipe.configure().")
+                else:
+                    deep_verification(default[key], current[key], path=next_path)
+
+
+def configure(config_name, data_path, email, password, url_prefix, api_key):
+    """
+    The configure function creates a configuration file if it does not yet exist.
+    Ask your expipe administrator about the correct values for the parameters.
+
+    Parameters
+    ----------
+    data_path :
+        path to where data files should be stored
+    email :
+        user email on Firebase server
+    password :
+        user password on Firebase server (WARNING: Will be stored in plain text!)
+    url_prefix:
+        prefix of Firebase server URL (https://<url_prefix>.firebaseio.com)
+    api_key:
+        Firebase API key
+    """
+
+    config_dir = pathlib.home() / '.config' / 'expipe' / 'firebase'
+    config_dir.mkdir(exist_ok=True)
+    config_file = (config_dir / config_name).with_suffix(".yaml")
+
+    current_settings = {}
+    with open(config_file) as f:
+        current_settings = yaml.safe_load(f)
+
+    current_settings.update({
+        "data_path": data_path,
+        "firebase": {
+            "email": email,
+            "password": password,
+            "config": {
+                "apiKey": api_key,
+                "authDomain": "{}.firebaseapp.com".format(url_prefix),
+                "databaseURL": "https://{}.firebaseio.com".format(url_prefix),
+                "storageBucket": "{}.appspot.com".format(url_prefix)
+            }
+        }
+    })
+
+    with open(config_file) as f:
+        yaml.dump(current_settings, f, default_flow_style=False)
+
 
 def convert_from_firebase(value):
     """
@@ -91,10 +159,29 @@ def convert_to_firebase(value):
     return result
 
 
+class FirebaseBackend(AbstractBackend):
+    def __init__(self, email, password, config):
+        self.id_token = None
+        self.refresh_token = None
+        self.token_expiration = dt.datetime.now()
+        self.projects = FirebaseObjectManager("projects", Project, FirebaseProject, self)
+
+    def exists(self, name):
+        return name in self.projects
+
+    def get_project(self, name):
+        return Project(name, FirebaseProject(name))
+
+    def create_project(self, name, contents):
+        self.projects[name] = contents
+
+    def delete_project(self, name, remove_all_children=False):
+        raise NotImplementedError("Cannot delete firebase projects")
+
 
 class FirebaseObjectManager(AbstractObjectManager):
     def __init__(self, path, object_type, backend_type, backend):
-        self._db = FirebaseObject(name)
+        self._db = FirebaseObject(path)
         self._object_type = object_type
         self._backend_type = backend_type
 
@@ -115,24 +202,17 @@ class FirebaseObjectManager(AbstractObjectManager):
     def __contains__(self, name):
         return name in (self._db.get(shallow=True) or [])
 
-
-class FirebaseBackend(AbstractBackend):
-    def __init__(self):
-        self.id_token = None
-        self.refresh_token = None
-        self.token_expiration = dt.datetime.now()
-
-    def projects(self):
-        return FirebaseObjectManager("projects", Project, FirebaseProject, self)
+    def __setitem__(self, name, value):
+        self._db.set(name, value)
 
 
 class FirebaseProject:
     def __init__(self, name):
         self._name = name
-        self._attribute_manager = FirebaseObject("/".join("projects", name))
-        self._action_manager = FirebaseObjectManager("/".join("actions", name), Action, FirebaseAction, self)
-        self._action_manager = FirebaseObjectManager("/".join("entities", name), Entity, FirebaseEntity, self)
-        self._action_manager = FirebaseObjectManager("/".join("templates", name), Template, FirebaseTemplate, self)
+        self._attribute_manager = FirebaseObject("/".join(["projects", name]))
+        self._action_manager = FirebaseObjectManager("/".join(["actions", name]), Action, FirebaseAction, self)
+        self._action_manager = FirebaseObjectManager("/".join(["entities", name]), Entity, FirebaseEntity, self)
+        self._action_manager = FirebaseObjectManager("/".join(["templates", name]), Template, FirebaseTemplate, self)
 
     @property
     def actions(self):
@@ -153,8 +233,8 @@ class FirebaseProject:
 
 class FirebaseAction:
     def __init__(self, project, name):
-        self._attribute_manager = FirebaseObject("/".join("actions", project, name))
-        self._message_manager = FirebaseObjectManager("/".join("action_messages", project, name), Message, FirebaseMessage, self)
+        self._attribute_manager = FirebaseObject("/".join(["actions", project, name]))
+        self._message_manager = FirebaseObjectManager("/".join(["action_messages", project, name]), Message, FirebaseMessage, self)
 
     def attribute_manager(self):
         return self._attribute_manager
@@ -165,8 +245,8 @@ class FirebaseAction:
 
 class FirebaseEntity:
     def __init__(self, project, name):
-        self._attribute_manager = FirebaseObject("/".join("entities", project, name))
-        self._message_manager = FirebaseObjectManager("/".join("entity_messages", project, name), Message, FirebaseMessage, self)
+        self._attribute_manager = FirebaseObject("/".join(["entities", project, name]))
+        self._message_manager = FirebaseObjectManager("/".join(["entity_messages", project, name]), Message, FirebaseMessage, self)
 
     def attribute_manager(self):
         return self._attribute_manager
@@ -179,12 +259,12 @@ class FirebaseModule:
     def __init__(self, module_type, project, name=None):
         if module_type == "action":
             assert(name is not None)
-            self._content_manager = FirebaseObject("/".join("action_modules", project, name))
+            self._content_manager = FirebaseObject("/".join(["action_modules", project, name]))
         elif module_type == "entity":
             assert(name is not None)
-            self._content_manager = FirebaseObject("/".join("entity_modules", project, name))
+            self._content_manager = FirebaseObject("/".join(["entity_modules", project, name]))
         elif module_type == "project":
-            self._content_manager = FirebaseObject("/".join("project_modules", project))
+            self._content_manager = FirebaseObject("/".join(["project_modules", project]))
 
     def content_manager(self):
         return self._content_manager
@@ -192,7 +272,7 @@ class FirebaseModule:
 
 class FirebaseTemplate:
     def __init__(self, project, name):
-        self._content_manager = FirebaseObject("/".join("projects", project, name))
+        self._content_manager = FirebaseObject("/".join(["projects", project, name]))
 
     def content_manager(self):
         return self._content_manager
@@ -200,12 +280,11 @@ class FirebaseTemplate:
 
 class FirebaseObject(AbstractObject):
     def __init__(self, path):
-        super(FirebaseObject, self).__init__(
-            path=path
-        )
+        super(FirebaseObject, self).__init__()
         self.id_token = None
         self.refresh_token = None
         self.token_expiration = dt.datetime.now()
+        self.path = path
 
     def ensure_auth(self):
         current_time = dt.datetime.now()
@@ -267,9 +346,7 @@ class FirebaseObject(AbstractObject):
         url = self.build_url(name)
         if shallow:
             url += "&shallow=true"
-        vprint("URL", url)
         response = requests.get(url)
-        vprint("Get result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         if value is None:
@@ -286,9 +363,7 @@ class FirebaseObject(AbstractObject):
         url = self.build_url(name)
         if value is None:
             value = name
-        vprint("URL", url)
         response = requests.put(url, json=value)
-        vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         if value is not None:
@@ -299,9 +374,7 @@ class FirebaseObject(AbstractObject):
         url = self.build_url(name)
         if value is None:
             value = name
-        vprint("URL", url)
         response = requests.post(url, json=value)
-        vprint("Push result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         if value is None:
@@ -318,9 +391,7 @@ class FirebaseObject(AbstractObject):
         if value is None:
             value = name
         value = convert_to_firebase(value)
-        vprint("URL", url)
         response = requests.patch(url, json=value)
-        vprint("Set result", response.json())
         assert(response.status_code == 200)
         value = response.json()
         if value is None:
