@@ -737,31 +737,31 @@ class PropertyList:
 # Entry API
 class Database:
     def __init__(self, backend):
-        self.backend = backend
+        self._backend = backend
 
     def get_project(self, name):
-        if not self.backend.exists(name):
+        if not self._backend.exists(name):
             raise KeyError("Project does not exist.")
 
-        return self.backend.get_project(name)
+        return self._backend.get_project(name)
 
 
     def create_project(self, name):
         registered = dt.datetime.today().strftime(datetime_format)
-        return self.backend.create_project(name, contents={"registered": registered})
+        return self._backend.create_project(name, contents={"registered": registered})
 
 
     def require_project(self, name):
         """Creates a new project with the provided id if it does not already exist."""
-        if self.backend.exists(name):
+        if self._backend.exists(name):
             return self.get_project(name)
         else:
             return self.create_project(name)
 
 
     def delete_project(self, name, remove_all_children=None):
-        if self.backend.exists(name):
-            self.backend.delete_project(name, remove_all_children=remove_all_children)
+        if self._backend.exists(name):
+            self._backend.delete_project(name, remove_all_children=remove_all_children)
         else:
             raise KeyError("Project does not exist.")
 
