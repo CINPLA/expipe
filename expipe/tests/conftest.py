@@ -4,10 +4,9 @@ import os
 import shutil
 import pathlib
 
-expipe.ensure_testing()
-
 unique_id = 'test'
 
+TESTDIR = "/tmp/expipe-tests"
 MAIN_ID = 'main-' + unique_id
 PROJECT_ID = 'myproject-' + unique_id
 PROJECT_MODULE_ID = 'myproject-module-' + unique_id
@@ -33,16 +32,13 @@ def pytest_addoption(parser):
     parser.addoption("--firebase", action="store_true", default=False)
 
 @pytest.fixture(scope='function')
-def create_url(request):
+def load_database(request):
     if request.config.getoption("--firebase"):
         raise NotImplementedError("Firebase test not implemented")
-
-    path = pathlib.Path('/tmp') / MAIN_ID
-    if path.exists():
-        shutil.rmtree(str(path))
-    os.makedirs(str(path))
-    return path / PROJECT_ID
-
+    if os.path.exists(TESTDIR):
+        shutil.rmtree(TESTDIR)
+    database = expipe.load_file_system(root=TESTDIR)
+    return database
 
 @pytest.fixture(scope='function')
 def teardown_project():
