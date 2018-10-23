@@ -100,7 +100,7 @@ class FileSystemBackend(AbstractBackend):
 
     def create_project(self, name, contents):
         path = self.path / name
-        path.mkdir()
+        path.mkdir(parents=True)
         for p in ['actions', 'entities', 'modules', 'templates']:
             (path / p).mkdir()
         attributes = path / 'attributes.yaml'
