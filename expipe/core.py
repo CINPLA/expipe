@@ -156,6 +156,12 @@ class Project(ExpipeObject):
             backend
         )
 
+    def get_action(self, name):
+        warnings.warn(
+            "`project.get_action(name)` is deprecated, please use `project.actions[name]` instead",
+            DeprecationWarning)
+        return self.actions[name]
+
     @property
     def actions(self):
         return MapManager(self._backend.actions)
@@ -385,6 +391,12 @@ class Action(ExpipeObject):
             action_id,
             backend
         )
+
+    def get_module(self, name):
+        warnings.warn(
+            "The method`action.get_module(name)` is deprecated. "
+            "Please use `action.modules[name]` instead", DeprecationWarning)
+        return self.modules[name]
 
     @property
     def messages(self):
@@ -765,6 +777,7 @@ class Database:
         else:
             raise KeyError("Project does not exist.")
 
+# Entry API
 
 def load_file_system(config_name=None, root=None):
     if not config_name and not root:
@@ -789,9 +802,19 @@ def load_firebase(config_name=None):
     )
     return Database(backend)
 
-######################################################################################################
+# Deprecated API
+
+def require_project(name):
+    warnings.warn(
+        "The function `require_project` is deprecated."
+        "Please use `load_firebase` or `load_file_system`.",
+        DeprecationWarning)
+
+    database = load_firebase(pathlib.Path.home() / ".config" / "expipe" / "config.yaml")
+    return database.require_project(name)
+
 # Helpers
-######################################################################################################
+
 def _assert_message_text_dtype(text):
     if not isinstance(text, str):
         raise TypeError("Text must be of type 'str', not {} {}".format(type(text), text))
