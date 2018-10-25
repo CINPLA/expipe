@@ -11,7 +11,9 @@ except ImportError:
 def _load_config_by_name(folder, config):
     config_path = pathlib.Path(config)
 
-    if config_path.suffix != ".yaml" or not config_path.exists():
+    if config_path.suffix == ".yaml" and config_path.exists():
+        pass
+    else:
         config_path = (pathlib.Path.home() / ".config" / "expipe" / folder / config_path).with_suffix(".yaml")
 
     if not config_path.exists():

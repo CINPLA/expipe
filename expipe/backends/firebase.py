@@ -159,36 +159,30 @@ def convert_to_firebase(value):
     return result
 
 
-class FirebaseBackend(AbstractBackend):
-    def __init__(self, email, password, config):
-        self.id_token = None
-        self.refresh_token = None
-        self.token_expiration = dt.datetime.now()
-        self.projects = FirebaseObjectManager("projects", Project, FirebaseProject, self)
-
-    def exists(self, name):
-        return name in self.projects
-
-    def get_project(self, name):
-        return Project(name, FirebaseProject(name))
-
-    def create_project(self, name, contents):
-        self.projects[name] = contents
-
-    def delete_project(self, name, remove_all_children=False):
-        raise NotImplementedError("Cannot delete firebase projects")
-
-
 class FirebaseObjectManager(AbstractObjectManager):
-    def __init__(self, path, object_type, backend_type, backend):
+    def __init__(self, path, path_prefix, object_type, backend_type):
+        self.path = path
+        self.path_prefix = path_prefix
         self._db = FirebaseObject(path)
         self._object_type = object_type
         self._backend_type = backend_type
 
+        print("INIT PATH, NAME", path, path_prefix)
+
     def __getitem__(self, name):
         if not self._db.exists(name):
             raise KeyError("Action '{}' does not exist".format(name))
-        return self._object_type(self._backend_type(name))
+        if self.path_prefix is not None:
+            prefixed_name = "/".join([self.path_prefix, name])
+        else:
+            prefixed_name = name
+
+        full_path = "/".join([self.path, name])
+
+        print("PATH, NAME", full_path, prefixed_name)
+        print("TYPES", self._object_type, self._backend_type)
+
+        return self._object_type(name, self._backend_type(full_path, prefixed_name))
 
     def __iter__(self):
         keys = self._db.get(shallow=True) or []
@@ -206,13 +200,37 @@ class FirebaseObjectManager(AbstractObjectManager):
         self._db.set(name, value)
 
 
+class FirebaseBackend(AbstractBackend):
+    def __init__(self, email, password, config):
+        self.id_token = None
+        self.refresh_token = None
+        self.token_expiration = dt.datetime.now()
+        self.projects = FirebaseObjectManager("projects", None, Project, FirebaseProject)
+
+    def exists(self, name):
+        return name in self.projects
+
+    def get_project(self, name):
+        return Project(name, FirebaseProject(None, name))
+
+    def create_project(self, name, contents):
+        self.projects[name] = contents
+
+    def delete_project(self, name, remove_all_children=False):
+        raise NotImplementedError("Cannot delete firebase projects")
+
+
 class FirebaseProject:
-    def __init__(self, name):
-        self._name = name
-        self._attribute_manager = FirebaseObject("/".join(["projects", name]))
-        self._action_manager = FirebaseObjectManager("/".join(["actions", name]), Action, FirebaseAction, self)
-        self._action_manager = FirebaseObjectManager("/".join(["entities", name]), Entity, FirebaseEntity, self)
-        self._action_manager = FirebaseObjectManager("/".join(["templates", name]), Template, FirebaseTemplate, self)
+    def __init__(self, path, name):
+        self._attribute_manager = FirebaseObject(path)
+        self._action_manager = FirebaseObjectManager(
+            "/".join(["actions", name]), name, Action, FirebaseAction)
+        self._entities_manager = FirebaseObjectManager(
+            "/".join(["entities", name]), name, Entity, FirebaseEntity)
+        self._templates_manager = FirebaseObjectManager(
+            "/".join(["templates", name]), name, Template, FirebaseTemplate)
+        self._module_manager = FirebaseObjectManager(
+            "/".join(["project_modules", name]), name, Template, FirebaseTemplate)
 
     @property
     def actions(self):
@@ -230,49 +248,71 @@ class FirebaseProject:
     def attributes(self):
         return self._attribute_manager
 
+    @property
+    def modules(self):
+        return self._module_manager
+
 
 class FirebaseAction:
-    def __init__(self, project, name):
-        self._attribute_manager = FirebaseObject("/".join(["actions", project, name]))
-        self._message_manager = FirebaseObjectManager("/".join(["action_messages", project, name]), Message, FirebaseMessage, self)
+    def __init__(self, path, name):
+        self._attribute_manager = FirebaseObject(path)
+        self._module_manager = FirebaseObjectManager(
+            "/".join(["action_modules", name]), path, Module, FirebaseModule)
+        self._message_manager = FirebaseObjectManager(
+            "/".join(["action_messages", name]), path, Message, FirebaseMessage)
 
-    def attribute_manager(self):
+    @property
+    def modules(self):
+        return self._module_manager
+
+    @property
+    def attributes(self):
         return self._attribute_manager
 
-    def message_manager(self):
+    @property
+    def messages(self):
         return self._message_manager
+
+
+class FirebaseMessage:
+    def __init__(self, path, name):
+        self._content_manager = FirebaseObject(path)
+
+    @property
+    def contents(self):
+        return self._content_manager
 
 
 class FirebaseEntity:
-    def __init__(self, project, name):
-        self._attribute_manager = FirebaseObject("/".join(["entities", project, name]))
-        self._message_manager = FirebaseObjectManager("/".join(["entity_messages", project, name]), Message, FirebaseMessage, self)
+    def __init__(self, path, name):
+        self._attribute_manager = FirebaseObject(path)
+        self._message_manager = FirebaseObjectManager("/".join(["entity_messages", name]), path, Message, FirebaseMessage)
+        self._module_manager = FirebaseObjectManager("/".join(["entity_modules", name]), path, Message, create_module_type("entity_modules"))
 
-    def attribute_manager(self):
+    @property
+    def modules(self):
+        return self._module_manager
+
+    @property
+    def attributes(self):
         return self._attribute_manager
 
-    def message_manager(self):
+    @property
+    def messages(self):
         return self._message_manager
 
-
 class FirebaseModule:
-    def __init__(self, module_type, project, name=None):
-        if module_type == "action":
-            assert(name is not None)
-            self._content_manager = FirebaseObject("/".join(["action_modules", project, name]))
-        elif module_type == "entity":
-            assert(name is not None)
-            self._content_manager = FirebaseObject("/".join(["entity_modules", project, name]))
-        elif module_type == "project":
-            self._content_manager = FirebaseObject("/".join(["project_modules", project]))
+    def __init__(self, path, name):
+        self._content_manager = FirebaseObject(path)
 
-    def content_manager(self):
+    @property
+    def contents(self):
         return self._content_manager
 
 
 class FirebaseTemplate:
-    def __init__(self, project, name):
-        self._content_manager = FirebaseObject("/".join(["projects", project, name]))
+    def __init__(self, path):
+        self._content_manager = FirebaseObject(path)
 
     def content_manager(self):
         return self._content_manager
@@ -327,11 +367,12 @@ class FirebaseObject(AbstractObject):
         else:
             full_path = "/".join([self.path, name])
         database_url = expipe.settings["firebase"]["config"]["databaseURL"]
-        return "{database_url}/{name}.json?auth={id_token}".format(
+        result = "{database_url}/{name}.json?auth={id_token}".format(
             database_url=database_url,
             name=full_path,
             id_token=self.id_token
         )
+        return result
 
     def exists(self, name=None):
         self.ensure_auth()
