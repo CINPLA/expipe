@@ -1,7 +1,7 @@
 language: python
-python:
-  - "3.5"
-  - "3.6"
+matrix:
+  - env: "PYTHON_VERSION=3.6"
+  - env: "PYTHON_VERSION=3.7"
 install:
   - bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
 script:
@@ -10,11 +10,6 @@ script:
   - cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
   - source libs/travis-conda-scripts/scripts/config.sh
   - bash -ex libs/travis-conda-scripts/scripts/build.sh
-# after_success:
-#   - pip install pyrebase
-#   - conda install -c defaults -c conda-forge coverage codecov
-#   - coverage run --source expipe/io -m py.test -s --doctest-glob='*.rst'
-#   - coverage report
 deploy:
   - provider: script
     skip_cleanup: true
