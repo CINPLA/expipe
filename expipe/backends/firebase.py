@@ -160,14 +160,13 @@ def convert_to_firebase(value):
 
 
 class FirebaseObjectManager(AbstractObjectManager):
-    def __init__(self, path, path_prefix, object_type, backend_type):
+    def __init__(self, config, path, path_prefix, object_type, backend_type):
+        self.config = config
         self.path = path
         self.path_prefix = path_prefix
-        self._db = FirebaseObject(path)
+        self._db = FirebaseObject(config, path)
         self._object_type = object_type
         self._backend_type = backend_type
-
-        print("INIT PATH, NAME", path, path_prefix)
 
     def __getitem__(self, name):
         if not self._db.exists(name):
@@ -179,10 +178,7 @@ class FirebaseObjectManager(AbstractObjectManager):
 
         full_path = "/".join([self.path, name])
 
-        print("PATH, NAME", full_path, prefixed_name)
-        print("TYPES", self._object_type, self._backend_type)
-
-        return self._object_type(name, self._backend_type(full_path, prefixed_name))
+        return self._object_type(name, self._backend_type(self.config, full_path, prefixed_name))
 
     def __iter__(self):
         keys = self._db.get(shallow=True) or []
@@ -201,17 +197,15 @@ class FirebaseObjectManager(AbstractObjectManager):
 
 
 class FirebaseBackend(AbstractBackend):
-    def __init__(self, email, password, config):
-        self.id_token = None
-        self.refresh_token = None
-        self.token_expiration = dt.datetime.now()
-        self.projects = FirebaseObjectManager("projects", None, Project, FirebaseProject)
+    def __init__(self, config):
+        self.config = config
+        self.projects = FirebaseObjectManager(config, "projects", None, Project, FirebaseProject)
 
     def exists(self, name):
         return name in self.projects
 
     def get_project(self, name):
-        return Project(name, FirebaseProject(None, name))
+        return Project(name, FirebaseProject(self.config, None, name))
 
     def create_project(self, name, contents):
         self.projects[name] = contents
@@ -221,15 +215,19 @@ class FirebaseBackend(AbstractBackend):
 
 
 class FirebaseProject:
-    def __init__(self, path, name):
-        self._attribute_manager = FirebaseObject(path)
+    def __init__(self, config, path, name):
+        self._attribute_manager = FirebaseObject(config, path)
         self._action_manager = FirebaseObjectManager(
+            config,
             "/".join(["actions", name]), name, Action, FirebaseAction)
         self._entities_manager = FirebaseObjectManager(
+            config,
             "/".join(["entities", name]), name, Entity, FirebaseEntity)
         self._templates_manager = FirebaseObjectManager(
+            config,
             "/".join(["templates", name]), name, Template, FirebaseTemplate)
         self._module_manager = FirebaseObjectManager(
+            config,
             "/".join(["project_modules", name]), name, Template, FirebaseTemplate)
 
     @property
@@ -254,11 +252,13 @@ class FirebaseProject:
 
 
 class FirebaseAction:
-    def __init__(self, path, name):
-        self._attribute_manager = FirebaseObject(path)
+    def __init__(self, config, path, name):
+        self._attribute_manager = FirebaseObject(config, path)
         self._module_manager = FirebaseObjectManager(
+            config,
             "/".join(["action_modules", name]), path, Module, FirebaseModule)
         self._message_manager = FirebaseObjectManager(
+            config,
             "/".join(["action_messages", name]), path, Message, FirebaseMessage)
 
     @property
@@ -275,8 +275,8 @@ class FirebaseAction:
 
 
 class FirebaseMessage:
-    def __init__(self, path, name):
-        self._content_manager = FirebaseObject(path)
+    def __init__(self, config, path, name):
+        self._content_manager = FirebaseObject(config, path)
 
     @property
     def contents(self):
@@ -284,10 +284,10 @@ class FirebaseMessage:
 
 
 class FirebaseEntity:
-    def __init__(self, path, name):
-        self._attribute_manager = FirebaseObject(path)
-        self._message_manager = FirebaseObjectManager("/".join(["entity_messages", name]), path, Message, FirebaseMessage)
-        self._module_manager = FirebaseObjectManager("/".join(["entity_modules", name]), path, Message, create_module_type("entity_modules"))
+    def __init__(self, config, path, name):
+        self._attribute_manager = FirebaseObject(config, path)
+        self._message_manager = FirebaseObjectManager(config, "/".join(["entity_messages", name]), path, Message, FirebaseMessage)
+        self._module_manager = FirebaseObjectManager(config, "/".join(["entity_modules", name]), path, Message, FirebaseModule)
 
     @property
     def modules(self):
@@ -302,8 +302,8 @@ class FirebaseEntity:
         return self._message_manager
 
 class FirebaseModule:
-    def __init__(self, path, name):
-        self._content_manager = FirebaseObject(path)
+    def __init__(self, config, path, name):
+        self._content_manager = FirebaseObject(config, path)
 
     @property
     def contents(self):
@@ -311,24 +311,25 @@ class FirebaseModule:
 
 
 class FirebaseTemplate:
-    def __init__(self, path):
-        self._content_manager = FirebaseObject(path)
+    def __init__(self, config, path):
+        self._content_manager = FirebaseObject(config, path)
 
     def content_manager(self):
         return self._content_manager
 
 
 class FirebaseObject(AbstractObject):
-    def __init__(self, path):
+    def __init__(self, config, path):
         super(FirebaseObject, self).__init__()
         self.id_token = None
         self.refresh_token = None
         self.token_expiration = dt.datetime.now()
         self.path = path
+        self.config = config
 
     def ensure_auth(self):
         current_time = dt.datetime.now()
-        api_key = expipe.settings["firebase"]["config"]["apiKey"]
+        api_key = self.config["firebase"]["config"]["apiKey"]
 
         if self.id_token is not None and self.refresh_token is not None:
             if current_time + dt.timedelta(0, 10) < self.token_expiration and False:
@@ -349,8 +350,8 @@ class FirebaseObject(AbstractObject):
 
         auth_url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={}".format(api_key)
         auth_data = {
-            "email": expipe.settings["firebase"]["email"],
-            "password": expipe.settings["firebase"]["password"],
+            "email": self.config["firebase"]["email"],
+            "password": self.config["firebase"]["password"],
             "returnSecureToken": True
         }
         response = requests.post(auth_url, json=auth_data)
@@ -366,7 +367,7 @@ class FirebaseObject(AbstractObject):
             full_path = self.path
         else:
             full_path = "/".join([self.path, name])
-        database_url = expipe.settings["firebase"]["config"]["databaseURL"]
+        database_url = self.config["firebase"]["config"]["databaseURL"]
         result = "{database_url}/{name}.json?auth={id_token}".format(
             database_url=database_url,
             name=full_path,

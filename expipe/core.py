@@ -793,13 +793,12 @@ def load_file_system(config_name=None, root=None):
 def load_firebase(config_name=None):
     config = expipe.config._load_config_by_name("firebase", config_name)
     config = expipe.config._extend_config(config)
-    firebase_config = config["firebase"]
-    email = firebase_config["email"]
-    password = firebase_config["password"]
-    config_details = firebase_config["config"]
-    backend = expipe.backends.firebase.FirebaseBackend(
-        email=email, password=password, config=config_details
-    )
+    # TODO It would be better only to pass the necessary information to FirebaseBackend
+    # firebase_config = config["firebase"]
+    # email = firebase_config["email"]
+    # password = firebase_config["password"]
+    # config_details = firebase_config["config"]
+    backend = expipe.backends.firebase.FirebaseBackend(config)
     return Database(backend)
 
 # Deprecated API
