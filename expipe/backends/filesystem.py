@@ -105,7 +105,10 @@ class FileSystemBackend(AbstractBackend):
             (path / p).mkdir()
         attributes = path / 'attributes.yaml'
         yaml_dump(attributes, contents)
-        config_contents = {"type": "project", "database_version": 1}
+        config_contents = {
+            "type": "project",
+            "database_version": 1,
+            "project_id": str(name)}
         config = path / 'expipe.yaml'
         yaml_dump(config, config_contents)
         return Project(self.path.stem, FileSystemProject(path))
@@ -181,7 +184,7 @@ class FileSystemObjectManager(AbstractObjectManager):
         if not self.named_path(name).exists():
             raise KeyError(
                 "{} '{}' ".format(self._object_type.__name__, name) +
-                "does not exist")
+                "does not exist in {}".format(self.named_path(name)))
         return self._object_type(name, self._backend_type(self.path / name))
 
     def __iter__(self):
