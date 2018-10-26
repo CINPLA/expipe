@@ -1,4 +1,5 @@
 import expipe
+from . import config
 import os
 import os.path as op
 import collections
@@ -10,6 +11,11 @@ import copy
 import abc
 import pathlib
 import re
+import shutil
+try:
+    import ruamel.yaml as yaml
+except ImportError:
+    import ruamel_yaml as yaml
 
 datetime_format = '%Y-%m-%dT%H:%M:%S'
 datetime_key_format = '%Y%m%dT%H%M%S'
@@ -791,39 +797,79 @@ class Database:
             raise KeyError("Project does not exist.")
 
 # Entry API
+def get_project(path, name=None):
+    import expipe.backends.filesystem
+    path = pathlib.Path(path)
 
-def load_file_system(config_name=None, root=None):
-    if not config_name and not root:
-        root = pathlib.Path.cwd()
-    elif config_name:
-        config = expipe.config._load_config_by_name("file_system", config_name)
-        config = expipe.config._extend_config(config)
-        root = config["file_system"]["root"]
+    global_config = config.settings.copy()
 
-    backend = expipe.backends.filesystem.FileSystemBackend(root=root)
-    return Database(backend)
+    local_config_path = path / "expipe.yaml"
+    if not local_config_path.exists():
+        raise KeyError("Could not find '{}'.".format(local_config_path))
 
-def load_firebase(config_name=None):
-    config = expipe.config._load_config_by_name("firebase", config_name)
-    config = expipe.config._extend_config(config)
-    # TODO It would be better only to pass the necessary information to FirebaseBackend
-    # firebase_config = config["firebase"]
-    # email = firebase_config["email"]
-    # password = firebase_config["password"]
-    # config_details = firebase_config["config"]
-    backend = expipe.backends.firebase.FirebaseBackend(config)
-    return Database(backend)
+    local_config = config._load_config(local_config_path)
 
-# Deprecated API
+    try:
+        project = local_config['project']
+        project_config = config._load_config_by_name(project)
+    except KeyError:
+        warnings.warn("Project has no name. Please add 'project: name' to '{}'.".format(local_config_path))
+        project = "unnamed"
+        project_config = {}
 
-def require_project(name):
-    warnings.warn(
-        "The function `require_project` is deprecated."
-        "Please use `load_firebase` or `load_file_system`.",
-        DeprecationWarning)
+    if name is not None and name != project:
+        warnings.warn("Requested project with name '{}', but found '{}'".format(name, project))
 
-    database = load_firebase(pathlib.Path.home() / ".config" / "expipe" / "config.yaml")
-    return database.require_project(name)
+    final_config = {**global_config, **project_config, **local_config}
+
+    # TODO final config not used
+
+    return Project(project, expipe.backends.filesystem.FileSystemProject(path))
+
+
+def create_project(path, name):
+    path = pathlib.Path(path)
+    path.mkdir(parents=True, exist_ok=False)
+
+    local_config_path = path / "expipe.yaml"
+    local_config = {
+        "database_version": 2,
+        "type": "project",
+        "project": name
+    }
+
+    with local_config_path.open('w') as f:
+        yaml.dump(local_config, f)
+
+    return get_project(path)
+
+
+def require_project(path, name):
+    path = pathlib.Path(path)
+
+    local_config_path = path / "expipe.yaml"
+
+    if local_config_path.exists():
+        return get_project(path)
+    elif path.exists():
+        raise FileExistsError("Path already exists, but is not expipe project: '{}'".format(path))
+    else:
+        return create_project(path, name)
+
+
+def delete_project(path, name, remove_all_children=False):
+    path = pathlib.Path(path)
+
+    assert path != pathlib.Path.cwd().root
+    assert path != pathlib.Path.home()
+
+    if remove_all_children:
+        shutil.rmtree(path)
+    else:
+        try:
+            path.rmdir()
+        except OSError as e:
+            raise OSError('{}\nCarefully consider if you want to set `remove_all_children=True')
 
 # Helpers
 

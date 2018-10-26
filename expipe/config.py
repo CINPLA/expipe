@@ -7,21 +7,24 @@ try:
 except ImportError:
     import ruamel_yaml as yaml
 
+settings = {}
 
-def _load_config_by_name(folder, config):
+def _load_config(path):
+    path = pathlib.Path(path)
+    if not path.exists():
+        return {}
+    with path.open('r') as f:
+        return yaml.safe_load(f)
+
+def _load_config_by_name(config):
     config_path = pathlib.Path(config)
 
     if config_path.suffix == ".yaml" and config_path.exists():
         pass
     else:
-        config_path = (pathlib.Path.home() / ".config" / "expipe" / folder / config_path).with_suffix(".yaml")
+        config_path = (pathlib.Path.home() / ".config" / "expipe" / config_path).with_suffix(".yaml")
 
-    if not config_path.exists():
-        raise FileNotFoundError("Could not load config '{}'. Please make sure the following config file exists:\n{}".format(config, config_path))
-
-    with open(config_path) as f:
-        return yaml.safe_load(f)
-
+    return _load_config(config_path)
 
 def _extend_config(config):
     global settings
@@ -32,14 +35,9 @@ def _extend_config(config):
 
 def reload_config():
     global settings
-    config_dir = pathlib.Path.home() / '.config' / 'expipe'
-    config_file = config_dir / 'config.yaml'
+    config_path = pathlib.Path.home() / '.config' / 'expipe' / 'config.yaml'
 
-    settings = {}
-
-    if config_file.exists():
-        with config_file.open('r') as f:
-            settings = yaml.safe_load(f)
+    return _load_config(config_path)
 
 
 reload_config()

@@ -88,48 +88,6 @@ def yaml_load(path):
     return convert_back_quantities(result)
 
 
-class FileSystemBackend(AbstractBackend):
-    def __init__(self, root=None):
-        self.path = pathlib.Path(root)
-
-    def exists(self, name):
-        return (self.path / name).is_dir()
-
-    def get_project(self, name):
-        return Project(name, FileSystemProject(self.path / name))
-
-    def create_project(self, name, contents):
-        path = self.path / name
-        path.mkdir(parents=True)
-        for p in ['actions', 'entities', 'modules', 'templates']:
-            (path / p).mkdir()
-        attributes = path / 'attributes.yaml'
-        yaml_dump(attributes, contents)
-        config_contents = {
-            "type": "project",
-            "database_version": 1,
-            "project_id": str(name)}
-        config = path / 'expipe.yaml'
-        yaml_dump(config, config_contents)
-        return Project(self.path.stem, FileSystemProject(path))
-
-    def delete_project(self, name, remove_all_children=False):
-        path = self.path / name
-        # Make sure we're not about to do anything stupid
-        assert path != self.path.root
-        assert path != pathlib.Path.home()
-
-        if remove_all_children:
-            shutil.rmtree(str(path))
-        else:
-            try:
-                path.rmdir()
-            except OSError as e:
-                raise OSError(
-                    str(e) + '. Carefully consider if you want to ' +
-                    '"remove_all_children"')
-
-
 class FileSystemObject(AbstractObject):
     def __init__(self, path, object_type, has_attributes=False):
         self.path = path

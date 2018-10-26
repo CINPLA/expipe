@@ -31,9 +31,9 @@ db_action_manager = {
 }
 
 
-def test_action_attr(load_database):
+def test_action_attr(project_path):
     from datetime import datetime, timedelta
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     for attr in ['entities', 'users', 'tags']:
@@ -50,8 +50,8 @@ def test_action_attr(load_database):
         action.datetime = 'now I am'
 
 
-def test_action_attr_list(load_database):
-    project = load_database.require_project(pytest.PROJECT_ID)
+def test_action_attr_list(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     orig_list = ['sub1', 'sub2']
@@ -69,8 +69,8 @@ def test_action_attr_list(load_database):
         orig_list = ['sub1', 'sub2']
 
 
-def test_action_attr_list_dtype(load_database):
-    project = load_database.require_project(pytest.PROJECT_ID)
+def test_action_attr_list_dtype(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     for attr in ['entities', 'users', 'tags']:
@@ -102,7 +102,7 @@ db_module_manager = {
 }
 
 
-# def test_module_manager(load_database):
+# def test_module_manager(project_path):
     # pytest.PROJECT_ID = "retina"
     # project = expipe.core.Project(pytest.PROJECT_ID)
     # module_manager = project.modules
@@ -120,10 +120,10 @@ db_module_manager = {
         # expipe.core.ModuleManager(parent=None)
 
 
-def test_module_to_dict(load_database):
+def test_module_to_dict(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
 
@@ -135,12 +135,12 @@ def test_module_to_dict(load_database):
         assert module_dict == module_contents
 
 
-def test_module_quantities(load_database):
+def test_module_quantities(project_path):
     import quantities as pq
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
@@ -149,12 +149,12 @@ def test_module_quantities(load_database):
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-def test_module_array(load_database):
+def test_module_array(project_path):
     import numpy as np
     quan = np.array([1, 2])
     module_contents = {'quan': quan}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
@@ -163,10 +163,10 @@ def test_module_array(load_database):
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-def test_module_get_require_equal_path(load_database):
+def test_module_get_require_equal_path(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     project_module = project.create_module(
@@ -181,8 +181,8 @@ def test_module_get_require_equal_path(load_database):
     assert action_module._backend.path == action_module2._backend.path
 
 
-def test_module_list(load_database):
-    project = load_database.require_project(pytest.PROJECT_ID)
+def test_module_list(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
     project_module = project.create_module(
@@ -220,9 +220,9 @@ def test_module_list(load_database):
 ######################################################################################################
 
 # TODO should check that we get a dict that contains the same items
-def test_action_messages_setter(load_database):
+def test_action_messages_setter(project_path):
     from datetime import datetime, timedelta
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
 
@@ -267,9 +267,9 @@ def test_action_messages_setter(load_database):
     assert msg_object.datetime == time
 
 
-def test_action_messages_dtype(load_database):
+def test_action_messages_dtype(project_path):
     from datetime import datetime, timedelta
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     time = datetime(2017, 6, 1, 21, 42, 23)
 
@@ -301,10 +301,10 @@ def test_action_messages_dtype(load_database):
         action.create_message(msg)
 
 
-def test_change_message(load_database):
+def test_change_message(project_path):
     from datetime import datetime, timedelta
     format = expipe.core.datetime_key_format
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
     time = datetime(2017, 6, 1, 21, 42, 20)
@@ -346,23 +346,22 @@ def test_change_message(load_database):
 ######################################################################################################
 # create/delete
 ######################################################################################################
-def test_create_delete_project_and_childs(load_database):
+def test_create_delete_project_and_childs(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
-    pytest.PROJECT_ID = project._backend.path
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
 
-    load_database.delete_project(pytest.PROJECT_ID, remove_all_children=True)
+    expipe.delete_project(project_path, pytest.PROJECT_ID, remove_all_children=True)
     with pytest.raises(KeyError):
-        load_database.get_project(pytest.PROJECT_ID)
+        expipe.get_project(project_path, pytest.PROJECT_ID)
 
     # remake project, then the "old" action and project_module should be deleted
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     with pytest.raises(KeyError):
         project.actions[pytest.ACTION_ID]
         project.modules[pytest.PROJECT_MODULE_ID]
@@ -373,11 +372,10 @@ def test_create_delete_project_and_childs(load_database):
         action.modules[pytest.ACTION_MODULE_ID]
 
 
-def test_create_delete_project_not_childs(load_database):
+def test_create_delete_project_not_childs(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
-    pytest.PROJECT_ID = project._backend.path
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     action_module = action.create_module(
@@ -386,30 +384,30 @@ def test_create_delete_project_not_childs(load_database):
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
     with pytest.raises(OSError): # TODO this may be backend specific
-        load_database.delete_project(pytest.PROJECT_ID)
-    load_database.get_project(pytest.PROJECT_ID)
+        expipe.delete_project(project_path, pytest.PROJECT_ID)
+    expipe.get_project(project_path, pytest.PROJECT_ID)
 
     # remake project, then the "old" action and action_module should be NOT be deleted
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.actions[pytest.ACTION_ID]
     action.modules[pytest.ACTION_MODULE_ID]
 
 
 
-def test_create_project(load_database):
-    load_database.require_project(pytest.PROJECT_ID)
+def test_create_project(project_path):
+    expipe.require_project(project_path, pytest.PROJECT_ID)
 
 
-def test_create_action(load_database):
-    project = load_database.require_project(pytest.PROJECT_ID)
+def test_create_action(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     project.actions[pytest.ACTION_ID]
 
 
-def test_create_action_module(load_database):
+def test_create_action_module(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     action_module = action.create_module(
@@ -417,12 +415,12 @@ def test_create_action_module(load_database):
     action.modules[pytest.ACTION_MODULE_ID]
 
 
-def test_create_action_module_from_template(load_database):
+def test_create_action_module_from_template(project_path):
     template_contents = {
         'species': {'value': 'rat'},
         'identifier': pytest.TEMPLATE_ID}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     template = project.require_template(
         pytest.TEMPLATE_ID, template_contents)
     action = project.require_action(pytest.ACTION_ID)
@@ -433,31 +431,31 @@ def test_create_action_module_from_template(load_database):
     assert module_contents == template_contents
 
 
-def test_create_project_module(load_database):
+def test_create_project_module(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
     project.modules[pytest.PROJECT_MODULE_ID]
 
 
-def test_set_project_module_deep(load_database):
+def test_set_project_module_deep(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
     project.modules[pytest.PROJECT_MODULE_ID]['species']['value'] = 'mouse'
 
 
-def test_delete_action(load_database):
+def test_delete_action(project_path):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
     action_module = action.create_module(
@@ -492,11 +490,11 @@ def test_delete_action(load_database):
     assert len(action.messages) == 0
 
 
-def test_delete_entity(load_database):
+def test_delete_entity(project_path):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     entity = project.require_entity(pytest.ENTITY_ID)
     message_manager = entity.messages
     entity_module = entity.create_module(
@@ -529,11 +527,11 @@ def test_delete_entity(load_database):
     assert len(entity.messages) == 0
 
 
-def test_delete_entity_module(load_database):
+def test_delete_entity_module(project_path):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     entity = project.require_entity(pytest.ENTITY_ID)
     message_manager = entity.messages
     entity_module = entity.create_module(
@@ -549,12 +547,12 @@ def test_delete_entity_module(load_database):
     assert pytest.ENTITY_MODULE_ID + '1' in entity.modules
 
 
-def test_delete_entity_message(load_database):
+def test_delete_entity_message(project_path):
     from datetime import datetime, timedelta
     format = expipe.core.datetime_key_format
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     entity = project.require_entity(pytest.ENTITY_ID)
     message_manager = entity.messages
 
@@ -580,11 +578,11 @@ def test_delete_entity_message(load_database):
     assert msg_2_name not in entity.messages
 
 
-def test_delete_action_module(load_database):
+def test_delete_action_module(project_path):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_entity(pytest.ACTION_ID)
     message_manager = action.messages
     action_module = action.create_module(
@@ -600,12 +598,12 @@ def test_delete_action_module(load_database):
     assert pytest.ACTION_MODULE_ID + '1' in action.modules
 
 
-def test_delete_action_message(load_database):
+def test_delete_action_message(project_path):
     from datetime import datetime, timedelta
     format = expipe.core.datetime_key_format
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
 
@@ -631,13 +629,13 @@ def test_delete_action_message(load_database):
     assert msg_2_name not in action.messages
 
 
-def test_delete_template(load_database):
+def test_delete_template(project_path):
     from datetime import datetime, timedelta
     template_contents = {
         'species': {'value': 'rat'},
         'identifier': pytest.TEMPLATE_ID}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     template = project.require_template(
         pytest.TEMPLATE_ID, template_contents)
     template = project.require_template(
@@ -649,8 +647,8 @@ def test_delete_template(load_database):
     assert pytest.TEMPLATE_ID + '1' in project.templates
 
 
-def test_require_create_get_action(load_database):
-    project = load_database.require_project(pytest.PROJECT_ID)
+def test_require_create_get_action(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
 
     # Get a non-existing action
     with pytest.raises(KeyError):
@@ -676,13 +674,13 @@ def test_require_create_get_action(load_database):
     assert action_req.id == action.id
 
 
-def test_fill_the_project(load_database):
+def test_fill_the_project(project_path):
     import quantities as pq
     from datetime import datetime, timedelta
 
     module_contents = {'species': {'value': 'rat'}}
 
-    project = load_database.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     quan = [1, 2] * pq.s

@@ -32,13 +32,10 @@ def pytest_addoption(parser):
     parser.addoption("--firebase", action="store_true", default=False)
 
 @pytest.fixture(scope='function')
-def load_database(request):
-    if request.config.getoption("--firebase"):
-        raise NotImplementedError("Firebase test not implemented")
+def project_path():
     if os.path.exists(TESTDIR):
         shutil.rmtree(TESTDIR)
-    database = expipe.load_file_system(root=TESTDIR)
-    return database
+    return pathlib.Path(TESTDIR) / PROJECT_ID
 
 @pytest.fixture(scope='function')
 def teardown_project():
