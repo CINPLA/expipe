@@ -801,6 +801,8 @@ def get_project(path, name=None):
     import expipe.backends.filesystem
     path = pathlib.Path(path)
 
+    name = name or path.stem
+
     global_config = config.settings.copy()
 
     local_config_path = path / "expipe.yaml"
@@ -825,8 +827,11 @@ def get_project(path, name=None):
     return Project(project, expipe.backends.filesystem.FileSystemProject(path, final_config))
 
 
-def create_project(path, name):
+def create_project(path, name=None):
     path = pathlib.Path(path)
+
+    name = name or path.stem
+
     path.mkdir(parents=True, exist_ok=False)
 
     local_config_path = path / "expipe.yaml"
@@ -842,13 +847,13 @@ def create_project(path, name):
     return get_project(path)
 
 
-def require_project(path, name):
+def require_project(path, name=None):
     path = pathlib.Path(path)
 
     local_config_path = path / "expipe.yaml"
 
     if local_config_path.exists():
-        return get_project(path)
+        return get_project(path, name)
     elif path.exists():
         raise FileExistsError("Path already exists, but is not expipe project: '{}'".format(path))
     else:
