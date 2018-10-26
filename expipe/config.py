@@ -38,7 +38,7 @@ def reload_config():
     settings = {}
 
     if config_file.exists():
-        with open(config_file) as f:
+        with config_file.open('r') as f:
             settings = yaml.safe_load(f)
 
 
