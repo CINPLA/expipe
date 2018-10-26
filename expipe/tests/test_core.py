@@ -124,12 +124,12 @@ def test_module_to_dict(load_database):
     module_contents = {'species': {'value': 'rat'}}
 
     project = load_database.require_project(pytest.PROJECT_ID)
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
 
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
 
     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
         assert module_dict == module_contents
@@ -142,9 +142,8 @@ def test_module_quantities(load_database):
 
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
@@ -157,9 +156,8 @@ def test_module_array(load_database):
 
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], list)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
@@ -171,16 +169,14 @@ def test_module_get_require_equal_path(load_database):
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
 
     project_module2 = project.modules[pytest.PROJECT_MODULE_ID]
     assert project_module._backend.path == project_module2._backend.path
 
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     action_module2 = action.modules[pytest.ACTION_MODULE_ID]
     assert action_module._backend.path == action_module2._backend.path
 
@@ -189,40 +185,32 @@ def test_module_list(load_database):
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=list_cont,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=list_cont)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict, list)
     assert all(a == b for a, b in zip(list_cont, mod_dict))
 
     module_contents = {'list': list_cont}
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project.modules[pytest.PROJECT_MODULE_ID] = module_contents
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['list'], list)
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action.modules[pytest.ACTION_MODULE_ID] = module_contents
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['almost_list1'], dict)
     assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action.modules[pytest.ACTION_MODULE_ID] = module_contents
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
@@ -365,9 +353,9 @@ def test_create_delete_project_and_childs(load_database):
     pytest.PROJECT_ID = project._backend.path
     action = project.require_action(pytest.ACTION_ID)
     action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=False)
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     project_module = project.create_module(
-        pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=False)
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
 
     load_database.delete_project(pytest.PROJECT_ID, remove_all_children=True)
     with pytest.raises(KeyError):
@@ -393,10 +381,10 @@ def test_create_delete_project_not_childs(load_database):
     action = project.require_action(pytest.ACTION_ID)
 
     action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
+        pytest.ACTION_MODULE_ID, contents=module_contents)
 
     project_module = project.create_module(
-        pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=True)
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     with pytest.raises(OSError): # TODO this may be backend specific
         load_database.delete_project(pytest.PROJECT_ID)
     load_database.get_project(pytest.PROJECT_ID)
@@ -424,9 +412,8 @@ def test_create_action_module(load_database):
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.create_module(pytest.ACTION_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     action.modules[pytest.ACTION_MODULE_ID]
 
 
@@ -452,7 +439,7 @@ def test_create_project_module(load_database):
     project = load_database.require_project(pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents, overwrite=True)
+    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
     project.modules[pytest.PROJECT_MODULE_ID]
 
 
@@ -464,7 +451,7 @@ def test_delete_action(load_database):
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
     action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
+        pytest.ACTION_MODULE_ID, contents=module_contents)
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',
@@ -502,9 +489,8 @@ def test_delete_entity(load_database):
     project = load_database.require_project(pytest.PROJECT_ID)
     entity = project.require_entity(pytest.ENTITY_ID)
     message_manager = entity.messages
-    entity_module = entity.create_module(pytest.ENTITY_MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID, contents=module_contents)
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',
@@ -541,9 +527,9 @@ def test_delete_entity_module(load_database):
     entity = project.require_entity(pytest.ENTITY_ID)
     message_manager = entity.messages
     entity_module = entity.create_module(
-        pytest.ENTITY_MODULE_ID, contents=module_contents, overwrite=True)
+        pytest.ENTITY_MODULE_ID, contents=module_contents)
     entity_module = entity.create_module(
-        pytest.ENTITY_MODULE_ID + '1', contents=module_contents, overwrite=True)
+        pytest.ENTITY_MODULE_ID + '1', contents=module_contents)
 
     # delete one
     entity.delete_module(pytest.ENTITY_MODULE_ID)
@@ -592,9 +578,9 @@ def test_delete_action_module(load_database):
     action = project.require_entity(pytest.ACTION_ID)
     message_manager = action.messages
     action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents, overwrite=True)
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     action_module = action.create_module(
-        pytest.ACTION_MODULE_ID + '1', contents=module_contents, overwrite=True)
+        pytest.ACTION_MODULE_ID + '1', contents=module_contents)
 
     # delete one
     action.delete_module(pytest.ACTION_MODULE_ID)
@@ -691,9 +677,8 @@ def test_fill_the_project(load_database):
 
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
-    project_module = project.create_module(pytest.PROJECT_MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))

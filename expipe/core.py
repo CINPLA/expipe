@@ -100,17 +100,18 @@ class ExpipeObject:
             contents=contents
         )
 
-    def create_module(self, name=None, template=None, contents=None, overwrite=False):
+    def create_module(self, name=None, template=None, contents=None):
         """
         Create and return a module. Fails if the target name already exists.
         """
-        # TODO: what if both content and template is given, and also name?
-        if name is None:
-            name, contents = self._load_template(template)
-        if name in self._backend.modules and not overwrite:
+        if template is not None:
+            assert contents is None
+            _name, contents = self._load_template(template)
+            if name is None:
+                name = _name
+        if name in self._backend.modules:
             raise NameError(
-                "Module " + name + " already exists in " + self.id +
-                ". use overwrite")
+                "Module " + name + " already exists in " + self.id + ".")
 
         return self._create_module(
             name=name,
@@ -180,8 +181,7 @@ class Project(ExpipeObject):
         """
         if name in self.actions:
             raise NameError(
-                "Action " + name + " already exists in " + self.id +
-                ". use overwrite")
+                "Action " + name + " already exists in " + self.id + ".")
 
         return self._create_action(name)
 
@@ -211,14 +211,13 @@ class Project(ExpipeObject):
 
         return self._create_entity(name)
 
-    def create_entity(self, name, overwrite=False):
+    def create_entity(self, name):
         """
         Create and return an entity. Fails if the target name already exists.
         """
         if name in self.entities:
             raise NameError(
-                "Entity " + name + " already exists in " + self.id +
-                ". use overwrite")
+                "Entity " + name + " already exists in " + self.id + ".")
 
         return self._create_entity(name)
 
@@ -256,8 +255,7 @@ class Project(ExpipeObject):
         """
         if name in self.templates:
             raise NameError(
-                "Template " + name + " already exists in " + self.id +
-                ". use overwrite")
+                "Template " + name + " already exists in " + self.id + ".")
 
         return self._create_template(name, contents)
 
