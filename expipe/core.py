@@ -503,7 +503,25 @@ class Action(ExpipeObject):
         value = list(set(value))
         self._backend.attributes.set('tags', value)
 
+    @property
+    def data(self):
+        return PropertyList(self._backend.attributes, 'data', dtype=str, unique=True,
+                           data=self._backend.attributes.get('data'))
+
+    @data.setter
+    def data(self, value):
+        if not isinstance(value, list):
+            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
+        if not all(isinstance(v, str) for v in value):
+            raise TypeError('Expected contents to be "str" got ' +
+                            str([type(v) for v in value]))
+        value = list(set(value))
+        self._backend.attributes.set('data', value)
+
     def require_filerecord(self, class_type=None, name=None):
+        print(
+            'Deprecation warning, this function will be removed in the ' +
+            'future, use action.data instead')
         class_type = class_type or Filerecord
         return class_type(self, name)
 
