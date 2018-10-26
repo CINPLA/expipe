@@ -430,6 +430,22 @@ def test_create_action_module(load_database):
     action.modules[pytest.ACTION_MODULE_ID]
 
 
+def test_create_action_module_from_template(load_database):
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = load_database.require_project(pytest.PROJECT_ID)
+    template = project.require_template(
+        pytest.TEMPLATE_ID, template_contents)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, template=pytest.TEMPLATE_ID)
+    module_contents = action.modules[pytest.ACTION_MODULE_ID].to_dict()
+    assert module_contents == template_contents
+
+
 def test_create_project_module(load_database):
     module_contents = {'species': {'value': 'rat'}}
 

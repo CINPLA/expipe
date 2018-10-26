@@ -252,11 +252,20 @@ class FileSystemProject:
 class FileSystemAction:
     def __init__(self, path):
         self.path = path
+        project = self.path.parent
+        if project.stem == 'actions': #TODO consider making project path global
+            project = project.parent
         self._attribute_manager = FileSystemObject(path / "attributes.yaml", Action)
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
             path / "modules", Module, FileSystemModule, has_attributes=False)
+        self._template_manager = FileSystemObjectManager(
+            project / "templates", Template, FileSystemTemplate, has_attributes=False)
+
+    @property
+    def templates(self):
+        return self._template_manager
 
     @property
     def modules(self):
@@ -274,11 +283,20 @@ class FileSystemAction:
 class FileSystemEntity:
     def __init__(self, path):
         self.path = path
+        project = self.path.parent
+        if project.stem == 'entities': #TODO
+            project = project.parent
         self._attribute_manager = FileSystemObject(path / "attributes.yaml", Entity)
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
             path / "modules", Module, FileSystemModule, has_attributes=False)
+        self._template_manager = FileSystemObjectManager(
+            project / "templates", Template, FileSystemTemplate, has_attributes=False)
+
+    @property
+    def templates(self):
+        return self._template_manager
 
     @property
     def modules(self):

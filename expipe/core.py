@@ -126,13 +126,7 @@ class ExpipeObject:
         del module
 
     def _load_template(self, template):
-        if isinstance(self, Project):
-            project = self
-        elif isinstance(self, (Entity, Action)):
-            project = self.project
-        else:
-            raise ValueError('Someting went wrong, unable to get project.')
-        contents = project.templates[template].to_dict()
+        contents = self._backend.templates[template].to_dict()
         name = contents.get('identifier')
         if name is None:
             raise ValueError('Template "' + template + '" has no identifier.')
