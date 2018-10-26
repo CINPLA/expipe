@@ -174,8 +174,9 @@ class FileSystemObjectManager(AbstractObjectManager):
 
 
 class FileSystemProject:
-    def __init__(self, path):
+    def __init__(self, path, config):
         self.path = pathlib.Path(path)
+        self.config = config
         self._attribute_manager = FileSystemObject(self.path, Project)
         self._action_manager = FileSystemObjectManager(
             self.path / "actions", Action, FileSystemAction, has_attributes=True)

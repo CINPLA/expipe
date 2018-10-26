@@ -822,9 +822,7 @@ def get_project(path, name=None):
 
     final_config = {**global_config, **project_config, **local_config}
 
-    # TODO final config not used
-
-    return Project(project, expipe.backends.filesystem.FileSystemProject(path))
+    return Project(project, expipe.backends.filesystem.FileSystemProject(path, final_config))
 
 
 def create_project(path, name):
