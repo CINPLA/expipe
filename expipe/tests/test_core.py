@@ -443,6 +443,16 @@ def test_create_project_module(load_database):
     project.modules[pytest.PROJECT_MODULE_ID]
 
 
+def test_set_project_module_deep(load_database):
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = load_database.require_project(pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
+    project.modules[pytest.PROJECT_MODULE_ID]['species']['value'] = 'mouse'
+
+
 def test_delete_action(load_database):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}

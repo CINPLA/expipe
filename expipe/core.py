@@ -535,7 +535,7 @@ class Module:
         return Module(name, self._backend)
 
     def __setitem__(self, name, contents):
-        self._backend.set(name=name, value=contents)
+        self._backend.contents.set(name=name, value=contents)
 
     def to_dict(self):
         result = self._get_module_content() or {}
