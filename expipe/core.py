@@ -51,6 +51,9 @@ class MapManager:
     def __getitem__(self, name):
         return self._backend.__getitem__(name)
 
+    def __setitem__(self, name, value):
+        return self._backend.__setitem__(name, value)
+
     def __iter__(self):
         return self._backend.__iter__()
 
