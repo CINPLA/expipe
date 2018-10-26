@@ -857,20 +857,6 @@ def require_project(path, name):
         return create_project(path, name)
 
 
-def delete_project(path, name, remove_all_children=False):
-    path = pathlib.Path(path)
-
-    assert path != pathlib.Path.cwd().root
-    assert path != pathlib.Path.home()
-
-    if remove_all_children:
-        shutil.rmtree(path)
-    else:
-        try:
-            path.rmdir()
-        except OSError as e:
-            raise OSError('{}\nCarefully consider if you want to set `remove_all_children=True')
-
 # Helpers
 
 def _assert_message_text_dtype(text):

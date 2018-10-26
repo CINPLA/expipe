@@ -346,54 +346,6 @@ def test_change_message(project_path):
 ######################################################################################################
 # create/delete
 ######################################################################################################
-def test_create_delete_project_and_childs(project_path):
-    module_contents = {'species': {'value': 'rat'}}
-
-    project = expipe.require_project(project_path, pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents)
-    project_module = project.create_module(
-        pytest.PROJECT_MODULE_ID, contents=module_contents)
-
-    expipe.delete_project(project_path, pytest.PROJECT_ID, remove_all_children=True)
-    with pytest.raises(KeyError):
-        expipe.get_project(project_path, pytest.PROJECT_ID)
-
-    # remake project, then the "old" action and project_module should be deleted
-    project = expipe.require_project(project_path, pytest.PROJECT_ID)
-    with pytest.raises(KeyError):
-        project.actions[pytest.ACTION_ID]
-        project.modules[pytest.PROJECT_MODULE_ID]
-
-    # remake action, then the "old" action_module should be deleted
-    action = project.require_action(pytest.ACTION_ID)
-    with pytest.raises(KeyError):
-        action.modules[pytest.ACTION_MODULE_ID]
-
-
-def test_create_delete_project_not_childs(project_path):
-    module_contents = {'species': {'value': 'rat'}}
-
-    project = expipe.require_project(project_path, pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-
-    action_module = action.create_module(
-        pytest.ACTION_MODULE_ID, contents=module_contents)
-
-    project_module = project.create_module(
-        pytest.PROJECT_MODULE_ID, contents=module_contents)
-    with pytest.raises(OSError): # TODO this may be backend specific
-        expipe.delete_project(project_path, pytest.PROJECT_ID)
-    expipe.get_project(project_path, pytest.PROJECT_ID)
-
-    # remake project, then the "old" action and action_module should be NOT be deleted
-    project = expipe.require_project(project_path, pytest.PROJECT_ID)
-    action = project.actions[pytest.ACTION_ID]
-    action.modules[pytest.ACTION_MODULE_ID]
-
-
-
 def test_create_project(project_path):
     expipe.require_project(project_path, pytest.PROJECT_ID)
 
