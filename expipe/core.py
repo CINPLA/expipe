@@ -831,7 +831,7 @@ def create_project(path, name=None):
     path = pathlib.Path(path)
 
     name = name or path.stem
-    local_root, local_config = _load_local_config(path)
+    local_root, local_config = config._load_local_config(path)
     if local_root is not None:
         raise NameError(
             'Creating a project inside a project is not allowed. ',

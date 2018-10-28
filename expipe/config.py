@@ -22,7 +22,7 @@ def _load_local_config(path):
         if current_root.match(current_path.root):
             return None, {}
 
-        return load_local_config(current_root.parent)
+        return _load_local_config(current_root.parent)
     current_config = _load_config(current_path)
     return current_root, current_config
 
