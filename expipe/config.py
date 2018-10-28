@@ -9,6 +9,23 @@ except ImportError:
 
 settings = {}
 
+def _is_in_project(path):
+    local_root, local_config = _load_local_config(path)
+    if local_root is None:
+        return False
+    return True
+
+def _load_local_config(path):
+    current_root = pathlib.Path(path)
+    current_path = current_root / "expipe.yaml"
+    if not current_path.exists():
+        if current_root.match(current_path.root):
+            return None, {}
+
+        return load_local_config(current_root.parent)
+    current_config = _load_config(current_path)
+    return current_root, current_config
+
 def _load_config(path):
     path = pathlib.Path(path)
     if not path.exists():
