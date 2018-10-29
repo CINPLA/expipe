@@ -167,6 +167,10 @@ class Project(ExpipeObject):
         return self.actions[name]
 
     @property
+    def config(self):
+        return self._backend.config
+
+    @property
     def actions(self):
         return MapManager(self._backend.actions)
 
@@ -815,40 +819,49 @@ def get_project(path, name=None):
         project = local_config['project']
         project_config = config._load_config_by_name(project)
     except KeyError:
-        warnings.warn("Project has no name. Please add 'project: name' to '{}'.".format(local_config_path))
+        warnings.warn(
+            "Project has no name. Please add 'project: name' to" +
+            " '{}'.".format(local_config_path))
         project = "unnamed"
         project_config = {}
 
     if name is not None and name != project:
-        warnings.warn("Requested project with name '{}', but found '{}'".format(name, project))
+        warnings.warn(
+            "Requested project with name " +
+            "'{}', but found '{}'".format(name, project))
 
-    final_config = {**global_config, **project_config, **local_config}
+    final_config = config._merge_config(
+        global_config, project_config, local_config)
+    backend = expipe.backends.filesystem.FileSystemProject(path, final_config)
+    return Project(project, backend)
 
-    return Project(project, expipe.backends.filesystem.FileSystemProject(path, final_config))
 
-
-def create_project(path, name=None):
+def create_project(path, name=None, **kw):
     path = pathlib.Path(path)
+    local_config = kw.get('local_config') or {}
 
     name = name or path.stem
-    local_root, local_config = config._load_local_config(path)
-    if local_root is not None:
-        raise NameError(
-            'Creating a project inside a project is not allowed. ',
-            'You are trying to create a project inside the project path' +
-            ' {}'.format(local_root))
+
+    # see if we are in a project directory
+    if config._is_in_project(path):
+        raise KeyError(
+            'You are not allowed to create a project inside an existing' +
+            ' project')
 
     path.mkdir(parents=True, exist_ok=False)
 
     local_config_path = path / "expipe.yaml"
-    local_config = {
+    local_config.update({
         "database_version": 2,
         "type": "project",
         "project": name
-    }
+    })
 
     with local_config_path.open('w') as f:
         yaml.dump(local_config, f)
+
+    if 'project_config' in kw:
+        config._dump_config_by_name(name, kw['project_config'])
 
     return get_project(path)
 

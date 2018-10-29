@@ -350,6 +350,12 @@ def test_create_project(project_path):
     expipe.require_project(project_path, pytest.PROJECT_ID)
 
 
+def test_create_project_inside_project_raises(project_path):
+    expipe.require_project(project_path, pytest.PROJECT_ID)
+    with pytest.raises(KeyError):
+        expipe.require_project(project_path / 'new', pytest.PROJECT_ID + '1')
+
+
 def test_create_action(project_path):
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
