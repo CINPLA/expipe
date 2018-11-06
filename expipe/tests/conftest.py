@@ -1,20 +1,41 @@
 import pytest
 import expipe
-
-expipe.ensure_testing()
+import os
+import shutil
+import pathlib
 
 unique_id = 'test'
 
-PROJECT_ID = 'project-' + unique_id
-ACTION_ID = 'action-' + unique_id
-MODULE_ID = 'module-' + unique_id
-
+TESTDIR = "/tmp/expipe-tests"
+MAIN_ID = 'main-' + unique_id
+PROJECT_ID = 'myproject-' + unique_id
+PROJECT_MODULE_ID = 'myproject-module-' + unique_id
+ACTION_ID = 'myaction-' + unique_id
+ACTION_MODULE_ID = 'myaction-module-' + unique_id
+ENTITY_ID = 'myentity-' + unique_id
+ENTITY_MODULE_ID = 'myentity-module-' + unique_id
+TEMPLATE_ID = 'mytemplate-' + unique_id
 
 def pytest_namespace():
-    return {"PROJECT_ID": PROJECT_ID,
-            "ACTION_ID": ACTION_ID,
-            "MODULE_ID": MODULE_ID}
+    return {
+        'MAIN_ID': MAIN_ID,
+        "PROJECT_ID": PROJECT_ID,
+        "PROJECT_MODULE_ID": PROJECT_MODULE_ID,
+        "ACTION_ID": ACTION_ID,
+        "ACTION_MODULE_ID": ACTION_MODULE_ID,
+        "ENTITY_ID": ENTITY_ID,
+        "ENTITY_MODULE_ID": ENTITY_MODULE_ID,
+        "TEMPLATE_ID": TEMPLATE_ID
+    }
 
+def pytest_addoption(parser):
+    parser.addoption("--firebase", action="store_true", default=False)
+
+@pytest.fixture(scope='function')
+def project_path():
+    if os.path.exists(TESTDIR):
+        shutil.rmtree(TESTDIR)
+    return pathlib.Path(TESTDIR) / PROJECT_ID
 
 @pytest.fixture(scope='function')
 def teardown_project():

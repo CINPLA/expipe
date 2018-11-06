@@ -31,25 +31,9 @@ db_action_manager = {
 }
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db_action_manager))
-def test_action_manager():
-    PROJECT_ID = "retina"
-    project = expipe.core.Project(PROJECT_ID)
-    action_manager = project.actions
-
-    assert project == action_manager.project
-    assert db_action_manager["actions"]["retina"] == action_manager.to_dict()
-    assert set(list(db_action_manager["actions"]["retina"].keys())) == set(list(action_manager.keys()))
-    assert all(k in action_manager for k in ("ret_1", "ret_2"))
-
-    with pytest.raises(KeyError):
-        action_manager["ret_3"]
-
-
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_attr():
+def test_action_attr(project_path):
     from datetime import datetime, timedelta
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     for attr in ['entities', 'users', 'tags']:
@@ -66,15 +50,14 @@ def test_action_attr():
         action.datetime = 'now I am'
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_attr_list():
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+def test_action_attr_list(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     orig_list = ['sub1', 'sub2']
     for attr in ['entities', 'users', 'tags']:
         prop_list = getattr(action, attr)
-        assert isinstance(prop_list, expipe.core.ProperyList)
+        assert isinstance(prop_list, expipe.core.PropertyList)
         prop_list.append('sub3')
         orig_list.append('sub3')
         setattr(action, attr, orig_list)
@@ -86,9 +69,8 @@ def test_action_attr_list():
         orig_list = ['sub1', 'sub2']
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_attr_list_dtype():
-    project = expipe.require_project(pytest.PROJECT_ID)
+def test_action_attr_list_dtype(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     for attr in ['entities', 'users', 'tags']:
@@ -120,133 +102,115 @@ db_module_manager = {
 }
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend(db_module_manager))
-def test_module_manager():
-    PROJECT_ID = "retina"
-    project = expipe.core.Project(PROJECT_ID)
-    module_manager = project.modules
-    module = db_module_manager["project_modules"]["retina"]
+# def test_module_manager(project_path):
+    # pytest.PROJECT_ID = "retina"
+    # project = expipe.core.Project(pytest.PROJECT_ID)
+    # module_manager = project.modules
+    # module = db_module_manager["project_modules"]["retina"]
 
-    assert project == module_manager.parent
-    assert module == module_manager.to_dict()
-    assert all(k in module_manager for k in ("ret_1", "ret_2"))
-    assert set(list(module.keys())) == set(list(module_manager.keys()))
+    # assert project == module_manager.parent
+    # assert module == module_manager.to_dict()
+    # assert all(k in module_manager for k in ("ret_1", "ret_2"))
+    # assert set(list(module.keys())) == set(list(module_manager.keys()))
 
-    with pytest.raises(KeyError):
-        module_manager["ret_3"]
+    # with pytest.raises(KeyError):
+        # module_manager["ret_3"]
 
-    with pytest.raises(TypeError):
-        expipe.core.ModuleManager(parent=None)
+    # with pytest.raises(TypeError):
+        # expipe.core.ModuleManager(parent=None)
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_module_to_dict():
+def test_module_to_dict(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
 
     action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
 
     for module_dict in [action_module.to_dict(), project_module.to_dict()]:
         assert module_dict == module_contents
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_module_quantities():
+def test_module_quantities(project_path):
     import quantities as pq
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
 
-    project = expipe.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_module_array():
+def test_module_array(project_path):
     import numpy as np
     quan = np.array([1, 2])
     module_contents = {'quan': quan}
 
-    project = expipe.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], list)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_module_get_require_equal_path():
+def test_module_get_require_equal_path(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
 
-    project_module2 = project.modules[pytest.MODULE_ID]
-    assert project_module._db.path == project_module2._db.path
+    project_module2 = project.modules[pytest.PROJECT_MODULE_ID]
+    assert project_module._backend.path == project_module2._backend.path
 
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
-    action_module2 = action.modules[pytest.MODULE_ID]
-    assert action_module._db.path == action_module2._db.path
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    action_module2 = action.modules[pytest.ACTION_MODULE_ID]
+    assert action_module._backend.path == action_module2._backend.path
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_module_list():
-    project = expipe.require_project(pytest.PROJECT_ID)
+def test_module_list(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     list_cont = ['list I am', 1]
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=list_cont,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=list_cont)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict, list)
     assert all(a == b for a, b in zip(list_cont, mod_dict))
 
     module_contents = {'list': list_cont}
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project.modules[pytest.PROJECT_MODULE_ID] = module_contents
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['list'], list)
     assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
 
     module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action.modules[pytest.ACTION_MODULE_ID] = module_contents
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['almost_list1'], dict)
     assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
 
     module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action.modules[pytest.ACTION_MODULE_ID] = module_contents
     mod_dict = action_module.to_dict()
     assert isinstance(mod_dict['is_list'], dict)
 
@@ -254,19 +218,11 @@ def test_module_list():
 ######################################################################################################
 # Message and MessageManager
 ######################################################################################################
-def contain_same(A, B):
-    cont = []
-    if len(A) != len(B):
-        return False
-    for a in A:
-        cont.append(a in B)
-    return sum(cont) == len(A)
 
-
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_messages_setter():
+# TODO should check that we get a dict that contains the same items
+def test_action_messages_setter(project_path):
     from datetime import datetime, timedelta
-    project = expipe.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
 
@@ -286,8 +242,7 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert contain_same(messages, message_manager)
-
+    time = datetime(2017, 6, 1, 21, 42, 21)
     text = "my new message"
     user = "user2"
     msg_2 = {'text': text, 'user': user, 'datetime': time}
@@ -299,11 +254,9 @@ def test_action_messages_setter():
     assert msg_object.user == user
     assert msg_object.datetime == time
 
-    assert contain_same(messages, message_manager)
-
     text = "updated text"
     user = "new user"
-    time = datetime(2019, 6, 1, 21, 42, 20)
+    time = datetime(2019, 6, 1, 21, 42, 22)
 
     msg_object.text = text
     msg_object.user = user
@@ -314,12 +267,11 @@ def test_action_messages_setter():
     assert msg_object.datetime == time
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_action_messages_dtype():
+def test_action_messages_dtype(project_path):
     from datetime import datetime, timedelta
-    project = expipe.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    time = datetime(2017, 6, 1, 21, 42, 20)
+    time = datetime(2017, 6, 1, 21, 42, 23)
 
     # string in date not ok
     msg = {'message': 'sub2', 'user': 'usr2',
@@ -349,10 +301,10 @@ def test_action_messages_dtype():
         action.create_message(msg)
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_change_message():
+def test_change_message(project_path):
     from datetime import datetime, timedelta
-    project = expipe.require_project(pytest.PROJECT_ID)
+    format = expipe.core.datetime_key_format
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
     time = datetime(2017, 6, 1, 21, 42, 20)
@@ -364,128 +316,108 @@ def test_change_message():
     msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
-    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+    messages = {
+        datetime.strftime(time, format): msg_1,
+        datetime.strftime(time + timedelta(minutes=10), format): msg_2
+    }
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
-    # assert all([m1 == m2.to_dict() for m1, m2 in zip([msg_1, msg_2], message_manager)])
+    for message_id, message in message_manager.items():
+        assert messages[message_id] == message.to_dict()
 
     # change one of them
     msg_3 = {'text': 'sub3', 'user': 'usr3',
              'datetime': time + timedelta(minutes=20)}
 
-    for i, message in enumerate(message_manager):
+    messages[datetime.strftime(time + timedelta(minutes=10), format)] = msg_3
+    for message_id in message_manager:
+        message = message_manager[message_id]
         if message.user == "usr2":
             message.text = msg_3["text"]
             message.user = msg_3["user"]
             message.datetime = msg_3["datetime"]
 
-    assert contain_same([msg_1, msg_3], message_manager)
-
+    for message_id, message in message_manager.items():
+        assert messages[message_id] == message.to_dict()
 
 ######################################################################################################
 # create/delete
 ######################################################################################################
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_delete_project_and_childs():
-    module_contents = {'species': {'value': 'rat'}}
+def test_create_project(project_path):
+    expipe.require_project(project_path, pytest.PROJECT_ID)
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=False)
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=False)
 
-    expipe.delete_project(pytest.PROJECT_ID, remove_all_childs=True)
+def test_create_project_inside_project_raises(project_path):
+    expipe.require_project(project_path, pytest.PROJECT_ID)
     with pytest.raises(KeyError):
-        expipe.get_project(pytest.PROJECT_ID)
-
-    # remake project, then the "old" action and project_module should be deleted
-    project = expipe.require_project(pytest.PROJECT_ID)
-    with pytest.raises(KeyError):
-        project.actions[pytest.ACTION_ID]
-        project.modules[pytest.MODULE_ID]
-
-    # remake action, then the "old" action_module should be deleted
-    action = project.require_action(pytest.ACTION_ID)
-    with pytest.raises(KeyError):
-        action.modules[pytest.MODULE_ID]
+        expipe.require_project(project_path / 'new', pytest.PROJECT_ID + '1')
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_delete_project_not_childs():
-    module_contents = {'species': {'value': 'rat'}}
-
-    project = expipe.core.require_project(pytest.PROJECT_ID)
-    action = project.require_action(pytest.ACTION_ID)
-
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
-
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
-
-    expipe.delete_project(pytest.PROJECT_ID)
-    with pytest.raises(KeyError):
-        expipe.get_project(pytest.PROJECT_ID)
-
-    # remake project, then the "old" action and action_module should be NOT be deleted
-    project = expipe.require_project(pytest.PROJECT_ID)
-    action = project.actions[pytest.ACTION_ID]
-    action.modules[pytest.MODULE_ID]
-
-
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_project():
-    expipe.require_project(pytest.PROJECT_ID)
-
-
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_action():
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+def test_create_action(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     project.actions[pytest.ACTION_ID]
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_action_module():
+def test_create_action_module(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
-    action.modules[pytest.MODULE_ID]
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    action.modules[pytest.ACTION_MODULE_ID]
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_create_project_module():
+def test_create_action_module_from_template(project_path):
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    template = project.require_template(
+        pytest.TEMPLATE_ID, template_contents)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, template=pytest.TEMPLATE_ID)
+    module_contents = action.modules[pytest.ACTION_MODULE_ID].to_dict()
+    assert module_contents == template_contents
+
+
+def test_create_project_module(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project.create_module(pytest.MODULE_ID, contents=module_contents, overwrite=True)
-    project.modules[pytest.MODULE_ID]
+    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
+    project.modules[pytest.PROJECT_MODULE_ID]
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_delete_action():
+def test_set_project_module_deep(project_path):
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
+    project.modules[pytest.PROJECT_MODULE_ID]['species']['value'] = 'mouse'
+
+
+def test_delete_action(project_path):
     from datetime import datetime, timedelta
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     message_manager = action.messages
-    action_module = action.create_module(pytest.MODULE_ID,
-                                         contents=module_contents,
-                                         overwrite=True)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',
@@ -494,8 +426,10 @@ def test_delete_action():
     msg_2 = {'text': 'sub2', 'user': 'usr2',
              'datetime': time + timedelta(minutes=10)}
 
-    action.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
-    action.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
     for attr in ['entities', 'users', 'tags']:
         setattr(action, attr, ['sub1', 'sub2'])
@@ -507,16 +441,172 @@ def test_delete_action():
     # remake and assert that all is deleted
     action = project.require_action(pytest.ACTION_ID)
     assert len(list(action.modules.keys())) == 0
-    assert len(list(action_module.keys())) == 0
+    assert action_module.id not in action.modules
     for attr in ['entities', 'users', 'tags']:
         a = getattr(action, attr).data
         assert a is None
     assert len(action.messages) == 0
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_require_create_get_action():
-    project = expipe.core.require_project(pytest.PROJECT_ID)
+def test_delete_entity(project_path):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID, contents=module_contents)
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    entity.create_message(text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    entity.create_message(text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    for attr in ['entities', 'users', 'tags']:
+        setattr(entity, attr, ['sub1', 'sub2'])
+    assert len(list(entity.modules.keys())) != 0
+    project.delete_entity(entity.id)
+    with pytest.raises(KeyError):
+        project.entities[pytest.ENTITY_ID]
+
+    # remake and assert that all is deleted
+    entity = project.require_entity(pytest.ENTITY_ID)
+    assert len(list(entity.modules.keys())) == 0
+    assert entity_module.id not in entity.modules
+    for attr in ['users', 'tags']:
+        a = getattr(entity, attr).data
+        assert a is None
+    assert len(entity.messages) == 0
+
+
+def test_delete_entity_module(project_path):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID, contents=module_contents)
+    entity_module = entity.create_module(
+        pytest.ENTITY_MODULE_ID + '1', contents=module_contents)
+
+    # delete one
+    entity.delete_module(pytest.ENTITY_MODULE_ID)
+
+    with pytest.raises(KeyError):
+        entity.modules[pytest.ENTITY_MODULE_ID]
+    assert pytest.ENTITY_MODULE_ID + '1' in entity.modules
+
+
+def test_delete_entity_message(project_path):
+    from datetime import datetime, timedelta
+    format = expipe.core.datetime_key_format
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    message_manager = entity.messages
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    msg_1_name = datetime.strftime(time, format)
+    msg_2_name = datetime.strftime(time + timedelta(minutes=10), format)
+
+    entity.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    entity.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    entity.delete_messages()
+    with pytest.raises(KeyError):
+        entity.messages[msg_1_name]
+    assert msg_2_name not in entity.messages
+
+
+def test_delete_action_module(project_path):
+    from datetime import datetime, timedelta
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_entity(pytest.ACTION_ID)
+    message_manager = action.messages
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID + '1', contents=module_contents)
+
+    # delete one
+    action.delete_module(pytest.ACTION_MODULE_ID)
+
+    with pytest.raises(KeyError):
+        action.modules[pytest.ACTION_MODULE_ID]
+    assert pytest.ACTION_MODULE_ID + '1' in action.modules
+
+
+def test_delete_action_message(project_path):
+    from datetime import datetime, timedelta
+    format = expipe.core.datetime_key_format
+    module_contents = {'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    message_manager = action.messages
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
+
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    msg_1_name = datetime.strftime(time, format)
+    msg_2_name = datetime.strftime(time + timedelta(minutes=10), format)
+
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    action.delete_messages()
+    with pytest.raises(KeyError):
+        action.messages[msg_1_name]
+    assert msg_2_name not in action.messages
+
+
+def test_delete_template(project_path):
+    from datetime import datetime, timedelta
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    template = project.require_template(
+        pytest.TEMPLATE_ID, template_contents)
+    template = project.require_template(
+        pytest.TEMPLATE_ID + '1', template_contents)
+    project.delete_template(pytest.TEMPLATE_ID)
+
+    with pytest.raises(KeyError):
+        project.templates[pytest.TEMPLATE_ID]
+    assert pytest.TEMPLATE_ID + '1' in project.templates
+
+
+def test_require_create_get_action(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
 
     # Get a non-existing action
     with pytest.raises(KeyError):
@@ -542,43 +632,41 @@ def test_require_create_get_action():
     assert action_req.id == action.id
 
 
-@mock.patch('expipe.core.FirebaseBackend', new=create_mock_backend())
-def test_fill_the_project():
+def test_fill_the_project(project_path):
     import quantities as pq
     from datetime import datetime, timedelta
 
     module_contents = {'species': {'value': 'rat'}}
 
-    project = expipe.require_project(pytest.PROJECT_ID)
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     quan = [1, 2] * pq.s
     module_contents = {'quan': quan}
-    project_module = project.create_module(pytest.MODULE_ID,
-                                           contents=module_contents,
-                                           overwrite=True)
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=module_contents)
     mod_dict = project_module.to_dict()
     assert isinstance(mod_dict['quan'], pq.Quantity)
     assert all(a == b for a, b in zip(quan, mod_dict['quan']))
 
-    # time = datetime(2017, 6, 1, 21, 42, 20)
-    # msg_1 = {'message': 'sub1', 'user': 'usr1',
-    #          'datetime': time}
-    #
-    # msg_2 = {'message': 'sub2', 'user': 'usr2',
-    #          'datetime': time + timedelta(minutes=10)}
-    #
-    # action.create_message(msg_1)
-    # action.create_message(msg_2)
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    msg_1 = {'text': 'sub1', 'user': 'usr1',
+             'datetime': time}
 
-    # orig_list = ['sub1', 'sub2']
-    # for attr in ['entities', 'users', 'tags']:
-    #     prop_list = getattr(action, attr)
-    #     assert isinstance(prop_list, expipe.core.ProperyList)
-    #     prop_list.append('sub3')
-    #     orig_list.append('sub3')
-    #     setattr(action, attr, orig_list)
-    #     prop_list.extend(['sub3'])
-    #     orig_list.extend(['sub3'])
-    #     prop_list[1] = 'subsub'
-    #     orig_list[1] = 'subsub'
+    msg_2 = {'text': 'sub2', 'user': 'usr2',
+             'datetime': time + timedelta(minutes=10)}
+
+    action.create_message(
+        text=msg_1["text"], user=msg_1["user"], datetime=msg_1["datetime"])
+    action.create_message(
+        text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
+
+    orig_list = ['sub1', 'sub2']
+    for attr in ['entities', 'users', 'tags']:
+        prop_list = getattr(action, attr)
+        assert isinstance(prop_list, expipe.core.PropertyList)
+        prop_list.append('sub3')
+        orig_list.append('sub3')
+        setattr(action, attr, orig_list)
+        prop_list.extend(['sub3'])
+        orig_list.extend(['sub3'])
