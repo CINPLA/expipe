@@ -14,22 +14,6 @@ class AbstractBackend(abc.ABC):
         pass
 
 
-class AbstractProject(abc.ABC):
-    @property
-    @abc.abstractmethod
-    def actions(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def entities(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def modules(self):
-        pass
-
 class AbstractObject(abc.ABC):
     @abc.abstractmethod
     def exists(self, name=None):
