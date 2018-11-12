@@ -79,9 +79,13 @@ class MapManager:
     def values(self):
         return collections.abc.ValuesView(self)
 
-    # def to_dict(self):
-        # result = self._backend.contents.get() or dict()
-        # return result
+    @property
+    def contents(self):
+        if hasattr(self._backend, 'contents'):
+            return self._backend.contents
+        else:
+            name = self._backend.__class__.__name__
+            raise AttributeError('{} has no attribute "to_dict"'.format(name))
 
 class ExpipeObject:
     """
@@ -605,7 +609,8 @@ class Message:
         value_str = dt.datetime.strftime(value, datetime_format)
         self._backend.contents.set(name="datetime", value=value_str)
 
-    def to_dict(self):
+    @property
+    def contents(self):
         content = self._backend.contents.get()
         if content:
             content['datetime'] = dt.datetime.strptime(content['datetime'],

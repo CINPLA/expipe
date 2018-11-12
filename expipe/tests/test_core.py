@@ -109,7 +109,7 @@ db_module_manager = {
     # module = db_module_manager["project_modules"]["retina"]
 
     # assert project == module_manager.parent
-    # assert module == module_manager.to_dict()
+    # assert module == module_manager.contents
     # assert all(k in module_manager for k in ("ret_1", "ret_2"))
     # assert set(list(module.keys())) == set(list(module_manager.keys()))
 
@@ -131,7 +131,7 @@ def test_module_to_dict(project_path):
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
 
-    for module_dict in [action_module.to_dict(), project_module.to_dict()]:
+    for module_dict in [action_module.contents, project_module.contents]:
         assert module_dict == module_contents
 
 
@@ -144,9 +144,9 @@ def test_module_quantities(project_path):
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], pq.Quantity)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
 
 def test_module_array(project_path):
@@ -158,9 +158,9 @@ def test_module_array(project_path):
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], list)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], list)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
 
 def test_module_get_require_equal_path(project_path):
@@ -343,7 +343,7 @@ def test_change_message(project_path):
         text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
     for message_id, message in message_manager.items():
-        assert messages[message_id] == message.to_dict()
+        assert messages[message_id] == message.contents
 
     # change one of them
     msg_3 = {'text': 'sub3', 'user': 'usr3',
@@ -424,7 +424,7 @@ def test_create_action_module_from_template(project_path):
 
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, template=pytest.TEMPLATE_ID)
-    module_contents = action.modules[pytest.ACTION_MODULE_ID].to_dict()
+    module_contents = action.modules[pytest.ACTION_MODULE_ID].contents
     assert module_contents == template_contents
 
 
@@ -684,9 +684,9 @@ def test_fill_the_project(project_path):
     module_contents = {'quan': quan}
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], pq.Quantity)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',
