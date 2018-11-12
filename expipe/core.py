@@ -51,7 +51,8 @@ class MapManager:
     Common class for all maps of objects, such as
     actions, modules, entities, templates, etc.
     """
-    def __init__(self, backend):
+    def __init__(self, name, backend):
+        self.id = name
         self._backend = backend
 
     def __getitem__(self, name):
@@ -92,7 +93,7 @@ class ExpipeObject:
 
     @property
     def modules(self):
-        return MapManager(self._backend.modules)
+        return MapManager('Modules', self._backend.modules)
 
     def require_module(self, name=None, template=None, contents=None):
         """
@@ -172,7 +173,7 @@ class Project(ExpipeObject):
 
     @property
     def actions(self):
-        return MapManager(self._backend.actions)
+        return MapManager('Actions', self._backend.actions)
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -208,7 +209,7 @@ class Project(ExpipeObject):
 
     @property
     def entities(self):
-        return MapManager(self._backend.entities)
+        return MapManager('Entities', self._backend.entities)
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -244,7 +245,7 @@ class Project(ExpipeObject):
 
     @property
     def templates(self):
-        return MapManager(self._backend.templates)
+        return MapManager('Templates', self._backend.templates)
 
     def _create_template(self, name, contents):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -293,7 +294,7 @@ class Entity(ExpipeObject):
 
     @property
     def messages(self):
-        return MapManager(self._backend.messages)
+        return MapManager('Messages', self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -405,7 +406,7 @@ class Action(ExpipeObject):
 
     @property
     def messages(self):
-        return MapManager(self._backend.messages)
+        return MapManager('Messages', self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -515,68 +516,7 @@ class Action(ExpipeObject):
 
     @property
     def data(self):
-        return PropertyList(self._backend.attributes, 'data', dtype=str, unique=True,
-                           data=self._backend.attributes.get('data'))
-
-    @data.setter
-    def data(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                            str([type(v) for v in value]))
-        value = list(set(value))
-        self._backend.attributes.set('data', value)
-
-
-class Module:
-    def __init__(self, module_id, backend):
-        self.id = module_id
-        self._backend = backend
-
-    def __getitem__(self, name):
-        return Module(name, self._backend)
-
-    def __setitem__(self, name, contents):
-        self._backend.contents.set(name=name, value=contents)
-
-    def to_dict(self):
-        result = self._get_module_content() or {}
-        return result
-
-    def to_json(self, fname=None):
-        import json
-        fname = fname or self.id
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_module_content() or {}
-        return result.keys()
-
-    def items(self):
-        result = self._get_module_content() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_module_content()
-        if result is None:
-            result = dict()
-        return result.values()
-
-    def _get_module_content(self):
-        result = self._backend.contents.get()
-        # if isinstance(result, list):
-            # if len(result) > 0:
-                # raise TypeError('Got nonempty list, expected dict')
-            # result = None
-        return result
+        return MapManager('Data', self._backend.data)
 
 
 class Template:

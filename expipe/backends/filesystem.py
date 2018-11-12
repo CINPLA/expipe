@@ -223,7 +223,7 @@ class FileSystemProject:
         self._template_manager = FileSystemObjectManager(
             self.path / "templates", Template, FileSystemTemplate, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            self.path / "modules", Module, FileSystemModule, has_attributes=False)
+            self.path / "modules", MapManager, FileSystemYamlManager)
 
     @property
     def modules(self):
@@ -252,11 +252,12 @@ class FileSystemAction:
         project = self.path.parent
         if project.stem == 'actions': #TODO consider making project path global
             project = project.parent
-        self._attribute_manager = FileSystemObject(path / "attributes.yaml", Action)
+        self._attribute_manager = FileSystemObject(path / "attributes.yaml")
+        self._data_manager = FileSystemYamlManager(path / "attributes.yaml")['data']
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", Module, FileSystemModule, has_attributes=False)
+            path / "modules", MapManager, FileSystemYamlManager)
         self._template_manager = FileSystemObjectManager(
             project / "templates", Template, FileSystemTemplate, has_attributes=False)
 
@@ -276,6 +277,10 @@ class FileSystemAction:
     def messages(self):
         return self._message_manager
 
+    @property
+    def data(self):
+        return self._data_manager
+
 
 class FileSystemEntity:
     def __init__(self, path):
@@ -287,7 +292,7 @@ class FileSystemEntity:
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", Module, FileSystemModule, has_attributes=False)
+            path / "modules", MapManager, FileSystemYamlManager)
         self._template_manager = FileSystemObjectManager(
             project / "templates", Template, FileSystemTemplate, has_attributes=False)
 

@@ -187,32 +187,49 @@ def test_module_list(project_path):
     list_cont = ['list I am', 1]
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=list_cont)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict, list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents, list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents))
 
     module_contents = {'list': list_cont}
     project.modules[pytest.PROJECT_MODULE_ID] = module_contents
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['list'], list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+    mod_contents = project.modules[pytest.PROJECT_MODULE_ID].contents
+    assert isinstance(mod_contents['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents['list']))
 
-    module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
+    module_contents = {'dict_list': {'0': 'df', '1': 'd', '2': 's'}}
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], dict)
+    mod_contents = action_module.contents
+    assert isinstance(mod_contents['dict_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
     action.modules[pytest.ACTION_MODULE_ID] = module_contents
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['almost_list1'], dict)
-    assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
+    mod_contents = action.modules[pytest.ACTION_MODULE_ID].contents
+    assert isinstance(mod_contents['almost_list1'], dict)
+    assert module_contents == mod_contents, '{}, {}'.format(module_contents, mod_contents)
 
-    module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
+    module_contents = {'dict_list': {0: 'df', 1: 'd', 2: 's'}}
     action.modules[pytest.ACTION_MODULE_ID] = module_contents
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], dict)
+    mod_contents = action.modules[pytest.ACTION_MODULE_ID].contents
+    assert isinstance(mod_contents['dict_list'], dict)
+
+
+def test_modify_module_view(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    list_cont = ['list I am', 1]
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=list_cont)
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents, list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents))
+
+    module_contents = {'list': list_cont}
+    project.modules[pytest.PROJECT_MODULE_ID] = module_contents
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents['list']))
 
 
 ######################################################################################################
@@ -341,7 +358,29 @@ def test_change_message(project_path):
             message.datetime = msg_3["datetime"]
 
     for message_id, message in message_manager.items():
-        assert messages[message_id] == message.to_dict()
+        assert messages[message_id] == message.contents
+
+
+def test_nested_module(project_path):
+    module_contents = {'species': None}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    action_module['species']['value'] = 'rat'
+    print(action_module.contents)
+    assert action_module['species']['value'] == 'rat'
+
+
+def test_action_data(project_path):
+    data_path = 'path/to/my/data'
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    action.data['main'] = data_path
+    assert action.data['main'] == data_path
 
 ######################################################################################################
 # create/delete
