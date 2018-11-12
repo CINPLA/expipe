@@ -528,13 +528,6 @@ class Action(ExpipeObject):
         value = list(set(value))
         self._backend.attributes.set('data', value)
 
-    def require_filerecord(self, class_type=None, name=None):
-        print(
-            'Deprecation warning, this function will be removed in the ' +
-            'future, use action.data instead')
-        class_type = class_type or Filerecord
-        return class_type(self, name)
-
 
 class Module:
     def __init__(self, module_id, backend):
@@ -678,32 +671,6 @@ class Message:
             content['datetime'] = dt.datetime.strptime(content['datetime'],
                                                        datetime_format)
         return content
-
-
-class Filerecord:
-    def __init__(self, action, filerecord_id=None):
-        self.id = filerecord_id or "main"  # oneliner hack by Mikkel
-        self.action = action
-
-        # TODO make into properties/functions in case settings change
-        self.exdir_path = op.join(
-            action.project.id, action.id, self.id + ".exdir")
-        if 'data_path' in expipe.settings:
-            self.local_path = op.join(expipe.settings["data_path"],
-                                      self.exdir_path)
-        else:
-            self.local_path = None
-        if 'server_path' in expipe.settings:
-            self.server_path = op.join(expipe.settings['server']["data_path"],
-                                       self.exdir_path)
-        else:
-            self.server_path = None
-
-        # TODO if not exists and not required, return error
-        ref_path = "/".join(["files", action.project.id, action.id])
-        self._backend = FirebaseObject(ref_path)
-        if not self._backend.contents.get(self.id):
-            self._backend.update(self.id, {"path": self.exdir_path})
 
 
 class PropertyList:
