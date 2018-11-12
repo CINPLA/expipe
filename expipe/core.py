@@ -30,7 +30,7 @@ class ListManager:
         self._backend = backend
 
     def __getitem__(self, index):
-        return self._backend.__getitem__(name)
+        return self._backend.__getitem__(index)
 
     def __iter__(self):
         return self._backend.__iter__()
