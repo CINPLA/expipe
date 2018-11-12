@@ -89,7 +89,7 @@ def yaml_load(path):
 
 
 class FileSystemObject(AbstractObject):
-    def __init__(self, path, object_type, has_attributes=False):
+    def __init__(self, path):
         self.path = path
 
     def exists(self, name):
@@ -173,11 +173,49 @@ class FileSystemObjectManager(AbstractObjectManager):
             path.unlink()
 
 
+class FileSystemYamlManager(AbstractObjectManager):
+    def __init__(self, path, backend=None, _contents=None):
+        self.backend = backend
+        self.path = path.with_suffix('.yaml')
+        if _contents is None:
+            self._contents = self.contents
+        else:
+            self._contents = _contents
+
+    def __getitem__(self, name):
+        result = self._contents.get(name)
+        if result is None:
+            self._contents[name] = {}
+        result = self._contents[name]
+        if isinstance(result, dict):
+            result = FileSystemYamlManager(self.path, None, result)
+        return result
+
+    def __iter__(self):
+        for key in self._contents.keys():
+            yield key
+
+    def __len__(self):
+        return len(self._contents)
+
+    def __contains__(self, name):
+        return name in self._contents
+
+    def __setitem__(self, name, value):
+        print(value)
+        self._contents[name] = value
+        yaml_dump(self.path, self._contents)
+
+    @property
+    def contents(self):
+        return yaml_load(self.path)
+
+
 class FileSystemProject:
     def __init__(self, path, config):
         self.path = pathlib.Path(path)
         self.config = config
-        self._attribute_manager = FileSystemObject(self.path, Project)
+        self._attribute_manager = FileSystemObject(self.path)
         self._action_manager = FileSystemObjectManager(
             self.path / "actions", Action, FileSystemAction, has_attributes=True)
         self._entity_manager = FileSystemObjectManager(
@@ -245,7 +283,7 @@ class FileSystemEntity:
         project = self.path.parent
         if project.stem == 'entities': #TODO
             project = project.parent
-        self._attribute_manager = FileSystemObject(path / "attributes.yaml", Entity)
+        self._attribute_manager = FileSystemObject(path / "attributes.yaml")
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
@@ -270,20 +308,10 @@ class FileSystemEntity:
         return self._message_manager
 
 
-class FileSystemModule:
-    def __init__(self, path):
-        self.path = path
-        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Module)
-
-    @property
-    def contents(self):
-        return self._content_manager
-
-
 class FileSystemMessage:
     def __init__(self, path):
         self.path = path
-        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Message)
+        self._content_manager = FileSystemObject(path.with_suffix(".yaml"))
 
     @property
     def contents(self):
@@ -293,7 +321,7 @@ class FileSystemMessage:
 class FileSystemTemplate:
     def __init__(self, path):
         self.path = path
-        self._content_manager = FileSystemObject(path.with_suffix(".yaml"), Template)
+        self._content_manager = FileSystemObject(path.with_suffix(".yaml"))
 
     @property
     def contents(self):
