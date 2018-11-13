@@ -392,13 +392,16 @@ def test_nested_module(project_path):
 
 def test_action_data(project_path):
     data_path = 'path/to/my/data'
+    data_path1 = 'path/to/my/data/1'
 
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     action.users = ['Mikkel']
     assert action.users == ['Mikkel']
     action.data['main'] = data_path
+    action.data['one'] = data_path1
     assert action.data['main'] == data_path
+    assert action.data['one'] == data_path1
     assert action.users == ['Mikkel']
 
 
