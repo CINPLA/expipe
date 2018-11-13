@@ -232,6 +232,20 @@ def test_modify_module_view(project_path):
     assert all(a == b for a, b in zip(list_cont, mod_contents['list']))
 
 
+def test_create_deep_module_content(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    with pytest.raises(KeyError):
+        project.modules[pytest.PROJECT_MODULE_ID]['eh']
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents={'eh': {}})
+    project_module['eh']['ehhh'] = {}
+    project_module['eh']['ehhh']['ehhhh'] = 'stuff'
+    print(project_module['eh']['ehhh'])
+    assert project_module['eh']['ehhh'] == {'ehhhh': 'stuff'}
+    assert project_module['eh']['ehhh']['ehhhh'] == 'stuff'
+    assert 'ehhhh' in project_module['eh']['ehhh']
+
+
 ######################################################################################################
 # Message and MessageManager
 ######################################################################################################
@@ -362,7 +376,7 @@ def test_change_message(project_path):
 
 
 def test_nested_module(project_path):
-    module_contents = {'species': None}
+    module_contents = {'species': {}}
 
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
@@ -370,8 +384,10 @@ def test_nested_module(project_path):
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
     action_module['species']['value'] = 'rat'
-    print(action_module.contents)
+    action_module['species']['name'] = 'peter'
     assert action_module['species']['value'] == 'rat'
+    assert action_module['species'].contents == {'value': 'rat', 'name': 'peter'}
+    assert action_module['species'] == {'value': 'rat', 'name': 'peter'}
 
 
 def test_action_data(project_path):
@@ -379,8 +395,32 @@ def test_action_data(project_path):
 
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
+    action.users = ['Mikkel']
+    assert action.users == ['Mikkel']
     action.data['main'] = data_path
     assert action.data['main'] == data_path
+    assert action.users == ['Mikkel']
+
+
+def test_isinstance_module(project_path):
+    module_contents = {'species': {}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    assert isinstance(action_module, expipe.core.Module)
+
+
+def test_isinstance_template(project_path):
+    template_contents = {'species': {}, 'identifier': 'yoyo'}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+
+    template = project.create_template(
+        pytest.TEMPLATE_ID, contents=template_contents)
+    assert isinstance(template, expipe.core.Template)
 
 ######################################################################################################
 # create/delete

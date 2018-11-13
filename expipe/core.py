@@ -51,9 +51,14 @@ class MapManager:
     Common class for all maps of objects, such as
     actions, modules, entities, templates, etc.
     """
-    def __init__(self, name, backend):
-        self.id = name
+    def __init__(self, backend):
         self._backend = backend
+
+    def __eq__(self, other):
+        return self._backend.__eq__(other)
+
+    def __repr__(self):
+        return self._backend.__repr__()
 
     def __getitem__(self, name):
         return self._backend.__getitem__(name)
@@ -85,7 +90,7 @@ class MapManager:
             return self._backend.contents
         else:
             name = self._backend.__class__.__name__
-            raise AttributeError('{} has no attribute "to_dict"'.format(name))
+            raise AttributeError('{} has no attribute "contents"'.format(name))
 
 class ExpipeObject:
     """
@@ -97,7 +102,7 @@ class ExpipeObject:
 
     @property
     def modules(self):
-        return MapManager('Modules', self._backend.modules)
+        return MapManager(self._backend.modules)
 
     def require_module(self, name=None, template=None, contents=None):
         """
@@ -141,7 +146,7 @@ class ExpipeObject:
         del module
 
     def _load_template(self, template):
-        contents = self._backend.templates[template].to_dict()
+        contents = self._backend.templates[template].contents
         name = contents.get('identifier')
         if name is None:
             raise ValueError('Template "' + template + '" has no identifier.')
@@ -177,7 +182,7 @@ class Project(ExpipeObject):
 
     @property
     def actions(self):
-        return MapManager('Actions', self._backend.actions)
+        return MapManager(self._backend.actions)
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -213,7 +218,7 @@ class Project(ExpipeObject):
 
     @property
     def entities(self):
-        return MapManager('Entities', self._backend.entities)
+        return MapManager(self._backend.entities)
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -249,7 +254,7 @@ class Project(ExpipeObject):
 
     @property
     def templates(self):
-        return MapManager('Templates', self._backend.templates)
+        return MapManager(self._backend.templates)
 
     def _create_template(self, name, contents):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -298,7 +303,7 @@ class Entity(ExpipeObject):
 
     @property
     def messages(self):
-        return MapManager('Messages', self._backend.messages)
+        return MapManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -410,7 +415,7 @@ class Action(ExpipeObject):
 
     @property
     def messages(self):
-        return MapManager('Messages', self._backend.messages)
+        return MapManager(self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -520,51 +525,22 @@ class Action(ExpipeObject):
 
     @property
     def data(self):
-        return MapManager('Data', self._backend.data)
+        return MapManager(self._backend.data)
 
 
-class Template:
+class Module(MapManager):
+    """
+    Module
+    """
+    def __init__(self, module_id, backend):
+        super(Module, self).__init__(backend=backend)
+        self.id = module_id
+
+
+class Template(MapManager):
     def __init__(self, template_id, backend):
+        super(Template, self).__init__(backend=backend)
         self.id = template_id
-        self._backend = backend
-
-    def to_dict(self):
-        result = self._get_template_content() or {}
-        return result
-
-    def to_json(self, fname=None):
-        import json
-        fname = fname or self.id
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_template_content() or {}
-        return result.keys()
-
-    def items(self):
-        result = self._get_template_content() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_template_content()
-        if result is None:
-            result = dict()
-        return result.values()
-
-    def _get_template_content(self):
-        result = self._backend.contents.get()
-        if isinstance(result, list):
-            if len(result) > 0:
-                raise TypeError('Got nonempty list, expected dict')
-            result = None
-        return result
 
 
 class Message:
@@ -631,6 +607,10 @@ class PropertyList:
         data = self.data or []
         for d in data:
             yield d
+
+    def __eq__(self, other):
+        data = self.data or []
+        return data == other
 
     def __getitem__(self, args):
         data = self.data or []

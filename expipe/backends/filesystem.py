@@ -174,40 +174,71 @@ class FileSystemObjectManager(AbstractObjectManager):
 
 
 class FileSystemYamlManager(AbstractObjectManager):
-    def __init__(self, path, backend=None, _contents=None):
-        self.backend = backend
+    def __init__(self, path, ref_path=None):
         self.path = path.with_suffix('.yaml')
-        if _contents is None:
-            self._contents = self.contents
-        else:
-            self._contents = _contents
+        self.ref_path = ref_path or []
 
     def __getitem__(self, name):
-        result = self._contents.get(name)
-        if result is None:
-            self._contents[name] = {}
-        result = self._contents[name]
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
+        result = result[name]
         if isinstance(result, dict):
-            result = FileSystemYamlManager(self.path, None, result)
+            result = MapManager(FileSystemYamlManager(self.path, self.ref_path + [name]))
         return result
 
+    def __repr__(self):
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
+        return str(result)
+
+    def __eq__(self, other):
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
+        return result == other
+
+    def keys(self):
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
+        return result.keys()
+
+    def values(self):
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
+        return result.keys()
+
     def __iter__(self):
-        for key in self._contents.keys():
+        for key in self.keys():
             yield key
 
     def __len__(self):
-        return len(self._contents)
+        return len(self.contents)
 
     def __contains__(self, name):
-        return name in self._contents
+        return name in self.contents
 
     def __setitem__(self, name, value):
-        self._contents[name] = value
-        yaml_dump(self.path, self._contents)
+        result = self._yaml_contents
+        sub_result = result
+        for p in self.ref_path:
+            sub_result = sub_result[p]
+        sub_result[name] = value
+        yaml_dump(self.path, result)
+
+    @property
+    def _yaml_contents(self):
+        result = yaml_load(self.path) or {}
+        return result
 
     @property
     def contents(self):
-        result = yaml_load(self.path) or {}
+        result = self._yaml_contents
+        for p in self.ref_path:
+            result = result[p]
         return result
 
 
@@ -221,9 +252,9 @@ class FileSystemProject:
         self._entity_manager = FileSystemObjectManager(
             self.path / "entities", Entity, FileSystemEntity, has_attributes=True)
         self._template_manager = FileSystemObjectManager(
-            self.path / "templates", Template, FileSystemTemplate, has_attributes=False)
+            self.path / "templates", Template, FileSystemYamlManager)
         self._module_manager = FileSystemObjectManager(
-            self.path / "modules", MapManager, FileSystemYamlManager)
+            self.path / "modules", Module, FileSystemYamlManager)
 
     @property
     def modules(self):
@@ -253,13 +284,13 @@ class FileSystemAction:
         if project.stem == 'actions': #TODO consider making project path global
             project = project.parent
         self._attribute_manager = FileSystemObject(path / "attributes.yaml")
-        self._data_manager = FileSystemYamlManager(path / "attributes.yaml")['data']
+        self._data_manager = FileSystemYamlManager(path / "attributes.yaml")
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", MapManager, FileSystemYamlManager)
+            path / "modules", Module, FileSystemYamlManager)
         self._template_manager = FileSystemObjectManager(
-            project / "templates", Template, FileSystemTemplate, has_attributes=False)
+            project / "templates", Template, FileSystemYamlManager)
 
     @property
     def templates(self):
@@ -279,7 +310,9 @@ class FileSystemAction:
 
     @property
     def data(self):
-        return self._data_manager
+        if 'data' not in self._data_manager:
+            self._data_manager['data'] = {}
+        return self._data_manager['data']
 
 
 class FileSystemEntity:
@@ -292,9 +325,9 @@ class FileSystemEntity:
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
-            path / "modules", MapManager, FileSystemYamlManager)
+            path / "modules", Module, FileSystemYamlManager)
         self._template_manager = FileSystemObjectManager(
-            project / "templates", Template, FileSystemTemplate, has_attributes=False)
+            project / "templates", Template, FileSystemYamlManager)
 
     @property
     def templates(self):
