@@ -202,13 +202,13 @@ class FileSystemYamlManager(AbstractObjectManager):
         return name in self._contents
 
     def __setitem__(self, name, value):
-        print(value)
         self._contents[name] = value
         yaml_dump(self.path, self._contents)
 
     @property
     def contents(self):
-        return yaml_load(self.path)
+        result = yaml_load(self.path) or {}
+        return result
 
 
 class FileSystemProject:
