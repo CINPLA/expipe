@@ -179,7 +179,7 @@ class FileSystemYamlManager(AbstractObjectManager):
         self.ref_path = ref_path or []
 
     def __getitem__(self, name):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         result = result[name]
@@ -188,25 +188,25 @@ class FileSystemYamlManager(AbstractObjectManager):
         return result
 
     def __repr__(self):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         return str(result)
 
     def __eq__(self, other):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         return result == other
 
     def keys(self):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         return result.keys()
 
     def values(self):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         return result.keys()
@@ -222,21 +222,20 @@ class FileSystemYamlManager(AbstractObjectManager):
         return name in self.contents
 
     def __setitem__(self, name, value):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         sub_result = result
         for p in self.ref_path:
             sub_result = sub_result[p]
         sub_result[name] = value
         yaml_dump(self.path, result)
 
-    @property
-    def _yaml_contents(self):
+    def _get_yaml_contents(self):
         result = yaml_load(self.path) or {}
         return result
 
     @property
     def contents(self):
-        result = self._yaml_contents
+        result = self._get_yaml_contents()
         for p in self.ref_path:
             result = result[p]
         return result
