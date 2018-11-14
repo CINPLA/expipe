@@ -109,7 +109,7 @@ db_module_manager = {
     # module = db_module_manager["project_modules"]["retina"]
 
     # assert project == module_manager.parent
-    # assert module == module_manager.to_dict()
+    # assert module == module_manager.contents
     # assert all(k in module_manager for k in ("ret_1", "ret_2"))
     # assert set(list(module.keys())) == set(list(module_manager.keys()))
 
@@ -131,7 +131,7 @@ def test_module_to_dict(project_path):
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
 
-    for module_dict in [action_module.to_dict(), project_module.to_dict()]:
+    for module_dict in [action_module.contents, project_module.contents]:
         assert module_dict == module_contents
 
 
@@ -144,9 +144,9 @@ def test_module_quantities(project_path):
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], pq.Quantity)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
 
 def test_module_array(project_path):
@@ -158,9 +158,9 @@ def test_module_array(project_path):
     action = project.require_action(pytest.ACTION_ID)
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], list)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], list)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
 
 def test_module_get_require_equal_path(project_path):
@@ -187,32 +187,63 @@ def test_module_list(project_path):
     list_cont = ['list I am', 1]
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=list_cont)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict, list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents, list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents))
 
     module_contents = {'list': list_cont}
     project.modules[pytest.PROJECT_MODULE_ID] = module_contents
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['list'], list)
-    assert all(a == b for a, b in zip(list_cont, mod_dict['list']))
+    mod_contents = project.modules[pytest.PROJECT_MODULE_ID].contents
+    assert isinstance(mod_contents['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents['list']))
 
-    module_contents = {'is_list': {'0': 'df', '1': 'd', '2': 's'}}
+    module_contents = {'dict_list': {'0': 'df', '1': 'd', '2': 's'}}
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], dict)
+    mod_contents = action_module.contents
+    assert isinstance(mod_contents['dict_list'], dict)
 
     module_contents = {'almost_list1': {'0': 'df', '1': 'd', 'd': 's'}}
     action.modules[pytest.ACTION_MODULE_ID] = module_contents
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['almost_list1'], dict)
-    assert module_contents == mod_dict, '{}, {}'.format(module_contents, mod_dict)
+    mod_contents = action.modules[pytest.ACTION_MODULE_ID].contents
+    assert isinstance(mod_contents['almost_list1'], dict)
+    assert module_contents == mod_contents, '{}, {}'.format(module_contents, mod_contents)
 
-    module_contents = {'is_list': {0: 'df', 1: 'd', 2: 's'}}
+    module_contents = {'dict_list': {0: 'df', 1: 'd', 2: 's'}}
     action.modules[pytest.ACTION_MODULE_ID] = module_contents
-    mod_dict = action_module.to_dict()
-    assert isinstance(mod_dict['is_list'], dict)
+    mod_contents = action.modules[pytest.ACTION_MODULE_ID].contents
+    assert isinstance(mod_contents['dict_list'], dict)
+
+
+def test_modify_module_view(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    list_cont = ['list I am', 1]
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents=list_cont)
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents, list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents))
+
+    module_contents = {'list': list_cont}
+    project.modules[pytest.PROJECT_MODULE_ID] = module_contents
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['list'], list)
+    assert all(a == b for a, b in zip(list_cont, mod_contents['list']))
+
+
+def test_create_deep_module_content(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    with pytest.raises(KeyError):
+        project.modules[pytest.PROJECT_MODULE_ID]['eh']
+    project_module = project.create_module(
+        pytest.PROJECT_MODULE_ID, contents={'eh': {}})
+    project_module['eh']['ehhh'] = {}
+    project_module['eh']['ehhh']['ehhhh'] = 'stuff'
+    print(project_module['eh']['ehhh'])
+    assert project_module['eh']['ehhh'] == {'ehhhh': 'stuff'}
+    assert project_module['eh']['ehhh']['ehhhh'] == 'stuff'
+    assert 'ehhhh' in project_module['eh']['ehhh']
 
 
 ######################################################################################################
@@ -326,7 +357,7 @@ def test_change_message(project_path):
         text=msg_2["text"], user=msg_2["user"], datetime=msg_2["datetime"])
 
     for message_id, message in message_manager.items():
-        assert messages[message_id] == message.to_dict()
+        assert messages[message_id] == message.contents
 
     # change one of them
     msg_3 = {'text': 'sub3', 'user': 'usr3',
@@ -341,7 +372,58 @@ def test_change_message(project_path):
             message.datetime = msg_3["datetime"]
 
     for message_id, message in message_manager.items():
-        assert messages[message_id] == message.to_dict()
+        assert messages[message_id] == message.contents
+
+
+def test_nested_module(project_path):
+    module_contents = {'species': {}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    action_module['species']['value'] = 'rat'
+    action_module['species']['name'] = 'peter'
+    assert action_module['species']['value'] == 'rat'
+    assert action_module['species'].contents == {'value': 'rat', 'name': 'peter'}
+    assert action_module['species'] == {'value': 'rat', 'name': 'peter'}
+
+
+def test_action_data(project_path):
+    data_path = 'path/to/my/data'
+    data_path1 = 'path/to/my/data/1'
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    action.users = ['Mikkel']
+    assert action.users == ['Mikkel']
+    action.data['main'] = data_path
+    action.data['one'] = data_path1
+    assert action.data['main'] == data_path
+    assert action.data['one'] == data_path1
+    assert action.users == ['Mikkel']
+
+
+def test_isinstance_module(project_path):
+    module_contents = {'species': {}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID, contents=module_contents)
+    assert isinstance(action_module, expipe.core.Module)
+
+
+def test_isinstance_template(project_path):
+    template_contents = {'species': {}, 'identifier': 'yoyo'}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+
+    template = project.create_template(
+        pytest.TEMPLATE_ID, contents=template_contents)
+    assert isinstance(template, expipe.core.Template)
 
 ######################################################################################################
 # create/delete
@@ -385,7 +467,7 @@ def test_create_action_module_from_template(project_path):
 
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, template=pytest.TEMPLATE_ID)
-    module_contents = action.modules[pytest.ACTION_MODULE_ID].to_dict()
+    module_contents = action.modules[pytest.ACTION_MODULE_ID].contents
     assert module_contents == template_contents
 
 
@@ -645,9 +727,9 @@ def test_fill_the_project(project_path):
     module_contents = {'quan': quan}
     project_module = project.create_module(
         pytest.PROJECT_MODULE_ID, contents=module_contents)
-    mod_dict = project_module.to_dict()
-    assert isinstance(mod_dict['quan'], pq.Quantity)
-    assert all(a == b for a, b in zip(quan, mod_dict['quan']))
+    mod_contents = project_module.contents
+    assert isinstance(mod_contents['quan'], pq.Quantity)
+    assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
     time = datetime(2017, 6, 1, 21, 42, 20)
     msg_1 = {'text': 'sub1', 'user': 'usr1',

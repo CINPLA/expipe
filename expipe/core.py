@@ -30,7 +30,7 @@ class ListManager:
         self._backend = backend
 
     def __getitem__(self, index):
-        return self._backend.__getitem__(name)
+        return self._backend.__getitem__(index)
 
     def __iter__(self):
         return self._backend.__iter__()
@@ -53,6 +53,12 @@ class MapManager:
     """
     def __init__(self, backend):
         self._backend = backend
+
+    def __eq__(self, other):
+        return self._backend.__eq__(other)
+
+    def __repr__(self):
+        return self._backend.__repr__()
 
     def __getitem__(self, name):
         return self._backend.__getitem__(name)
@@ -78,9 +84,13 @@ class MapManager:
     def values(self):
         return collections.abc.ValuesView(self)
 
-    # def to_dict(self):
-        # result = self._backend.contents.get() or dict()
-        # return result
+    @property
+    def contents(self):
+        if hasattr(self._backend, 'contents'):
+            return self._backend.contents
+        else:
+            name = self._backend.__class__.__name__
+            raise AttributeError('{} has no attribute "contents"'.format(name))
 
 class ExpipeObject:
     """
@@ -136,7 +146,7 @@ class ExpipeObject:
         del module
 
     def _load_template(self, template):
-        contents = self._backend.templates[template].to_dict()
+        contents = self._backend.templates[template].contents
         name = contents.get('identifier')
         if name is None:
             raise ValueError('Template "' + template + '" has no identifier.')
@@ -515,119 +525,22 @@ class Action(ExpipeObject):
 
     @property
     def data(self):
-        return PropertyList(self._backend.attributes, 'data', dtype=str, unique=True,
-                           data=self._backend.attributes.get('data'))
-
-    @data.setter
-    def data(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                            str([type(v) for v in value]))
-        value = list(set(value))
-        self._backend.attributes.set('data', value)
-
-    def require_filerecord(self, class_type=None, name=None):
-        print(
-            'Deprecation warning, this function will be removed in the ' +
-            'future, use action.data instead')
-        class_type = class_type or Filerecord
-        return class_type(self, name)
+        return MapManager(self._backend.data)
 
 
-class Module:
+class Module(MapManager):
+    """
+    Module
+    """
     def __init__(self, module_id, backend):
+        super(Module, self).__init__(backend=backend)
         self.id = module_id
-        self._backend = backend
-
-    def __getitem__(self, name):
-        return Module(name, self._backend)
-
-    def __setitem__(self, name, contents):
-        self._backend.contents.set(name=name, value=contents)
-
-    def to_dict(self):
-        result = self._get_module_content() or {}
-        return result
-
-    def to_json(self, fname=None):
-        import json
-        fname = fname or self.id
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_module_content() or {}
-        return result.keys()
-
-    def items(self):
-        result = self._get_module_content() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_module_content()
-        if result is None:
-            result = dict()
-        return result.values()
-
-    def _get_module_content(self):
-        result = self._backend.contents.get()
-        # if isinstance(result, list):
-            # if len(result) > 0:
-                # raise TypeError('Got nonempty list, expected dict')
-            # result = None
-        return result
 
 
-class Template:
+class Template(MapManager):
     def __init__(self, template_id, backend):
+        super(Template, self).__init__(backend=backend)
         self.id = template_id
-        self._backend = backend
-
-    def to_dict(self):
-        result = self._get_template_content() or {}
-        return result
-
-    def to_json(self, fname=None):
-        import json
-        fname = fname or self.id
-        if not fname.endswith('.json'):
-            fname = fname + '.json'
-        if op.exists(fname):
-            raise FileExistsError('The filename "' + fname +
-                                  '" exists, choose another')
-        with open(fname, 'w') as outfile:
-            json.dump(self.to_dict(), outfile,
-                      sort_keys=True, indent=4)
-
-    def keys(self):
-        result = self._get_template_content() or {}
-        return result.keys()
-
-    def items(self):
-        result = self._get_template_content() or {}
-        return result.items()
-
-    def values(self):
-        result = self._get_template_content()
-        if result is None:
-            result = dict()
-        return result.values()
-
-    def _get_template_content(self):
-        result = self._backend.contents.get()
-        if isinstance(result, list):
-            if len(result) > 0:
-                raise TypeError('Got nonempty list, expected dict')
-            result = None
-        return result
 
 
 class Message:
@@ -672,38 +585,13 @@ class Message:
         value_str = dt.datetime.strftime(value, datetime_format)
         self._backend.contents.set(name="datetime", value=value_str)
 
-    def to_dict(self):
+    @property
+    def contents(self):
         content = self._backend.contents.get()
         if content:
             content['datetime'] = dt.datetime.strptime(content['datetime'],
                                                        datetime_format)
         return content
-
-
-class Filerecord:
-    def __init__(self, action, filerecord_id=None):
-        self.id = filerecord_id or "main"  # oneliner hack by Mikkel
-        self.action = action
-
-        # TODO make into properties/functions in case settings change
-        self.exdir_path = op.join(
-            action.project.id, action.id, self.id + ".exdir")
-        if 'data_path' in expipe.settings:
-            self.local_path = op.join(expipe.settings["data_path"],
-                                      self.exdir_path)
-        else:
-            self.local_path = None
-        if 'server_path' in expipe.settings:
-            self.server_path = op.join(expipe.settings['server']["data_path"],
-                                       self.exdir_path)
-        else:
-            self.server_path = None
-
-        # TODO if not exists and not required, return error
-        ref_path = "/".join(["files", action.project.id, action.id])
-        self._backend = FirebaseObject(ref_path)
-        if not self._backend.contents.get(self.id):
-            self._backend.update(self.id, {"path": self.exdir_path})
 
 
 class PropertyList:
@@ -719,6 +607,10 @@ class PropertyList:
         data = self.data or []
         for d in data:
             yield d
+
+    def __eq__(self, other):
+        data = self.data or []
+        return data == other
 
     def __getitem__(self, args):
         data = self.data or []
