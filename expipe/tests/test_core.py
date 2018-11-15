@@ -31,12 +31,12 @@ db_action_manager = {
 }
 
 
-def test_action_attr(project_path):
+def test_action_attr_raises(project_path):
     from datetime import datetime, timedelta
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    for attr in ['entities', 'users', 'tags']:
+    for attr in ['users', 'tags']:
         with pytest.raises(TypeError):
             setattr(action, attr, {'dict': 'I am'})
             setattr(action, attr, 'string I am')
@@ -45,9 +45,81 @@ def test_action_attr(project_path):
         with pytest.raises(TypeError):
             setattr(action, attr, {'dict': 'I am'})
             setattr(action, attr, ['list I am'])
-    action.datetime = datetime.now()
     with pytest.raises(TypeError):
         action.datetime = 'now I am'
+
+
+def test_entity_attr_raises(project_path):
+    from datetime import datetime, timedelta
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+
+    for attr in ['users', 'tags']:
+        with pytest.raises(TypeError):
+            setattr(entity, attr, {'dict': 'I am'})
+            setattr(entity, attr, 'string I am')
+    for attr in ['type', 'location']:
+        setattr(entity, attr, 'string I am')
+        with pytest.raises(TypeError):
+            setattr(entity, attr, {'dict': 'I am'})
+            setattr(entity, attr, ['list I am'])
+    with pytest.raises(TypeError):
+        entity.datetime = 'now I am'
+
+
+
+def test_action_attr_set_get(project_path):
+    from datetime import datetime, timedelta
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    p = {
+        'users': ['my'],
+        'location': 'room',
+        'type': 'recording',
+        'now': datetime.now(),
+        'tags': ['e'],
+        'entities': ['one']
+    }
+    for key, val in p.items():
+        setattr(action, key, val)
+    for key, val in p.items():
+        gval = getattr(action, key)
+        assert gval == val
+
+
+def test_entitiy_attr_set_get(project_path):
+    from datetime import datetime, timedelta
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    p = {
+        'users': ['my'],
+        'location': 'room',
+        'type': 'recording',
+        'now': datetime.now(),
+        'tags': ['e']
+    }
+    for key, val in p.items():
+        setattr(entity, key, val)
+    for key, val in p.items():
+        gval = getattr(entity, key)
+        assert gval == val
+
+def test_property_list(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+
+    orig_list = ['sub1', 'sub2']
+    action.users = orig_list
+    prop_list = action.users
+    assert isinstance(prop_list, expipe.core.PropertyList)
+    prop_list.append('sub3')
+    orig_list.append('sub3')
+    prop_list.extend(['sub4'])
+    orig_list.extend(['sub4'])
+    assert set(orig_list) == set(prop_list)
+    reconstructed_prop_list = [prop_list[i] for i in range(len(prop_list))]
+    assert 'sub4' in prop_list
+    assert set(str(prop_list)) == set(str(orig_list))
 
 
 def test_action_attr_list(project_path):
@@ -251,6 +323,23 @@ def test_create_deep_module_content(project_path):
 ######################################################################################################
 
 # TODO should check that we get a dict that contains the same items
+def test_entity_messages_setter(project_path):
+    from datetime import datetime, timedelta
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ACTION_ID)
+    message_manager = entity.messages
+
+    assert len(message_manager) == 0
+
+    time = datetime(2017, 6, 1, 21, 42, 20)
+    text = "my message"
+    user = "user1"
+
+    msg_object = entity.create_message(text=text, user=user, datetime=time)
+    with pytest.raises(KeyError):
+        entity.create_message(text=text, user=user, datetime=time)
+
+
 def test_action_messages_setter(project_path):
     from datetime import datetime, timedelta
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
@@ -267,6 +356,8 @@ def test_action_messages_setter(project_path):
 
     messages = [msg_1]
     msg_object = action.create_message(text=text, user=user, datetime=time)
+    with pytest.raises(KeyError):
+        action.create_message(text=text, user=user, datetime=time)
 
     assert isinstance(msg_object, expipe.core.Message)
     assert msg_object.text == text
@@ -429,19 +520,61 @@ def test_isinstance_template(project_path):
 # create/delete
 ######################################################################################################
 def test_create_project(project_path):
+    expipe.create_project(project_path, pytest.PROJECT_ID)
+
+
+def test_require_project(project_path):
     expipe.require_project(project_path, pytest.PROJECT_ID)
+
+
+def test_create_get_project(project_path):
+    with pytest.raises(KeyError):
+        expipe.get_project(project_path)
+    expipe.create_project(project_path, pytest.PROJECT_ID)
+    expipe.get_project(project_path)
+
+
+def test_project_config(project_path):
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
+    config = {
+        "database_version": 2,
+        "type": "project",
+        "project": pytest.PROJECT_ID
+    }
+    for key in config.keys():
+        assert project.config[key] == config[key]
 
 
 def test_create_project_inside_project_raises(project_path):
-    expipe.require_project(project_path, pytest.PROJECT_ID)
+    expipe.create_project(project_path, pytest.PROJECT_ID)
     with pytest.raises(KeyError):
-        expipe.require_project(project_path / 'new', pytest.PROJECT_ID + '1')
+        expipe.create_project(project_path / 'new', pytest.PROJECT_ID + '1')
 
 
 def test_create_action(project_path):
-    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
+    action = project.create_action(pytest.ACTION_ID)
+    project.actions[pytest.ACTION_ID]
+
+
+def test_requre_action(project_path):
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
     project.actions[pytest.ACTION_ID]
+
+
+def test_create_entity(project_path):
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
+    entity = project.create_entity(pytest.ENTITY_ID)
+    project.entities[pytest.ENTITY_ID]
+    with pytest.raises(KeyError):
+        project.create_entity(pytest.ENTITY_ID)
+
+
+def test_require_entity(project_path):
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    entity = project.require_entity(pytest.ENTITY_ID)
+    project.entities[pytest.ENTITY_ID]
 
 
 def test_create_action_module(project_path):
@@ -449,11 +582,50 @@ def test_create_action_module(project_path):
 
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-
+    # contents cannot be string
+    with pytest.raises(TypeError):
+        action.create_module(
+            pytest.ACTION_MODULE_ID, contents='module_contents')
+    # contents can be dict
     action_module = action.create_module(
         pytest.ACTION_MODULE_ID, contents=module_contents)
-    action.modules[pytest.ACTION_MODULE_ID]
+    assert action_module == module_contents
 
+    module_contents = ['species', 1]
+    # contents can be list
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID + '_1', contents=module_contents)
+    assert action_module == module_contents
+    import numpy as np
+    module_contents = np.array(['species', 1])
+    # contents can be array
+    action_module = action.create_module(
+        pytest.ACTION_MODULE_ID + '_2', contents=module_contents)
+    assert action_module == module_contents.tolist()
+
+
+def test_create_template(project_path):
+    template_contents = {
+        'species': {'value': 'rat'}}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    # no identifier
+    with pytest.raises(ValueError):
+        template = project.require_template(
+            pytest.TEMPLATE_ID, template_contents)
+
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+    template = project.require_template(
+        pytest.TEMPLATE_ID, template_contents)
+    # cannot overwrite with create
+    with pytest.raises(KeyError):
+        template = project.create_template(
+            pytest.TEMPLATE_ID, template_contents)
+    # require gets it
+    template = project.require_template(
+        pytest.TEMPLATE_ID)
 
 def test_create_action_module_from_template(project_path):
     template_contents = {
@@ -471,14 +643,38 @@ def test_create_action_module_from_template(project_path):
     assert module_contents == template_contents
 
 
-def test_create_project_module(project_path):
+def test_create_action_module_from_template_no_module_name(project_path):
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
+    template = project.create_template(pytest.TEMPLATE_ID, template_contents)
+    action = project.create_action(pytest.ACTION_ID)
+    action_module = action.create_module(template=pytest.TEMPLATE_ID)
+    assert action.modules[pytest.TEMPLATE_ID] == template_contents
+
+
+def test_require_action_module_from_template_no_module_name(project_path):
+    template_contents = {
+        'species': {'value': 'rat'},
+        'identifier': pytest.TEMPLATE_ID}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    template = project.require_template(pytest.TEMPLATE_ID, template_contents)
+    action = project.require_action(pytest.ACTION_ID)
+    action_module = action.require_module(template=pytest.TEMPLATE_ID)
+    assert action.modules[pytest.TEMPLATE_ID] == template_contents
+
+
+def test_create_retrieve_project_module(project_path):
     module_contents = {'species': {'value': 'rat'}}
 
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
     project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
-    project.modules[pytest.PROJECT_MODULE_ID]
+    assert project.modules[pytest.PROJECT_MODULE_ID] == module_contents
 
 
 def test_set_project_module_deep(project_path):
@@ -487,8 +683,29 @@ def test_set_project_module_deep(project_path):
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
 
-    project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
+    mod = project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
     project.modules[pytest.PROJECT_MODULE_ID]['species']['value'] = 'mouse'
+    assert mod['species']['value'] == 'mouse'
+
+
+def test_iterate_module_contents(project_path):
+        module_contents = {
+            'species': {'value': 'rat'},
+        }
+
+        project = expipe.require_project(project_path, pytest.PROJECT_ID)
+        action = project.require_action(pytest.ACTION_ID)
+
+        mod = project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
+        for mod_cont, true_cont in zip(mod.values(), module_contents.values()):
+            assert mod_cont == true_cont
+
+
+def test_action_has_no_contents(project_path):
+        project = expipe.require_project(project_path, pytest.PROJECT_ID)
+        action = project.require_action(pytest.ACTION_ID)
+        with pytest.raises(AttributeError):
+            action.contents
 
 
 def test_delete_action(project_path):
@@ -696,7 +913,7 @@ def test_require_create_get_action(project_path):
 
     # Create an existing action
     action = project.create_action(pytest.ACTION_ID)
-    with pytest.raises(NameError):
+    with pytest.raises(KeyError):
         action = project.create_action(pytest.ACTION_ID)
 
     # Require an existing action

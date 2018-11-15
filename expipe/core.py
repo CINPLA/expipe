@@ -129,7 +129,7 @@ class ExpipeObject:
             if name is None:
                 name = _name
         if name in self._backend.modules:
-            raise NameError(
+            raise KeyError(
                 "Module " + name + " already exists in " + self.id + ".")
 
         return self._create_module(
@@ -170,12 +170,6 @@ class Project(ExpipeObject):
             backend
         )
 
-    def get_action(self, name):
-        warnings.warn(
-            "`project.get_action(name)` is deprecated, please use `project.actions[name]` instead",
-            DeprecationWarning)
-        return self.actions[name]
-
     @property
     def config(self):
         return self._backend.config
@@ -203,7 +197,7 @@ class Project(ExpipeObject):
         Create and return an action. Fails if the target name already exists.
         """
         if name in self.actions:
-            raise NameError(
+            raise KeyError(
                 "Action " + name + " already exists in " + self.id + ".")
 
         return self._create_action(name)
@@ -239,7 +233,7 @@ class Project(ExpipeObject):
         Create and return an entity. Fails if the target name already exists.
         """
         if name in self.entities:
-            raise NameError(
+            raise KeyError(
                 "Entity " + name + " already exists in " + self.id + ".")
 
         return self._create_entity(name)
@@ -259,7 +253,8 @@ class Project(ExpipeObject):
     def _create_template(self, name, contents):
         dtime = dt.datetime.today().strftime(datetime_format)
         contents.update({"registered": dtime})
-        assert 'identifier' in contents
+        if not 'identifier' in contents:
+            raise ValueError('Template contents must contain "identifier"')
         self._backend.templates[name] = contents
         return self.templates[name]
 
@@ -277,7 +272,7 @@ class Project(ExpipeObject):
         Create and return an template. Fails if the target name already exists.
         """
         if name in self.templates:
-            raise NameError(
+            raise KeyError(
                 "Template " + name + " already exists in " + self.id + ".")
 
         return self._create_template(name, contents)
@@ -406,12 +401,6 @@ class Action(ExpipeObject):
             action_id,
             backend
         )
-
-    def get_module(self, name):
-        warnings.warn(
-            "The method`action.get_module(name)` is deprecated. "
-            "Please use `action.modules[name]` instead", DeprecationWarning)
-        return self.modules[name]
 
     @property
     def messages(self):
@@ -552,10 +541,6 @@ class Message:
         self._backend = backend
 
     @property
-    def name(self):
-        return self._name
-
-    @property
     def text(self):
         return self._backend.contents.get(name="text")
 
@@ -647,8 +632,6 @@ class PropertyList:
         self._backend.set(self.name, data)
 
     def dtype_manager(self, value, iter_value=False, retrieve=False):
-        if value is None or self.dtype is None:
-            return
         if iter_value:
             if not all(isinstance(v, self.dtype) for v in value):
                 raise TypeError('Expected ' + str(self.dtype) + ' got ' +
