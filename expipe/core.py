@@ -711,9 +711,8 @@ def get_project(path, name=None):
     return Project(project, backend)
 
 
-def create_project(path, name=None, **kw):
+def create_project(path, name=None):
     path = pathlib.Path(path)
-    local_config = kw.get('local_config') or {}
 
     name = name or path.stem
 
@@ -726,17 +725,14 @@ def create_project(path, name=None, **kw):
     path.mkdir(parents=True, exist_ok=False)
 
     local_config_path = path / "expipe.yaml"
-    local_config.update({
+    local_config = {
         "database_version": 2,
         "type": "project",
         "project": name
-    })
+    }
 
     with local_config_path.open('w') as f:
         yaml.dump(local_config, f)
-
-    if 'project_config' in kw:
-        config._dump_config_by_name(name, kw['project_config'])
 
     return get_project(path)
 

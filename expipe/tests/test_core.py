@@ -40,6 +40,7 @@ def test_action_attr_raises(project_path):
         with pytest.raises(TypeError):
             setattr(action, attr, {'dict': 'I am'})
             setattr(action, attr, 'string I am')
+            setattr(action, attr, [['string I am']])
     for attr in ['type', 'location']:
         setattr(action, attr, 'string I am')
         with pytest.raises(TypeError):
@@ -58,6 +59,7 @@ def test_entity_attr_raises(project_path):
         with pytest.raises(TypeError):
             setattr(entity, attr, {'dict': 'I am'})
             setattr(entity, attr, 'string I am')
+            setattr(entity, attr, [['string I am']])
     for attr in ['type', 'location']:
         setattr(entity, attr, 'string I am')
         with pytest.raises(TypeError):
@@ -76,7 +78,7 @@ def test_action_attr_set_get(project_path):
         'users': ['my'],
         'location': 'room',
         'type': 'recording',
-        'now': datetime.now(),
+        'datetime': datetime.now().replace(microsecond=0),
         'tags': ['e'],
         'entities': ['one']
     }
@@ -95,7 +97,7 @@ def test_entitiy_attr_set_get(project_path):
         'users': ['my'],
         'location': 'room',
         'type': 'recording',
-        'now': datetime.now(),
+        'datetime': datetime.now().replace(microsecond=0),
         'tags': ['e']
     }
     for key, val in p.items():
@@ -523,6 +525,12 @@ def test_create_project(project_path):
     expipe.create_project(project_path, pytest.PROJECT_ID)
 
 
+def test_create_project_raises_exist_but_no_project(project_path):
+    project_path.mkdir(parents=True)
+    with pytest.raises(FileExistsError):
+        expipe.create_project(project_path, pytest.PROJECT_ID)
+
+
 def test_require_project(project_path):
     expipe.require_project(project_path, pytest.PROJECT_ID)
 
@@ -560,7 +568,7 @@ def test_create_action(project_path):
 def test_requre_action(project_path):
     project = expipe.create_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
-    project.actions[pytest.ACTION_ID]
+    project.require_action(pytest.ACTION_ID)
 
 
 def test_create_entity(project_path):
@@ -574,7 +582,7 @@ def test_create_entity(project_path):
 def test_require_entity(project_path):
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
     entity = project.require_entity(pytest.ENTITY_ID)
-    project.entities[pytest.ENTITY_ID]
+    project.require_entity(pytest.ENTITY_ID)
 
 
 def test_create_action_module(project_path):
@@ -675,6 +683,10 @@ def test_create_retrieve_project_module(project_path):
 
     project.create_module(pytest.PROJECT_MODULE_ID, contents=module_contents)
     assert project.modules[pytest.PROJECT_MODULE_ID] == module_contents
+    project.require_module(pytest.PROJECT_MODULE_ID)
+    with pytest.raises(KeyError):
+        project.create_module(
+            pytest.PROJECT_MODULE_ID, contents=module_contents)
 
 
 def test_set_project_module_deep(project_path):
