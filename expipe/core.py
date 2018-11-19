@@ -351,7 +351,10 @@ class Entity(ExpipeObject):
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._backend.attributes.get('datetime'), datetime_format)
+        dtime = self._backend.attributes.get('datetime')
+        if dtime is None:
+            return dt.datetime(1,1,1,0)
+        return dt.datetime.strptime(dtime, datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -472,7 +475,10 @@ class Action(ExpipeObject):
 
     @property
     def datetime(self):
-        return dt.datetime.strptime(self._backend.attributes.get('datetime'), datetime_format)
+        dtime = self._backend.attributes.get('datetime')
+        if dtime is None:
+            return dt.datetime(1,1,1,0)
+        return dt.datetime.strptime(dtime, datetime_format)
 
     @datetime.setter
     def datetime(self, value):
@@ -515,6 +521,10 @@ class Action(ExpipeObject):
     @property
     def data(self):
         return MapManager(self._backend.data)
+
+    @property
+    def attributes(self):
+        return self._backend.attributes.get()
 
 
 class Module(MapManager):
