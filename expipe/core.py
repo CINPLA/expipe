@@ -2,7 +2,7 @@ import expipe
 from . import config
 import os
 import os.path as op
-import collections
+import collections.abc
 import datetime as dt
 import quantities as pq
 import numpy as np
