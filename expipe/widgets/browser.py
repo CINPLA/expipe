@@ -5,6 +5,7 @@ import uuid
 from IPython.display import display_javascript, display_html, display, clear_output
 import json
 from expipe.backends.filesystem import convert_quantities
+from collections import OrderedDict
 
 
 def _build_dict_tree(key, value):
@@ -43,13 +44,13 @@ class Browser:
         self.project_path = pathlib.Path(project_path)
         self.project = expipe.require_project(self.project_path)
 
-        self.action_attributes = {
-            'location': {},
-            'users': {},
-            'tags': {},
-            'datetime': {},
-            'entities': {}
-        }
+        self.action_attributes = OrderedDict([
+            ('tags', {}),
+            ('location', {}),
+            ('users', {}),
+            ('entities', {}),
+            ('datetime', {}),
+        ])
         for action in self.project.actions:
             for key, container in self.action_attributes.items():
                 values = getattr(self.project.actions[action], key)
@@ -70,10 +71,6 @@ class Browser:
             options=actions_list,
             disabled=False
         )
-
-        for group in self.action_attributes.values():
-            for attr in group.values():
-                attr['state'] = False
 
         checkbox_group = {}
 
@@ -97,11 +94,11 @@ class Browser:
 
         def on_export_actions(change):
             if export_actions_name.value == '':
-                print('You have to give a name to export actions list.')
+                print('You have to give a name to export actions list.') # TODO show text in widget
                 return
             actions = actions_visible.value
             if len(actions) == 0:
-                print('You have to select from the list, "ctrl+a" for all')
+                print('You have to select from the list, "ctrl+a" for all') # TODO show text in widget
             action = self.project.create_action(export_actions_name.value)
             actions_select_module = action.create_module(
                 'actions_to_include', contents={'actions': actions})
@@ -117,6 +114,7 @@ class Browser:
         checkbox_groups = []
         checkbox_group_names = []
         for name, value in self.action_attributes.items():
+            print(name)
             temp = []
             for key in value:
                 ch = widgets.Checkbox(
@@ -139,7 +137,7 @@ class Browser:
         actions_select = widgets.VBox([actions_visible, export_actions_name, export_actions_button])
         return widgets.HBox([action_attributes, actions_select])
 
-    def _modules_view(self):
+    def _action_modules_view(self):
         actions_list = list(self.project.actions.keys())
         if len(actions_list) == 0:
             actions_list_empty = True
@@ -189,6 +187,35 @@ class Browser:
 
         return widgets.HBox([actions_select, modules_list, out], style={'overflow': 'scroll'})
 
+    def _project_modules_view(self):
+        modules_list = list(self.project.modules.keys())
+        if len(modules_list) == 0:
+            modules_list_empty = True
+        else:
+            modules_list_empty = False
+            module_first = self.project.modules[modules_list[0]]
+
+        modules_select = widgets.Select(
+            options=modules_list,
+            disabled=False,
+            value=None if modules_list_empty else modules_list[0]
+        )
+        out = widgets.Output()
+        if not modules_list_empty:
+            with out:
+                display_dict_html(module_first.contents)
+
+
+        def on_select_module(change):
+            if change['name'] == 'value':
+                module = self.project.modules[change['owner'].value]
+                with out:
+                    display_dict_html(module.contents)
+
+        modules_select.observe(on_select_module, names='value')
+
+        return widgets.HBox([modules_select, out], style={'overflow': 'scroll'})
+
     def _templates_view(self):
         templates_list = list(self.project.templates.keys())
         if len(templates_list) == 0:
@@ -218,7 +245,7 @@ class Browser:
 
         return widgets.HBox([templates_select, out])
 
-    def _attributes_view(self):
+    def _action_attributes_view(self):
         actions_list = list(self.project.actions.keys())
         if len(actions_list) == 0:
             actions_list_empty = True
@@ -277,9 +304,22 @@ class Browser:
         return widgets.HBox([entities_select, out], style={'overflow': 'scroll'})
 
     def display(self):
-        tab_titles = ['Actions', 'Attributes', 'Modules', 'Templates', 'Entities']
+        # Actions tab
+        actions_tab_tab_titles = ['Export', 'Attributes', 'Modules']
+        actions_tab = widgets.Tab()
+        actions_tab.children = [
+            self._actions_view(), self._action_attributes_view(),
+            self._action_modules_view()
+        ]
+        for i, title in enumerate(actions_tab_tab_titles):
+            actions_tab.set_title(i, title)
+
+        tab_titles = ['Actions', 'Modules','Templates', 'Entities']
         tab = widgets.Tab()
-        tab.children = [self._actions_view(), self._attributes_view(), self._modules_view(), self._templates_view(), self._entities_view()]
+        tab.children = [
+            actions_tab, self._project_modules_view(), self._templates_view(),
+            self._entities_view()
+        ]
         for i, title in enumerate(tab_titles):
             tab.set_title(i, title)
         display(tab)
