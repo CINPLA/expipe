@@ -114,7 +114,6 @@ class Browser:
         checkbox_groups = []
         checkbox_group_names = []
         for name, value in self.action_attributes.items():
-            print(name)
             temp = []
             for key in value:
                 ch = widgets.Checkbox(
