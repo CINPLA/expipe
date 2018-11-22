@@ -17,6 +17,7 @@ requirements:
   run:
     - python
     - setuptools
+    - ipython
     - pip
     - ruamel_yaml
     - numpy
