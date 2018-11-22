@@ -1,5 +1,7 @@
 from ..backend import *
-from ..core import *
+from ..core import Action, Entity, Project, Module, Message, MapManager, Template
+import quantities as pq
+import numpy as np
 import pathlib
 import shutil
 import os
@@ -186,12 +188,6 @@ class FileSystemYamlManager(AbstractObjectManager):
         if isinstance(result, dict):
             result = MapManager(FileSystemYamlManager(self.path, self.ref_path + [name]))
         return result
-
-    def __repr__(self):
-        result = self._get_yaml_contents()
-        for p in self.ref_path:
-            result = result[p]
-        return str(result)
 
     def __eq__(self, other):
         result = self._get_yaml_contents()

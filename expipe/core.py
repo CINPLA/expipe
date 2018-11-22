@@ -1,17 +1,13 @@
-import expipe
 from . import config
-import os
-import os.path as op
+from . import widgets
+import expipe
 import collections.abc
 import datetime as dt
-import quantities as pq
 import numpy as np
 import warnings
-import copy
 import abc
 import pathlib
-import re
-import shutil
+import IPython.display as ipd
 try:
     import ruamel.yaml as yaml
 except ImportError:
@@ -57,9 +53,6 @@ class MapManager:
     def __eq__(self, other):
         return self._backend.__eq__(other)
 
-    def __repr__(self):
-        return self._backend.__repr__()
-
     def __getitem__(self, name):
         return self._backend.__getitem__(name)
 
@@ -84,6 +77,9 @@ class MapManager:
     def values(self):
         return collections.abc.ValuesView(self)
 
+    def _ipython_key_completions_(self):
+        return self.keys()
+
     @property
     def contents(self):
         if hasattr(self._backend, 'contents'):
@@ -91,6 +87,52 @@ class MapManager:
         else:
             name = self._backend.__class__.__name__
             raise AttributeError('{} has no attribute "contents"'.format(name))
+
+
+class Modules(MapManager):
+    def __init__(self, object, backend):
+        super(Modules, self).__init__(backend=backend)
+        self.object = object
+
+    def _ipython_display_(self):
+        ipd.display(widgets.display.modules_view(self.object))
+
+
+class Actions(MapManager):
+    def __init__(self, object, backend):
+        super(Actions, self).__init__(backend=backend)
+        self.object = object
+
+    def _ipython_display_(self):
+        ipd.display(widgets.display.actions_view(self.object))
+
+
+class Entities(MapManager):
+    def __init__(self, object, backend):
+        super(Entities, self).__init__(backend=backend)
+        self.object = object
+
+    def _ipython_display_(self):
+        ipd.display(widgets.display.entities_view(self.object))
+
+
+class Templates(MapManager):
+    def __init__(self, object, backend):
+        super(Templates, self).__init__(backend=backend)
+        self.object = object
+
+    def _ipython_display_(self):
+        ipd.display(widgets.display.templates_view(self.object))
+
+
+class Messages(MapManager):
+    def __init__(self, object, backend):
+        super(Messages, self).__init__(backend=backend)
+        self.object = object
+
+    def _ipython_display_(self):
+        ipd.display(widgets.display.messages_view(self.object))
+
 
 class ExpipeObject:
     """
@@ -102,7 +144,7 @@ class ExpipeObject:
 
     @property
     def modules(self):
-        return MapManager(self._backend.modules)
+        return Modules(self, self._backend.modules)
 
     def require_module(self, name=None, template=None, contents=None):
         """
@@ -174,9 +216,12 @@ class Project(ExpipeObject):
     def config(self):
         return self._backend.config
 
+    def _ipython_display_(self):
+        ipd.display(widgets.display.display_dict_html(self.config))
+
     @property
     def actions(self):
-        return MapManager(self._backend.actions)
+        return Actions(self, self._backend.actions)
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -212,7 +257,7 @@ class Project(ExpipeObject):
 
     @property
     def entities(self):
-        return MapManager(self._backend.entities)
+        return Entities(self, self._backend.entities)
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -248,7 +293,7 @@ class Project(ExpipeObject):
 
     @property
     def templates(self):
-        return MapManager(self._backend.templates)
+        return Templates(self, self._backend.templates)
 
     def _create_template(self, name, contents):
         dtime = dt.datetime.today().strftime(datetime_format)
@@ -286,19 +331,15 @@ class Project(ExpipeObject):
         del template
 
 
-class Entity(ExpipeObject):
-    """
-    Expipe entity object
-    """
-    def __init__(self, entity_id, backend):
-        super(Entity, self).__init__(
-            entity_id,
+class ExpipeSubObject(ExpipeObject):
+    def __init__(self, object_id, backend):
+        super(ExpipeSubObject, self).__init__(
+            object_id,
             backend
         )
-
     @property
     def messages(self):
-        return MapManager(self._backend.messages)
+        return Messages(self, self._backend.messages)
 
     def create_message(self, text, user=None, datetime=None):
         datetime = datetime or dt.datetime.now()
@@ -394,8 +435,23 @@ class Entity(ExpipeObject):
         value = list(set(value))
         self._backend.attributes.set('tags', value)
 
+    @property
+    def attributes(self):
+        return self._backend.attributes.get()
 
-class Action(ExpipeObject):
+
+class Entity(ExpipeSubObject):
+    """
+    Expipe entity object
+    """
+    def __init__(self, entity_id, backend):
+        super(Entity, self).__init__(
+            entity_id,
+            backend
+        )
+
+
+class Action(ExpipeSubObject):
     """
     Expipe action object
     """
@@ -404,59 +460,6 @@ class Action(ExpipeObject):
             action_id,
             backend
         )
-
-    @property
-    def messages(self):
-        return MapManager(self._backend.messages)
-
-    def create_message(self, text, user=None, datetime=None):
-        datetime = datetime or dt.datetime.now()
-        user = user or expipe.settings.get("username")
-
-        self._assert_message_dtype(text=text, user=user, datetime=datetime)
-
-        datetime_str = dt.datetime.strftime(datetime, datetime_format)
-        message = {
-            "text": text,
-            "user": user,
-            "datetime": datetime_str
-        }
-        datetime_key_str = dt.datetime.strftime(datetime, datetime_key_format)
-
-        if datetime_key_str in self._backend.messages:
-            raise KeyError("Message with the same datetime already exists '{}'".format(datetime_key_str))
-
-        self._backend.messages[datetime_key_str] = message
-        return self._backend.messages[datetime_key_str]
-
-    def delete_messages(self):
-        for message in self.messages:
-            self._backend.messages.delete(name=message)
-
-    def _assert_message_dtype(self, text, user, datetime):
-        _assert_message_text_dtype(text)
-        _assert_message_user_dtype(user)
-        _assert_message_datetime_dtype(datetime)
-
-    @property
-    def location(self):
-        return self._backend.attributes.get('location')
-
-    @location.setter
-    def location(self, value):
-        if not isinstance(value, str):
-            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.attributes.set('location', value)
-
-    @property
-    def type(self):
-        return self._backend.attributes.get('type')
-
-    @type.setter
-    def type(self, value):
-        if not isinstance(value, str):
-            raise TypeError('Expected "str" got "' + str(type(value)) + '"')
-        self._backend.attributes.set('type', value)
 
     @property
     def entities(self):
@@ -474,57 +477,8 @@ class Action(ExpipeObject):
         self._backend.attributes.set('entities', value)
 
     @property
-    def datetime(self):
-        dtime = self._backend.attributes.get('datetime')
-        if dtime is None:
-            return dt.datetime(1,1,1,0)
-        return dt.datetime.strptime(dtime, datetime_format)
-
-    @datetime.setter
-    def datetime(self, value):
-        if not isinstance(value, dt.datetime):
-            raise TypeError('Expected "datetime" got "' + str(type(value)) +
-                            '".')
-        dtime = value.strftime(datetime_format)
-        self._backend.attributes.set('datetime', dtime)
-
-    @property
-    def users(self):
-        return PropertyList(self._backend.attributes, 'users', dtype=str, unique=True,
-                           data=self._backend.attributes.get('users'))
-
-    @users.setter
-    def users(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                            str([type(v) for v in value]))
-        value = list(set(value))
-        self._backend.attributes.set('users', value)
-
-    @property
-    def tags(self):
-        return PropertyList(self._backend.attributes, 'tags', dtype=str, unique=True,
-                           data=self._backend.attributes.get('tags'))
-
-    @tags.setter
-    def tags(self, value):
-        if not isinstance(value, list):
-            raise TypeError('Expected "list", got "' + str(type(value)) + '"')
-        if not all(isinstance(v, str) for v in value):
-            raise TypeError('Expected contents to be "str" got ' +
-                            str([type(v) for v in value]))
-        value = list(set(value))
-        self._backend.attributes.set('tags', value)
-
-    @property
     def data(self):
         return MapManager(self._backend.data)
-
-    @property
-    def attributes(self):
-        return self._backend.attributes.get()
 
 
 class Module(MapManager):
