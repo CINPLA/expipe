@@ -1,6 +1,7 @@
 import ipywidgets
 import IPython.display as ipd
 from ..backends.filesystem import convert_quantities
+import difflib
 
 
 def _build_dict_tree(key, value):
@@ -45,9 +46,10 @@ def modules_view(holder):
     modules_select = ipywidgets.Select(
         options=modules_list,
         disabled=False,
-        value=None if modules_list_empty else modules_list[0]
+        value=None if modules_list_empty else modules_list[0],
+        layout={'height': '200px'}
     )
-    out = ipywidgets.Output()
+    out = ipywidgets.Output(layout={'height': '250px'})
     if not modules_list_empty:
         with out:
             display_dict_html(module_first.contents)
@@ -60,8 +62,9 @@ def modules_view(holder):
                 display_dict_html(module.contents)
 
     modules_select.observe(on_select_module, names='value')
+    search_select = _add_search_field(modules_select)
 
-    return ipywidgets.HBox([modules_select, out], style={'overflow': 'scroll'})
+    return ipywidgets.HBox([search_select, out], style={'overflow': 'scroll'})
 
 
 def messages_view(holder):
@@ -75,9 +78,10 @@ def messages_view(holder):
     messages_select = ipywidgets.Select(
         options=messages_list,
         disabled=False,
-        value=None if messages_list_empty else messages_list[0]
+        value=None if messages_list_empty else messages_list[0],
+        layout={'height': '200px'}
     )
-    out = ipywidgets.Output()
+    out = ipywidgets.Output(layout={'height': '250px'})
     if not messages_list_empty:
         with out:
             display_dict_html(message_first.contents)
@@ -90,8 +94,9 @@ def messages_view(holder):
                 display_dict_html(message.contents)
 
     messages_select.observe(on_select_message, names='value')
+    search_select = _add_search_field(messages_select)
 
-    return ipywidgets.HBox([messages_select, out], style={'overflow': 'scroll'})
+    return ipywidgets.HBox([search_select, out], style={'overflow': 'scroll'})
 
 
 def templates_view(project):
@@ -105,10 +110,11 @@ def templates_view(project):
     templates_select = ipywidgets.Select(
         options=templates_list,
         disabled=False,
-        value=None if templates_list_empty else templates_list[0]
+        value=None if templates_list_empty else templates_list[0],
+        layout={'height': '200px'}
     )
 
-    out = ipywidgets.Output()
+    out = ipywidgets.Output(layout={'height': '250px'})
     if not templates_list_empty:
         with out:
             display_dict_html(template_first.contents)
@@ -120,8 +126,9 @@ def templates_view(project):
                 display_dict_html(template.contents)
 
     templates_select.observe(on_select_template, names='value')
+    search_select = _add_search_field(templates_select)
 
-    return ipywidgets.HBox([templates_select, out])
+    return ipywidgets.HBox([search_select, out])
 
 
 def entities_view(project):
@@ -135,10 +142,11 @@ def entities_view(project):
     entities_select = ipywidgets.Select(
         options=entities_list,
         disabled=False,
-        value=None if entities_list_empty else entities_list[0]
+        value=None if entities_list_empty else entities_list[0],
+        layout={'height': '200px'}
     )
 
-    out = ipywidgets.Output()
+    out = ipywidgets.Output(layout={'height': '250px'})
     if not entities_list_empty:
         with out:
             display_dict_html(entity_first.attributes)
@@ -150,8 +158,9 @@ def entities_view(project):
                 display_dict_html(entity.attributes)
 
     entities_select.observe(on_select_entity, names='value')
+    search_select = _add_search_field(entities_select)
 
-    return ipywidgets.HBox([entities_select, out], style={'overflow': 'scroll'})
+    return ipywidgets.HBox([search_select, out], style={'overflow': 'scroll'})
 
 
 def actions_view(project):
@@ -165,10 +174,11 @@ def actions_view(project):
     actions_select = ipywidgets.Select(
         options=actions_list,
         disabled=False,
-        value=None if actions_list_empty else actions_list[0]
+        value=None if actions_list_empty else actions_list[0],
+        layout={'height': '200px'}
     )
 
-    out = ipywidgets.Output()
+    out = ipywidgets.Output(layout={'height': '250px'})
     if not actions_list_empty:
         with out:
             display_dict_html(action_first.attributes)
@@ -180,5 +190,24 @@ def actions_view(project):
                 display_dict_html(action.attributes)
 
     actions_select.observe(on_select_action, names='value')
+    search_select = _add_search_field(actions_select)
 
-    return ipywidgets.HBox([actions_select, out], style={'overflow': 'scroll'})
+    return ipywidgets.HBox([search_select, out], style={'overflow': 'scroll'})
+
+
+def _add_search_field(selectbox):
+    search_widget = ipywidgets.Text(placeholder='Search')
+    orig_list = list(selectbox.options)
+    # Wire the search field to the checkboxes
+    def on_text_change(change):
+        search_input = change['new']
+        if search_input == '':
+            # Reset search field
+            new_options = orig_list
+        else:
+            # Filter by search field using difflib.
+            new_options = [a for a in orig_list if search_input in a]
+        selectbox.options = new_options
+
+    search_widget.observe(on_text_change, names='value')
+    return ipywidgets.VBox([search_widget, selectbox])

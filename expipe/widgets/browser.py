@@ -34,11 +34,12 @@ class Browser:
                             'state': False
                         }
 
-    def _actions_view(self):
+    def _export_view(self):
         actions_list = list(self.project.actions.keys())
         actions_visible = ipywidgets.SelectMultiple(
             options=actions_list,
-            disabled=False
+            disabled=False,
+            layout={'height': '500px'}
         )
 
         checkbox_group = {}
@@ -76,7 +77,7 @@ class Browser:
         export_actions_button = ipywidgets.Button(
             description='Export actions',
             disabled=False,
-            button_style='', # 'success', 'info', 'warning', 'danger' or ''
+            button_style='',
         )
         export_actions_button.on_click(on_export_actions)
 
@@ -93,16 +94,17 @@ class Browser:
                 ch.observe(on_checkbox_change, names='value')
                 temp.append(ch)
                 checkbox_group[ch] = name
-            box = ipywidgets.VBox(temp, layout={'overflow': 'scroll'})
+            box = ipywidgets.VBox(temp)
             checkbox_groups.append(box)
             checkbox_group_names.append(name)
 
-        action_attributes = ipywidgets.Accordion(checkbox_groups)
+        action_attributes = ipywidgets.Accordion(
+            checkbox_groups, layout={'height': '500px'})
         for i, name in enumerate(checkbox_group_names):
             action_attributes.set_title(i, name.capitalize())
-        actions_visible.layout = {'overflow': 'scroll', 'height': '750px'} #TODO figure out how to automatically scale list height
 
-        actions_select = ipywidgets.VBox([actions_visible, export_actions_name, export_actions_button])
+        actions_select = ipywidgets.VBox(
+            [actions_visible, export_actions_name, export_actions_button])
         return ipywidgets.HBox([action_attributes, actions_select])
 
     def _action_modules_view(self):
@@ -124,14 +126,16 @@ class Browser:
         actions_select = ipywidgets.Select(
             options=actions_list,
             disabled=False,
-            value=None if actions_list_empty else actions_list[0]
+            value=None if actions_list_empty else actions_list[0],
+            layout={'height': '200px'}
         )
-        modules_list = ipywidgets.Select(
+        modules_select = ipywidgets.Select(
             options=action_first_modules,
             disabled=False,
-            value=None if modules_list_empty else action_first_modules[0]
+            value=None if modules_list_empty else action_first_modules[0],
+            layout={'height': '200px'}
         )
-        out = ipywidgets.Output()
+        out = ipywidgets.Output(layout={'height': '250px'})
         if not modules_list_empty:
             with out:
                 display.display_dict_html(module_first.contents)
@@ -142,7 +146,7 @@ class Browser:
             if change['name'] == 'value':
                 action = self.project.actions[change['owner'].value]
                 curr_state['action'] = action
-                modules_list.options = action.modules.keys()
+                modules_select.options = action.modules.keys()
 
         def on_select_module(change):
             if change['name'] == 'value':
@@ -151,9 +155,13 @@ class Browser:
                     display.display_dict_html(module.contents)
 
         actions_select.observe(on_select_action, names='value')
-        modules_list.observe(on_select_module, names='value')
+        modules_select.observe(on_select_module, names='value')
+        search_action_select = display._add_search_field(actions_select)
+        search_modules_select = display._add_search_field(modules_select)
 
-        return ipywidgets.HBox([actions_select, modules_list, out], style={'overflow': 'scroll'})
+        return ipywidgets.HBox(
+            [search_action_select, search_modules_select, out], 
+            style={'overflow': 'scroll'})
 
     def _action_messages_view(self):
         actions_list = list(self.project.actions.keys())
@@ -174,14 +182,16 @@ class Browser:
         actions_select = ipywidgets.Select(
             options=actions_list,
             disabled=False,
-            value=None if actions_list_empty else actions_list[0]
+            value=None if actions_list_empty else actions_list[0],
+            layout={'height': '200px'}
         )
-        messages_list = ipywidgets.Select(
+        messages_select = ipywidgets.Select(
             options=action_first_messages,
             disabled=False,
-            value=None if messages_list_empty else action_first_messages[0]
+            value=None if messages_list_empty else action_first_messages[0],
+            layout={'height': '200px'}
         )
-        out = ipywidgets.Output()
+        out = ipywidgets.Output(layout={'height': '250px'})
         if not messages_list_empty:
             with out:
                 display.display_dict_html(message_first.contents)
@@ -192,7 +202,7 @@ class Browser:
             if change['name'] == 'value':
                 action = self.project.actions[change['owner'].value]
                 curr_state['action'] = action
-                messages_list.options = action.messages.keys()
+                messages_select.options = action.messages.keys()
 
         def on_select_message(change):
             if change['name'] == 'value':
@@ -201,9 +211,13 @@ class Browser:
                     display.display_dict_html(message.contents)
 
         actions_select.observe(on_select_action, names='value')
-        messages_list.observe(on_select_message, names='value')
+        messages_select.observe(on_select_message, names='value')
+        search_action_select = display._add_search_field(actions_select)
+        search_message_select = display._add_search_field(messages_select)
 
-        return ipywidgets.HBox([actions_select, messages_list, out], style={'overflow': 'scroll'})
+        return ipywidgets.HBox(
+            [search_action_select, search_message_select, out],
+            style={'overflow': 'scroll'})
 
     def _project_modules_view(self):
         return display.modules_view(self.project)
@@ -222,7 +236,7 @@ class Browser:
         actions_tab_tab_titles = ['Export', 'Attributes', 'Modules', 'Messages']
         actions_tab = ipywidgets.Tab()
         actions_tab.children = [
-            self._actions_view(), self._action_attributes_view(),
+            self._export_view(), self._action_attributes_view(),
             self._action_modules_view(), self._action_messages_view()
         ]
         for i, title in enumerate(actions_tab_tab_titles):
@@ -237,27 +251,3 @@ class Browser:
         for i, title in enumerate(tab_titles):
             tab.set_title(i, title)
         ipd.display(tab)
-
-
-# def multi_checkbox_widget(descriptions):
-#     """ Widget with a search field and lots of checkboxes """
-#     search_widget = ipywidgets.Text()
-#     options_dict = {description: ipywidgets.Checkbox(description=description, value=False) for description in descriptions}
-#     options = [options_dict[description] for description in descriptions]
-#     options_widget = ipywidgets.VBox(options, layout={'overflow': 'scroll'})
-#     multi_select = ipywidgets.VBox([search_widget, options_widget])
-#
-#     # Wire the search field to the checkboxes
-#     def on_text_change(change):
-#         search_input = change['new']
-#         if search_input == '':
-#             # Reset search field
-#             new_options = [options_dict[description] for description in descriptions]
-#         else:
-#             # Filter by search field using difflib.
-#             close_matches = difflib.get_close_matches(search_input, descriptions, cutoff=0.0)
-#             new_options = [options_dict[description] for description in close_matches]
-#         options_widget.children = new_options
-#
-#     search_widget.observe(on_text_change, names='value')
-#     return multi_select
