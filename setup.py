@@ -2,15 +2,14 @@
 from setuptools import setup
 import os
 
+
 from setuptools import setup, find_packages
-import versioneer
 
 long_description = open("README.md").read()
 
 setup(name="expipe",
       packages=find_packages(),
-      version=versioneer.get_version(),
-      cmdclass=versioneer.get_cmdclass(),
+      version='1.0',
       include_package_data=True,
       author="CINPLA",
       author_email="",
