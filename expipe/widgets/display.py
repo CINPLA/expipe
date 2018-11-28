@@ -1,7 +1,7 @@
 import ipywidgets
 import IPython.display as ipd
-from ..backends.filesystem import convert_quantities
 import difflib
+import expipe
 
 
 def _build_dict_tree(key, value):
@@ -31,7 +31,7 @@ def dict_html(dictionary):
 
 def display_dict_html(dictionary):
     ipd.clear_output()
-    dictionary = convert_quantities(dictionary)
+    dictionary = expipe.backends.filesystem.convert_quantities(dictionary)
     ipd.display_html(dict_html(dictionary), raw=True)
 
 

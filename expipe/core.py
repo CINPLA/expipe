@@ -1,5 +1,6 @@
 from . import config
 from . import widgets
+from .widgets import display
 import expipe
 import collections.abc
 import datetime as dt
