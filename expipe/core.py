@@ -55,9 +55,15 @@ class MapManager:
         return self._backend.__eq__(other)
 
     def __getitem__(self, name):
+        if not isinstance(name, str):
+            raise TypeError(
+                'Expected "name" to be of type "str" got {}'.format(type(name)))
         return self._backend.__getitem__(name)
 
     def __setitem__(self, name, value):
+        if not isinstance(name, str):
+            raise TypeError(
+                'Expected "name" to be of type "str" got {}'.format(type(name)))
         return self._backend.__setitem__(name, value)
 
     def __iter__(self):
@@ -67,6 +73,9 @@ class MapManager:
         return self._backend.__len__()
 
     def __contains__(self, name):
+        if not isinstance(name, str):
+            raise TypeError(
+                'Expected "name" to be of type "str" got {}'.format(type(name)))
         return self._backend.__contains__(name)
 
     def items(self):
@@ -171,7 +180,7 @@ class ExpipeObject:
             _name, contents = self._load_template(template)
             if name is None:
                 name = _name
-        if name in self._backend.modules:
+        if name in self.modules:
             raise KeyError(
                 "Module " + name + " already exists in " + self.id + ".")
 
@@ -199,7 +208,7 @@ class ExpipeObject:
         if not isinstance(contents, (dict, list, np.ndarray)):
             raise TypeError('Contents expected "dict" or "list" got "' +
                             str(type(contents)) + '".')
-        self._backend.modules[name] = contents
+        self.modules[name] = contents
         return self.modules[name]
 
 
@@ -226,7 +235,7 @@ class Project(ExpipeObject):
 
     def _create_action(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
-        self._backend.actions[name] = {"registered": dtime}
+        self.actions[name] = {"registered": dtime}
         return self.actions[name]
 
     def require_action(self, name):
@@ -262,7 +271,7 @@ class Project(ExpipeObject):
 
     def _create_entity(self, name):
         dtime = dt.datetime.today().strftime(datetime_format)
-        self._backend.entities[name] = {"registered": dtime}
+        self.entities[name] = {"registered": dtime}
         return self.entities[name]
 
     def require_entity(self, name):
@@ -301,7 +310,7 @@ class Project(ExpipeObject):
         contents.update({"registered": dtime})
         if not 'identifier' in contents:
             raise ValueError('Template contents must contain "identifier"')
-        self._backend.templates[name] = contents
+        self.templates[name] = contents
         return self.templates[name]
 
     def require_template(self, name, contents=None):
@@ -356,11 +365,11 @@ class ExpipeSubObject(ExpipeObject):
         }
         datetime_key_str = dt.datetime.strftime(datetime, datetime_key_format)
 
-        if datetime_key_str in self._backend.messages:
+        if datetime_key_str in self.messages:
             raise KeyError("Message with the same datetime already exists '{}'".format(datetime_key_str))
 
-        self._backend.messages[datetime_key_str] = message
-        return self._backend.messages[datetime_key_str]
+        self.messages[datetime_key_str] = message
+        return self.messages[datetime_key_str]
 
     def delete_messages(self):
         for message in self.messages:

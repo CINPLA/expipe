@@ -565,6 +565,19 @@ def test_create_action(project_path):
     project.actions[pytest.ACTION_ID]
 
 
+def test_create_None_raises(project_path):
+    project = expipe.create_project(project_path, pytest.PROJECT_ID)
+    with pytest.raises(TypeError):
+        project.create_template(None, {})
+        project.create_action(None)
+        project.create_entity(None)
+        project.create_module(None)
+    action = project.create_action(pytest.ACTION_ID)
+    project.actions[pytest.ACTION_ID]
+    with pytest.raises(TypeError):
+        action.create_module(None)
+
+
 def test_requre_action(project_path):
     project = expipe.create_project(project_path, pytest.PROJECT_ID)
     action = project.require_action(pytest.ACTION_ID)
