@@ -43,6 +43,14 @@ class ListManager:
         return result
 
 
+def _assert_name_type(name):
+    if not isinstance(name, str):
+        raise TypeError(
+            'Expected "name" to be of type "str" got {}'.format(type(name)))
+    if name == '':
+        raise ValueError('Argument "name" cannot be an empty string')
+
+
 class MapManager:
     """
     Common class for all maps of objects, such as
@@ -55,15 +63,11 @@ class MapManager:
         return self._backend.__eq__(other)
 
     def __getitem__(self, name):
-        if not isinstance(name, str):
-            raise TypeError(
-                'Expected "name" to be of type "str" got {}'.format(type(name)))
+        _assert_name_type(name)
         return self._backend.__getitem__(name)
 
     def __setitem__(self, name, value):
-        if not isinstance(name, str):
-            raise TypeError(
-                'Expected "name" to be of type "str" got {}'.format(type(name)))
+        _assert_name_type(name)
         return self._backend.__setitem__(name, value)
 
     def __iter__(self):
@@ -73,9 +77,7 @@ class MapManager:
         return self._backend.__len__()
 
     def __contains__(self, name):
-        if not isinstance(name, str):
-            raise TypeError(
-                'Expected "name" to be of type "str" got {}'.format(type(name)))
+        _assert_name_type(name)
         return self._backend.__contains__(name)
 
     def items(self):
