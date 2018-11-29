@@ -411,7 +411,7 @@ class ExpipeSubObject(ExpipeObject):
 
     @datetime.setter
     def datetime(self, value):
-        if not isinstance(value, dt.date):
+        if not isinstance(value, dt.datetime):
             raise TypeError('Expected "datetime" got "' + str(type(value)) +
                             '".')
         dtime = value.strftime(datetime_format)
@@ -739,6 +739,6 @@ def _assert_message_user_dtype(user):
 
 
 def _assert_message_datetime_dtype(datetime):
-    if not isinstance(datetime, dt.date):
-        raise TypeError("Datetime must be of type 'date', not {} {}".format(type(datetime),
+    if not isinstance(datetime, dt.datetime):
+        raise TypeError("Datetime must be of type 'datetime', not {} {}".format(type(datetime),
                                                                                 datetime))
