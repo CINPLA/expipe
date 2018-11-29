@@ -1,15 +1,22 @@
-import ipywidgets
 import expipe
 import pathlib
 import uuid
-import IPython.display as ipd
 import json
 from collections import OrderedDict
 from . import display
+try:
+    import IPython.display as ipd
+    import ipywidgets
+    HAS_IPYW = True
+except ImportError as e:
+    HAS_IPYW = False
+    IPYW_ERR = e
 
 
 class Browser:
     def __init__(self, project_path):
+        if not HAS_IPYW:
+            raise IPYW_ERR
         self.project_path = pathlib.Path(project_path)
         self.project = expipe.require_project(self.project_path)
 
@@ -160,7 +167,7 @@ class Browser:
         search_modules_select = display._add_search_field(modules_select)
 
         return ipywidgets.HBox(
-            [search_action_select, search_modules_select, out], 
+            [search_action_select, search_modules_select, out],
             style={'overflow': 'scroll'})
 
     def _action_messages_view(self):

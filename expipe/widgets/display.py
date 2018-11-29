@@ -1,8 +1,10 @@
-import ipywidgets
-import IPython.display as ipd
-import difflib
 import expipe
-
+try:
+    import IPython.display as ipd
+    import ipywidgets
+    HAS_IPYW = True
+except ImportError:
+    HAS_IPYW = False
 
 def _build_dict_tree(key, value):
     contents = "<li>"
@@ -205,7 +207,7 @@ def _add_search_field(selectbox):
             # Reset search field
             new_options = orig_list
         else:
-            # Filter by search field using difflib.
+            # Filter by search field.
             new_options = [a for a in orig_list if search_input in a]
         selectbox.options = new_options
 
