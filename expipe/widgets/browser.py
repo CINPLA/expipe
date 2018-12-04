@@ -11,7 +11,11 @@ try:
 except ImportError as e:
     HAS_IPYW = False
     IPYW_ERR = e
-
+try:
+    from tqdm import tqdm
+except:
+    def tqdm(x, **kw):
+        return x
 
 class Browser:
     def __init__(self, project_path):
@@ -27,7 +31,7 @@ class Browser:
             ('entities', {}),
             ('datetime', {}),
         ])
-        for action in self.project.actions:
+        for action in tqdm(self.project.actions, desc='Indexing project'):
             for key, container in self.action_attributes.items():
                 values = getattr(self.project.actions[action], key)
                 values = values if isinstance(values, expipe.core.PropertyList) else [values]

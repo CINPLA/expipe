@@ -44,6 +44,8 @@ class ListManager:
 
 
 def _assert_name_type(name):
+    if name is None:
+        return
     if not isinstance(name, str):
         raise TypeError(
             'Expected "name" to be of type "str" got {}'.format(type(name)))
@@ -406,14 +408,18 @@ class ExpipeSubObject(ExpipeObject):
     def datetime(self):
         dtime = self._backend.attributes.get('datetime')
         if dtime is None:
-            return dt.datetime(1,1,1,0)
-        return dt.datetime.strptime(dtime, datetime_format)
+            return None
+        try:
+            return dt.datetime.strptime(dtime, datetime_format)
+        except Exception as e:
+            raise Exception(
+                '"{}" "{}": "{}"'.format(self.__class__.__name__, self.id, e))
 
     @datetime.setter
     def datetime(self, value):
         if not isinstance(value, dt.datetime):
-            raise TypeError('Expected "datetime" got "' + str(type(value)) +
-                            '".')
+            raise TypeError(
+                'Expected "datetime" got "' + str(type(value)) + '".')
         dtime = value.strftime(datetime_format)
         self._backend.attributes.set('datetime', dtime)
 
