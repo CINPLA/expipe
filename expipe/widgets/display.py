@@ -213,3 +213,118 @@ def _add_search_field(selectbox):
 
     search_widget.observe(on_text_change, names='value')
     return ipywidgets.VBox([search_widget, selectbox])
+
+
+def objects_and_modules_view(objects):
+    objects_list = list(objects.keys())
+    if len(objects_list) == 0:
+        objects_list_empty = True
+        modules_list_empty = True
+        object_first_modules = []
+        object_first = None
+    else:
+        objects_list_empty = False
+        object_first = objects[objects_list[0]]
+        object_first_modules = list(object_first.modules.keys())
+        if len(object_first_modules) == 0:
+            modules_list_empty = True
+        else:
+            modules_list_empty = False
+            module_first = object_first.modules[object_first_modules[0]]
+
+    objects_select = ipywidgets.Select(
+        options=objects_list,
+        disabled=False,
+        value=None if objects_list_empty else objects_list[0],
+        layout={'height': '200px'}
+    )
+    modules_select = ipywidgets.Select(
+        options=object_first_modules,
+        disabled=False,
+        value=None if modules_list_empty else object_first_modules[0],
+        layout={'height': '200px'}
+    )
+    out = ipywidgets.Output(layout={'height': '250px'})
+    if not modules_list_empty:
+        with out:
+            display_dict_html(module_first.contents)
+
+    curr_state = {'curr_object': object_first}
+
+    def on_select_object(change):
+        if change['name'] == 'value':
+            curr_object = objects[change['owner'].value]
+            curr_state['curr_object'] = curr_object
+            modules_select.options = curr_object.modules.keys()
+
+    def on_select_module(change):
+        if change['name'] == 'value':
+            module = curr_state['curr_object'].modules[change['owner'].value]
+            with out:
+                display_dict_html(module.contents)
+
+    objects_select.observe(on_select_object, names='value')
+    modules_select.observe(on_select_module, names='value')
+    search_object_select = _add_search_field(objects_select)
+    search_modules_select = _add_search_field(modules_select)
+
+    return ipywidgets.HBox(
+        [search_object_select, search_modules_select, out],
+        style={'overflow': 'scroll'})
+
+def objects_and_messages_view(objects):
+    objects_list = list(objects.keys())
+    if len(objects_list) == 0:
+        objects_list_empty = True
+        messages_list_empty = True
+        object_first_messages = []
+        object_first = None
+    else:
+        objects_list_empty = False
+        object_first = objects[objects_list[0]]
+        object_first_messages = list(object_first.messages.keys())
+        if len(object_first_messages) == 0:
+            messages_list_empty = True
+        else:
+            messages_list_empty = False
+            message_first = object_first.messages[object_first_messages[0]]
+
+    objects_select = ipywidgets.Select(
+        options=objects_list,
+        disabled=False,
+        value=None if objects_list_empty else objects_list[0],
+        layout={'height': '200px'}
+    )
+    messages_select = ipywidgets.Select(
+        options=object_first_messages,
+        disabled=False,
+        value=None if messages_list_empty else object_first_messages[0],
+        layout={'height': '200px'}
+    )
+    out = ipywidgets.Output(layout={'height': '250px'})
+    if not messages_list_empty:
+        with out:
+            display_dict_html(message_first.contents)
+
+    curr_state = {'curr_object': object_first}
+
+    def on_select_object(change):
+        if change['name'] == 'value':
+            curr_object = self.project.objects[change['owner'].value]
+            curr_state['curr_object'] = curr_object
+            messages_select.options = curr_object.messages.keys()
+
+    def on_select_message(change):
+        if change['name'] == 'value':
+            message = curr_state['curr_object'].messages[change['owner'].value]
+            with out:
+                display_dict_html(message.contents)
+
+    objects_select.observe(on_select_object, names='value')
+    messages_select.observe(on_select_message, names='value')
+    search_object_select = _add_search_field(objects_select)
+    search_message_select = _add_search_field(messages_select)
+
+    return ipywidgets.HBox(
+        [search_object_select, search_message_select, out],
+        style={'overflow': 'scroll'})

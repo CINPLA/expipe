@@ -119,116 +119,16 @@ class Browser:
         return ipywidgets.HBox([action_attributes, actions_select])
 
     def _action_modules_view(self):
-        actions_list = list(self.project.actions.keys())
-        if len(actions_list) == 0:
-            actions_list_empty = True
-            modules_list_empty = True
-            action_first_modules = []
-        else:
-            actions_list_empty = False
-            action_first = self.project.actions[actions_list[0]]
-            action_first_modules = list(action_first.modules.keys())
-            if len(action_first_modules) == 0:
-                modules_list_empty = True
-            else:
-                modules_list_empty = False
-                module_first = action_first.modules[action_first_modules[0]]
-
-        actions_select = ipywidgets.Select(
-            options=actions_list,
-            disabled=False,
-            value=None if actions_list_empty else actions_list[0],
-            layout={'height': '200px'}
-        )
-        modules_select = ipywidgets.Select(
-            options=action_first_modules,
-            disabled=False,
-            value=None if modules_list_empty else action_first_modules[0],
-            layout={'height': '200px'}
-        )
-        out = ipywidgets.Output(layout={'height': '250px'})
-        if not modules_list_empty:
-            with out:
-                display.display_dict_html(module_first.contents)
-
-        curr_state = {'action': action_first}
-
-        def on_select_action(change):
-            if change['name'] == 'value':
-                action = self.project.actions[change['owner'].value]
-                curr_state['action'] = action
-                modules_select.options = action.modules.keys()
-
-        def on_select_module(change):
-            if change['name'] == 'value':
-                module = curr_state['action'].modules[change['owner'].value]
-                with out:
-                    display.display_dict_html(module.contents)
-
-        actions_select.observe(on_select_action, names='value')
-        modules_select.observe(on_select_module, names='value')
-        search_action_select = display._add_search_field(actions_select)
-        search_modules_select = display._add_search_field(modules_select)
-
-        return ipywidgets.HBox(
-            [search_action_select, search_modules_select, out],
-            style={'overflow': 'scroll'})
+        return display.objects_and_modules_view(self.project.actions)
 
     def _action_messages_view(self):
-        actions_list = list(self.project.actions.keys())
-        if len(actions_list) == 0:
-            actions_list_empty = True
-            messages_list_empty = True
-            action_first_messages = []
-        else:
-            actions_list_empty = False
-            action_first = self.project.actions[actions_list[0]]
-            action_first_messages = list(action_first.messages.keys())
-            if len(action_first_messages) == 0:
-                messages_list_empty = True
-            else:
-                messages_list_empty = False
-                message_first = action_first.messages[action_first_messages[0]]
+        return display.objects_and_messages_view(self.project.actions)
 
-        actions_select = ipywidgets.Select(
-            options=actions_list,
-            disabled=False,
-            value=None if actions_list_empty else actions_list[0],
-            layout={'height': '200px'}
-        )
-        messages_select = ipywidgets.Select(
-            options=action_first_messages,
-            disabled=False,
-            value=None if messages_list_empty else action_first_messages[0],
-            layout={'height': '200px'}
-        )
-        out = ipywidgets.Output(layout={'height': '250px'})
-        if not messages_list_empty:
-            with out:
-                display.display_dict_html(message_first.contents)
+    def _entity_modules_view(self):
+        return display.objects_and_modules_view(self.project.entities)
 
-        curr_state = {'action': action_first}
-
-        def on_select_action(change):
-            if change['name'] == 'value':
-                action = self.project.actions[change['owner'].value]
-                curr_state['action'] = action
-                messages_select.options = action.messages.keys()
-
-        def on_select_message(change):
-            if change['name'] == 'value':
-                message = curr_state['action'].messages[change['owner'].value]
-                with out:
-                    display.display_dict_html(message.contents)
-
-        actions_select.observe(on_select_action, names='value')
-        messages_select.observe(on_select_message, names='value')
-        search_action_select = display._add_search_field(actions_select)
-        search_message_select = display._add_search_field(messages_select)
-
-        return ipywidgets.HBox(
-            [search_action_select, search_message_select, out],
-            style={'overflow': 'scroll'})
+    def _entity_messages_view(self):
+        return display.objects_and_messages_view(self.project.entities)
 
     def _project_modules_view(self):
         return display.modules_view(self.project)
@@ -253,11 +153,21 @@ class Browser:
         for i, title in enumerate(actions_tab_tab_titles):
             actions_tab.set_title(i, title)
 
+        # Entities tab
+        entities_tab_tab_titles = ['Attributes', 'Modules', 'Messages']
+        entities_tab = ipywidgets.Tab()
+        entities_tab.children = [
+            self._entities_view(),
+            self._entity_modules_view(), self._entity_messages_view()
+        ]
+        for i, title in enumerate(entities_tab_tab_titles):
+            entities_tab.set_title(i, title)
+
         tab_titles = ['Actions', 'Modules', 'Templates', 'Entities']
         tab = ipywidgets.Tab()
         tab.children = [
             actions_tab, self._project_modules_view(), self._templates_view(),
-            self._entities_view()
+            entities_tab
         ]
         for i, title in enumerate(tab_titles):
             tab.set_title(i, title)
