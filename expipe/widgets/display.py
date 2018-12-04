@@ -259,9 +259,14 @@ def objects_and_modules_view(objects):
 
     def on_select_module(change):
         if change['name'] == 'value':
-            module = curr_state['curr_object'].modules[change['owner'].value]
+            module_id = change['owner'].value
+            if module_id is not None:
+                module = curr_state['curr_object'].modules[module_id]
+                contents = module.contents
+            else:
+                contents = {}
             with out:
-                display_dict_html(module.contents)
+                display_dict_html(contents)
 
     objects_select.observe(on_select_object, names='value')
     modules_select.observe(on_select_module, names='value')
@@ -310,15 +315,21 @@ def objects_and_messages_view(objects):
 
     def on_select_object(change):
         if change['name'] == 'value':
-            curr_object = self.project.objects[change['owner'].value]
+            curr_object = objects[change['owner'].value]
             curr_state['curr_object'] = curr_object
             messages_select.options = curr_object.messages.keys()
 
     def on_select_message(change):
         if change['name'] == 'value':
-            message = curr_state['curr_object'].messages[change['owner'].value]
+            message_id = change['owner'].value
+            if message_id is not None:
+                message = curr_state['curr_object'].messages[message_id]
+                contents = message.contents
+            else:
+                contents = {}
             with out:
-                display_dict_html(message.contents)
+                display_dict_html(contents)
+
 
     objects_select.observe(on_select_object, names='value')
     messages_select.observe(on_select_message, names='value')
