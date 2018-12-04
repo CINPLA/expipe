@@ -171,4 +171,5 @@ class Browser:
         ]
         for i, title in enumerate(tab_titles):
             tab.set_title(i, title)
+        ipd.clear_output()
         ipd.display(tab)
