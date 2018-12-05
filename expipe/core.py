@@ -693,7 +693,7 @@ def get_project(path, name=None):
     return Project(project, backend)
 
 
-def create_project(path, name=None):
+def create_project(path, name=None, init=False):
     path = pathlib.Path(path)
 
     name = name or path.stem
@@ -704,7 +704,7 @@ def create_project(path, name=None):
             'You are not allowed to create a project inside an existing' +
             ' project')
 
-    path.mkdir(parents=True, exist_ok=False)
+    path.mkdir(parents=True, exist_ok=init)
 
     local_config_path = path / "expipe.yaml"
     local_config = {
