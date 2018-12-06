@@ -18,9 +18,10 @@ except:
         return x
 
 class Browser:
-    def __init__(self, project_path):
+    def __init__(self, project_path=None):
         if not HAS_IPYW:
             raise IPYW_ERR
+        project_path = project_path or pathlib.Path.cwd()
         self.project_path = pathlib.Path(project_path)
         self.project = expipe.require_project(self.project_path)
 
