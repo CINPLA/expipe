@@ -280,8 +280,6 @@ class FileSystemAction:
             project = project.parent
         self._attribute_manager = FileSystemObject(path / "attributes.yaml")
         self._data_manager = FileSystemYamlManager(path / "attributes.yaml")
-        if 'data' not in self._data_manager:
-            self._data_manager['data'] = {}
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
@@ -307,6 +305,9 @@ class FileSystemAction:
 
     @property
     def data(self):
+        if not 'data' in self._data_manager:
+            return {}
+
         return self._data_manager['data']
 
 
