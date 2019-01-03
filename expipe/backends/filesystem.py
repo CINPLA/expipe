@@ -208,7 +208,7 @@ class FileSystemYamlManager(AbstractObjectManager):
         return result.keys()
 
     def __iter__(self):
-        for key in self.keys():
+        for key in self.contents:
             yield key
 
     def __len__(self):
