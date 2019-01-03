@@ -589,6 +589,8 @@ class PropertyList:
 
     def __contains__(self, value):
         value = self.dtype_manager(value)
+        if not self.data:
+            return False
         return value in self.data
 
     def __str__(self):
