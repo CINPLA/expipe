@@ -181,12 +181,20 @@ class FileSystemYamlManager(AbstractObjectManager):
         self.ref_path = ref_path or []
 
     def __getitem__(self, name):
+        return self.get(name)
+
+    def get(self, name, value_if_missing=None):
         result = self._get_yaml_contents()
-        for p in self.ref_path:
-            result = result[p]
-        result = result[name]
+        try:
+            for p in self.ref_path:
+                result = result[p]
+            result = result.get(name, value_if_missing)
+        except KeyError:
+            result = value_if_missing
+
         if isinstance(result, dict):
             result = MapManager(FileSystemYamlManager(self.path, self.ref_path + [name]))
+
         return result
 
     def __eq__(self, other):
@@ -220,8 +228,14 @@ class FileSystemYamlManager(AbstractObjectManager):
     def __setitem__(self, name, value):
         result = self._get_yaml_contents()
         sub_result = result
+
         for p in self.ref_path:
-            sub_result = sub_result[p]
+            try:
+                sub_result = sub_result[p]
+            except KeyError:
+                sub_result[p] = {}
+                sub_result = sub_result[p]
+
         sub_result[name] = value
         yaml_dump(self.path, result)
 
@@ -305,10 +319,7 @@ class FileSystemAction:
 
     @property
     def data(self):
-        if not 'data' in self._data_manager:
-            return {}
-
-        return self._data_manager['data']
+        return self._data_manager.get('data', {})
 
 
 class FileSystemEntity:
