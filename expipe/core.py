@@ -498,6 +498,9 @@ class Action(ExpipeSubObject):
     def data(self):
         return MapManager(self._backend.data)
 
+    def data_path(self, key):
+        return self._backend.data_path(key)
+
 
 class Module(MapManager):
     """

@@ -292,6 +292,7 @@ class FileSystemAction:
         project = self.path.parent
         if project.stem == 'actions': #TODO consider making project path global
             project = project.parent
+        self._project_path = project
         self._attribute_manager = FileSystemObject(path / "attributes.yaml")
         self._data_manager = FileSystemYamlManager(path / "attributes.yaml")
         self._message_manager = FileSystemObjectManager(
@@ -320,6 +321,9 @@ class FileSystemAction:
     @property
     def data(self):
         return self._data_manager.get('data', {})
+
+    def data_path(self, key):
+        return self.path / "data" / self.data[key]
 
 
 class FileSystemEntity:
