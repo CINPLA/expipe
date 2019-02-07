@@ -41,7 +41,7 @@ def _load_config(path):
 
 def _dump_config(path, contents):
     assert path.suffix == '.yaml'
-    path.parent.mkdir(exist_ok=True)
+    path.parent.mkdir(exist_ok=True, parents=True)
     with path.open("w", encoding="utf-8") as f:
         yaml.dump(
             contents, f,
