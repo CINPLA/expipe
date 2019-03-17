@@ -181,12 +181,20 @@ class FileSystemYamlManager(AbstractObjectManager):
         self.ref_path = ref_path or []
 
     def __getitem__(self, name):
+        return self.get(name)
+
+    def get(self, name, value_if_missing=None):
         result = self._get_yaml_contents()
-        for p in self.ref_path:
-            result = result[p]
-        result = result[name]
+        try:
+            for p in self.ref_path:
+                result = result[p]
+            result = result.get(name, value_if_missing)
+        except KeyError:
+            result = value_if_missing
+
         if isinstance(result, dict):
             result = MapManager(FileSystemYamlManager(self.path, self.ref_path + [name]))
+
         return result
 
     def __eq__(self, other):
@@ -208,7 +216,7 @@ class FileSystemYamlManager(AbstractObjectManager):
         return result.keys()
 
     def __iter__(self):
-        for key in self.keys():
+        for key in self.contents:
             yield key
 
     def __len__(self):
@@ -220,8 +228,14 @@ class FileSystemYamlManager(AbstractObjectManager):
     def __setitem__(self, name, value):
         result = self._get_yaml_contents()
         sub_result = result
+
         for p in self.ref_path:
-            sub_result = sub_result[p]
+            try:
+                sub_result = sub_result[p]
+            except KeyError:
+                sub_result[p] = {}
+                sub_result = sub_result[p]
+
         sub_result[name] = value
         yaml_dump(self.path, result)
 
@@ -278,10 +292,9 @@ class FileSystemAction:
         project = self.path.parent
         if project.stem == 'actions': #TODO consider making project path global
             project = project.parent
+        self._project_path = project
         self._attribute_manager = FileSystemObject(path / "attributes.yaml")
         self._data_manager = FileSystemYamlManager(path / "attributes.yaml")
-        if 'data' not in self._data_manager:
-            self._data_manager['data'] = {}
         self._message_manager = FileSystemObjectManager(
             path / "messages", Message, FileSystemMessage, has_attributes=False)
         self._module_manager = FileSystemObjectManager(
@@ -307,7 +320,10 @@ class FileSystemAction:
 
     @property
     def data(self):
-        return self._data_manager['data']
+        return self._data_manager.get('data', {})
+
+    def data_path(self, key):
+        return self.path / "data" / self.data[key]
 
 
 class FileSystemEntity:

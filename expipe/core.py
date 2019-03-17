@@ -498,6 +498,9 @@ class Action(ExpipeSubObject):
     def data(self):
         return MapManager(self._backend.data)
 
+    def data_path(self, key):
+        return self._backend.data_path(key)
+
 
 class Module(MapManager):
     """
@@ -589,6 +592,8 @@ class PropertyList:
 
     def __contains__(self, value):
         value = self.dtype_manager(value)
+        if not self.data:
+            return False
         return value in self.data
 
     def __str__(self):
