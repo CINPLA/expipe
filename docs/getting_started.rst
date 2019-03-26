@@ -1,87 +1,8 @@
 Getting started
 ---------------
 
-To get started with Expipe, a Firebase_ database needs to be set up.
-Further, a shared storage space should be configured and mounted on all
-computers using Expipe.
-However, while debugging, a local folder can be used for storage.
-
-.. _Firebase: https://firebase.google.com
-
-After setting up a Firebase database, expipe needs to be configured.
-This is done by importing expipe and running `expipe.configure`.
-If you are an expipe user, please see the website of your lab for instructions
-on how to run this command.
-If you are involved in CINPLA, please see the
-`CINPLA setup page <https://github.com/CINPLA/expipe-plugin-cinpla/wiki/Setup>`_.
-
-.. testsetup::
-
-    >>> import expipe
-    >>> expipe.ensure_testing()
-    >>> try:
-    ...     expipe.delete_project('test', remove_all_childs=True)
-    ... except NameError:
-    ...     pass
-    >>> try:
-    ...     expipe.delete_template('hardware_daq')
-    ... except NameError:
-    ...     pass
-
-Configuration
--------------
-
-You can either configure exipe by::
-
-    import expipe
-    expipe.configure( # doctest: +SKIP
-       data_path="",
-       email="",
-       password="",
-       url_prefix="",
-       api_key=""
-    )
-
-If you install the `expipe-cli` package you can configure expipe using the
-command line::
-
-    $ expipe configure --data-path /path/to/data --email my@email.com ...
-
-For more advanced users you can add the following ``config.yaml`` file to ``~/.config/expipe``::
-
-  .. code-block:: yaml
-
-  data_path: c:/users/username/expipe_temp_storage
-  processing:
-    data_path: /home/user/expipe_temp_storage
-    username: processing server username
-    hostname: user@ipaddress
-  storage:
-    data_path: path to storage
-    username: storage username
-    hostname: hostname to storage
-  firebase:
-    email: your@email.com
-    password: yourpassword
-    config:
-      apiKey: your-firebase-apiKey
-      authDomain: your-firebase-site.firebaseapp.com
-      databaseURL: https://your-firebase-site.firebaseio.com
-      storageBucket: your-firebase-site.appspot.com
-
-
-Templates
----------
-
-In order to prime your metadatabase you can begin with adding templates. If
-you are using `expipe` for neuroscience you can add
-`odML terminologies <https://github.com/G-Node/odml-terminologies>`_
-with the sript found in utils ``convert_odml_terminologies.py``. Clone the
-repository and give the script it's path::
-
-  $ convert_odml_terminologies.py path/to/odml_repo
-
-To view the templates we encourage you to use the ``expipe-browser``.
+Expipe can be used to manage multiple projects.
+Each project consists of collections of actions, entities, templates and project modules.
 
 Project
 --------
@@ -93,13 +14,19 @@ Create a new project if it does not exist with ``require_project``:
     >>> import expipe
     >>> project = expipe.require_project("test")
 
-A project can contain a number of actions and modules.
+The default backend for Expipe uses the filesystem.
+In this case, the above command will create a folder named `test` in your current 
+working directory.
+Other backends will create a backend-specific project in its database.
+
+
 
 Actions
 -------
 
 Actions are events that are performed during a project.
-An action can be an experiment or any preparation for an experiment.
+An action can be an experiment, preparations for an experiment, or an analysys performed after
+an experiment.
 
 To create an action on the project or return an existing action if it already
 exists, use ``project.require_action``:
@@ -123,6 +50,7 @@ To give actions easily searchable properties you can add `Tags`, `Users`,
     >>> action.type = 'Recording'
     >>> action.subjects = ['rat1']
     >>> action.users = ['Peter', 'Mary']
+
 
 Modules
 -------
