@@ -323,6 +323,7 @@ class FileSystemAction:
         return self._data_manager.get('data', {})
 
     def data_path(self, key):
+        (self.path / "data").mkdir(exist_ok=True)
         return self.path / "data" / self.data[key]
 
 
