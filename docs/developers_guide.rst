@@ -40,27 +40,5 @@ You can then push your changes to your online repository on GitHub::
 Once you think your changes are ready to be included in the main Neo repository,
 open a pull request on GitHub (see https://help.github.com/articles/using-pull-requests).
 
-Testing
--------
-
-**WARNING**: Tests can be destructive and have to be run on a different server.
-Use `expipe-debug.firebaseio.com` for testing.
-
-A separate config file needs to be created if you want to run tests. The config
-file needs to be placed in `~/.config/expipe/test-config.yaml` and must have
-the key `allow_tests: true`. Here is an example:
-
-.. code-block:: yaml
-
-  allow_tests: true
-  data_path: '/tmp/expipe-data'
-  firebase:
-    email: <needs to be changed>
-    password: <needs to be changed>
-    config:
-      apiKey: AIzaSyBnbsraKxrO8zv1qVZeAvJR4fEWzExQhOM
-      authDomain: expipe-debug.firebaseapp.com
-      databaseURL: https://expipe-debug.firebaseio.com
-      storageBucket: expipe-debug.appspot.com
 
 .. _GitHub: http://github.com
