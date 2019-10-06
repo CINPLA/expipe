@@ -1,12 +1,22 @@
 Introduction
 ------------
 
-We are witnessing a revolution in methodology in neuroscience today,
-due to technological advances. The vast collection of recording setups used on a
+Technological advances are revolutionizing methods in neuroscience.
+The vast collection of recording setups used, and the large
 variety of experimental subjects puts high demands on flexible data organization.
 
-To ease this organization we introduce a tool for the experiment pipeline named
-`expipe`. The aims of `expipe` is to organize metadata in a way such that they:
+Often in neuroscience, the experimental setup is not finalized or rigidly predefined
+before data acquisition begins.
+Results may require additional branches of experimentation or reevaluation of
+the setup.
+Put simply, experiments have a tendency to organically grow along the experimental
+time line.
+
+Expipe is thus introduced as an organizational tool that grow
+organically together with the experimentation - to ease data management in such
+experimental paradigms.
+
+The aims of `expipe` is to organize data and metadata in a way such that they:
 
 * are flexible towards a multitude of user aspects.
 * are readable for humans and machines for many years to come.
@@ -14,20 +24,22 @@ To ease this organization we introduce a tool for the experiment pipeline named
 * support high throughput data analysis.
 * support multiple types of large-scale data sets.
 
-To this end we use the flexible filesystem as a
-NoSQL type database to store data and metadata. This way of storing metadata consist of
-assigning key value pairs.
+To this end we use the flexible filesystem as a non structured (NoSQL)
+type database to store data and metadata.
+This way of storing metadata consist of assigning key value pairs as python
+dictionaries.
 
 During an experiment metadata can be automatically added by user specific
-`templates`. Templates are prefilled key value pairs describing all aspects
+`templates`.
+Templates are prefilled key value pairs describing all aspects
 of your experiments e.g. recording environment, acquisition system etc.
 When added, `templates` are introduced as `modules` which are descriptors of
 `project` and/or `action` entities. A `project` is the
 root object during communication with `expipe` and contain `modules` and `actions`.
 Actions are individual, well actions, of interaction with experimental assets
-or `expipe` itself such as recordings or analysis respectively. Actions also contain
-`modules` which are specific to a particular `action` in contrast to `project`
-`modules` which are more general.
+or `expipe` itself such as recordings or analysis respectively.
+Actions also contain `modules` which are specific to a particular `action` in
+contrast to `project` `modules` which are more general.
 
 We encourage users from neuroscience to base templates on the
 `odML terminologies <http://www.g-node.org/projects/odml/terminologies>`_ which
