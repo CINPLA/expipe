@@ -28,10 +28,6 @@ def pytest_configure():
     pytest.TEMPLATE_ID = TEMPLATE_ID
 
 
-def pytest_addoption(parser):
-    parser.addoption("--firebase", action="store_true", default=False)
-
-
 @pytest.fixture(scope='function')
 def project_path():
     if os.path.exists(TESTDIR):

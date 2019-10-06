@@ -14,9 +14,9 @@ To ease this organization we introduce a tool for the experiment pipeline named
 * support high throughput data analysis.
 * support multiple types of large-scale data sets.
 
-To this end we use the flexible `Firebase <https://firebase.google.com/>`_
-NoSQL type database to store metadata. This way of storing metadata consist of
-assigning key value pairs in a `json <http://www.json.org/>`_ type format.
+To this end we use the flexible filesystem as a
+NoSQL type database to store data and metadata. This way of storing metadata consist of
+assigning key value pairs.
 
 During an experiment metadata can be automatically added by user specific
 `templates`. Templates are prefilled key value pairs describing all aspects
