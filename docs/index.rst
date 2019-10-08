@@ -1,7 +1,7 @@
 Welcome to Expipe's documentation!
 ==========================================
 
-Expipe is a lightweight data analysis platform that aims to simplify the steps
+Expipe is a lightweight data management platform that aims to simplify the steps
 from experiment to data analysis. We acknowledge the need for multiple tools,
 workflows and formats in experimental pipelines and have made an agnostic
 platform that focuses on adding value and formalizing existing workflows

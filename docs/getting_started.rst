@@ -15,7 +15,7 @@ Create a new project if it does not exist with ``require_project``:
     >>> project = expipe.require_project("test")
 
 The default backend for Expipe uses the filesystem.
-In this case, the above command will create a folder named `test` in your current 
+In this case, the above command will create a folder named `test` in your current
 working directory.
 Other backends will create a backend-specific project in its database.
 
@@ -101,7 +101,7 @@ To further retrieve and edit the values of a module, you can use `module.to_dict
 From template to module
 -----------------------
 
-To upload a template you can write it in ``json`` or as a ``dict`` and use
+To upload a template you can write it as a ``dict`` and use
 ``require_template``.
 
 .. doctest::
@@ -113,10 +113,6 @@ To upload a template you can write it in ``json`` or as a ``dict`` and use
   >>> expipe.require_template(template='hardware_daq',
   ...                         contents=daq_contents)
 
-Contents can also be a ``.json`` file::
-
-  expipe.require_template(template='hardware_daq',
-                          contents='daq_contents.json')
 
 In order to use a template and add it as a module to an `action` use
 ``action.require_module``:
@@ -136,21 +132,6 @@ and values use ``to_dict``:
   odict_keys(['channel_count'])
   >>> print(daq_dict.values())
   odict_values([{'definition': 'The number of input channels of the DAQ-device.', 'value': '64'}])
-
-You may also view the module as ``.json`` by using the command ``to_json``:
-
-.. doctest::
-
-  >>> daq.to_json()
-  Saving module "hardware_daq" to "hardware_daq.json"
-
-To furter change its values and upload them to Firebase:
-
-.. doctest::
-
-  >>> daq_dict['gain'] = {'value': 20}
-  >>> daq = action.require_module(name='hardware_daq', contents=daq_dict,
-  ...                             overwrite=True)
 
 Messages
 --------
