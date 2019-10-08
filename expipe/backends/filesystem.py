@@ -322,9 +322,12 @@ class FileSystemAction:
     def data(self):
         return self._data_manager.get('data', {})
 
-    def data_path(self, key):
+    def data_path(self, key=None):
         (self.path / "data").mkdir(exist_ok=True)
-        return self.path / "data" / self.data[key]
+        if key is not None:
+            return self.path / "data" / self.data[key]
+        else:
+            return self.path / "data"
 
 
 class FileSystemEntity:
