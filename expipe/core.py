@@ -46,9 +46,9 @@ class ListManager:
 def _assert_name_type(name):
     if name is None:
         return
-    if not isinstance(name, str):
+    if not isinstance(name, (str, int)):
         raise TypeError(
-            'Expected "name" to be of type "str" got {}'.format(type(name)))
+            'Expected "name" to be of type "str" or "int" got {}'.format(type(name)))
     if name == '':
         raise ValueError('Argument "name" cannot be an empty string')
 
