@@ -1,7 +1,6 @@
 import pytest
 from unittest import mock
 import expipe
-from mock_backend import create_mock_backend
 
 # TODO test _assert_message_dtype
 # TODO test entities
