@@ -223,6 +223,17 @@ def test_module_quantities(project_path):
     assert all(a == b for a, b in zip(quan, mod_contents['quan']))
 
 
+def test_module_int_key(project_path):
+    import numpy as np
+    quan = 1
+    module_contents = {1: quan}
+
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    action.modules[pytest.PROJECT_MODULE_ID] = module_contents
+    assert action.modules[pytest.PROJECT_MODULE_ID][1] == quan
+
+
 def test_module_array(project_path):
     import numpy as np
     quan = np.array([1, 2])
