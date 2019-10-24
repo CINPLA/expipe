@@ -342,6 +342,10 @@ class Project(ExpipeObject):
         self._backend.templates.delete(name)
         del template
 
+    @property
+    def path(self):
+        return self._backend.path
+
 
 class ExpipeSubObject(ExpipeObject):
     def __init__(self, object_id, backend):
@@ -454,6 +458,10 @@ class ExpipeSubObject(ExpipeObject):
     @property
     def attributes(self):
         return self._backend.attributes.get()
+
+    @property
+    def path(self):
+        return self._backend.path
 
 
 class Entity(ExpipeSubObject):
