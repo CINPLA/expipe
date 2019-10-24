@@ -59,9 +59,13 @@ def modules_view(holder):
 
     def on_select_module(change):
         if change['name'] == 'value':
-            module = holder.modules[change['owner'].value]
-            with out:
-                display_dict_html(module.contents)
+            if change['owner'].value is None:
+                with out:
+                    display_dict_html({})
+            else:
+                module = holder.modules[change['owner'].value]
+                with out:
+                    display_dict_html(module.contents)
 
     modules_select.observe(on_select_module, names='value')
     search_select = _add_search_field(modules_select)
@@ -91,9 +95,13 @@ def messages_view(holder):
 
     def on_select_message(change):
         if change['name'] == 'value':
-            message = holder.messages[change['owner'].value]
-            with out:
-                display_dict_html(message.contents)
+            if change['owner'].value is None:
+                with out:
+                    display_dict_html({})
+            else:
+                message = holder.messages[change['owner'].value]
+                with out:
+                    display_dict_html(message.contents)
 
     messages_select.observe(on_select_message, names='value')
     search_select = _add_search_field(messages_select)
@@ -123,9 +131,13 @@ def templates_view(project):
 
     def on_select_template(change):
         if change['name'] == 'value':
-            template = project.templates[change['owner'].value]
-            with out:
-                display_dict_html(template.contents)
+            if change['owner'].value is None:
+                with out:
+                    display_dict_html({})
+            else:
+                template = project.templates[change['owner'].value]
+                with out:
+                    display_dict_html(template.contents)
 
     templates_select.observe(on_select_template, names='value')
     search_select = _add_search_field(templates_select)
@@ -155,9 +167,13 @@ def entities_view(project):
 
     def on_select_entity(change):
         if change['name'] == 'value':
-            entity = project.entities[change['owner'].value]
-            with out:
-                display_dict_html(entity.attributes)
+            if change['owner'].value is None:
+                with out:
+                    display_dict_html({})
+            else:
+                entity = project.entities[change['owner'].value]
+                with out:
+                    display_dict_html(entity.attributes)
 
     entities_select.observe(on_select_entity, names='value')
     search_select = _add_search_field(entities_select)
@@ -187,9 +203,13 @@ def actions_view(project):
 
     def on_select_action(change):
         if change['name'] == 'value':
-            action = project.actions[change['owner'].value]
-            with out:
-                display_dict_html(action.attributes)
+            if change['owner'].value is None:
+                with out:
+                    display_dict_html({})
+            else:
+                action = project.actions[change['owner'].value]
+                with out:
+                    display_dict_html(action.attributes)
 
     actions_select.observe(on_select_action, names='value')
     search_select = _add_search_field(actions_select)
