@@ -49,6 +49,14 @@ def test_action_attr_raises(project_path):
         action.datetime = 'now I am'
 
 
+def test_action_get_none_raises(project_path):
+    from datetime import datetime, timedelta
+    project = expipe.require_project(project_path, pytest.PROJECT_ID)
+    action = project.require_action(pytest.ACTION_ID)
+    with pytest.raises(TypeError):
+        project.actions[None]
+
+
 def test_entity_attr_raises(project_path):
     from datetime import datetime, timedelta
     project = expipe.require_project(project_path, pytest.PROJECT_ID)
