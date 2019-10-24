@@ -44,8 +44,6 @@ class ListManager:
 
 
 def _assert_name_type(name):
-    if name is None:
-        return
     if not isinstance(name, (str, int)):
         raise TypeError(
             'Expected "name" to be of type "str" or "int" got {}'.format(type(name)))
