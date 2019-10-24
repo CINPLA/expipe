@@ -663,7 +663,7 @@ class Database:
 # Entry API
 def get_project(path, name=None):
     import expipe.backends.filesystem
-    path = pathlib.Path(path)
+    path = pathlib.Path(path).resolve()
 
     name = name or path.stem
 
@@ -697,7 +697,7 @@ def get_project(path, name=None):
 
 
 def create_project(path, name=None, init=False):
-    path = pathlib.Path(path)
+    path = pathlib.Path(path).resolve()
 
     name = name or path.stem
 
@@ -723,7 +723,7 @@ def create_project(path, name=None, init=False):
 
 
 def require_project(path, name=None):
-    path = pathlib.Path(path)
+    path = pathlib.Path(path).resolve()
 
     local_config_path = path / "expipe.yaml"
 
