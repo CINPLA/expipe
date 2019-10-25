@@ -5,6 +5,11 @@ import json
 from collections import OrderedDict
 from . import display
 try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError as e:
+    HAS_PANDAS = False
+try:
     import IPython.display as ipd
     import ipywidgets
     HAS_IPYW = True
@@ -72,22 +77,53 @@ class Browser:
                     actions_visible.options = actions
 
 
-        export_actions_name = ipywidgets.Text()
+        export_actions_name = ipywidgets.Text(
+            placeholder='Action name for export')
+
+        export_csv_name = ipywidgets.Text(
+            placeholder='File name for export')
 
         def on_export_actions(change):
+            if not HAS_PANDAS:
+                print('Unable to export to csv without pandas.')
+                return
             if export_actions_name.value == '':
                 print('You have to give a name to export actions list.') # TODO show text in widget
                 return
             actions = actions_visible.value
             if len(actions) == 0:
                 print('You have to select from the list, "ctrl+a" for all') # TODO show text in widget
-            action = self.project.create_action(export_actions_name.value)
-            actions_select_module = action.create_module(
-                'actions_to_include', contents={'actions': actions})
+                return
+            action_for_export = self.project.require_action(export_actions_name.value)
+            df = []
+            tags = []
+            for action_name in actions:
+                a = self.project.actions[action_name]
+                v = {
+                    'action': action_name,
+                    'users': '//'.join(a.users),
+                    'entities': '//'.join(a.entities),
+                    'location': a.location,
+                    'datetime': a.datetime
+                }
+                for tag in a.tags:
+                    v[tag] = True
+                    tags.append(tag)
+                df.append(v)
+            csv_name = export_csv_name.value
+            csv_name = csv_name.replace('.csv', '')
+            action_for_export.data[csv_name] = csv_name + '.csv'
+            df = pd.DataFrame(df)
+            for tag in set(tags):
+                df[tag].fillna(False, inplace=True)
+            df.to_csv(action_for_export.data_path(csv_name), index=False)
+            print(
+                'Actions successfully exported.\n'
+                'To load use "pd.read_csv(project.actions["{}"].data_path("{}"))"'.format(export_actions_name.value, csv_name))
 
 
         export_actions_button = ipywidgets.Button(
-            description='Export actions',
+            description='Export to csv',
             disabled=False,
             button_style='',
         )
@@ -116,7 +152,7 @@ class Browser:
             action_attributes.set_title(i, name.capitalize())
 
         actions_select = ipywidgets.VBox(
-            [actions_visible, export_actions_name, export_actions_button])
+            [actions_visible, export_actions_name, export_csv_name, export_actions_button])
         return ipywidgets.HBox([action_attributes, actions_select])
 
     def _action_modules_view(self):
