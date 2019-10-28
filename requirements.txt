@@ -1,0 +1,5 @@
+numpy
+ruamel_yaml
+quantities
+pandas
+ipywidgets

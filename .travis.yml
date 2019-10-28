@@ -1,15 +1,16 @@
 language: python
-matrix:
-- env: PYTHON_VERSION=3.6
-- env: PYTHON_VERSION=3.7
+os:
+- linux
+python:
+- '3.6'
+- '3.7'
 install:
-- bash -ex libs/travis-conda-scripts/scripts/travis_install.sh
+- pip install .
+- pip install pytest==3.6
 script:
-- mkdir -p ~/.config/expipe
-- echo $EXPIPE_CONFIG > ~/.config/expipe/config.yaml
-- cp ~/.config/expipe/config.yaml ~/.config/expipe/test-config.yaml
-- source libs/travis-conda-scripts/scripts/config.sh
-- bash -ex libs/travis-conda-scripts/scripts/build.sh
+- python -m pytest --ignore=doc/
+- cd doc
+- make html
 deploy:
   provider: pypi
   user: cinpla

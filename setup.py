@@ -6,6 +6,11 @@ from setuptools import setup, find_packages
 
 long_description = open("README.md").read()
 
+with open("requirements.txt", mode='r') as f:
+    install_requires = f.read().split('\n')
+
+install_requires = [e for e in install_requires if len(e) > 0]
+
 d = {}
 exec(open("expipe/version.py").read(), None, d)
 version = d['version']
@@ -22,12 +27,12 @@ setup(name="expipe",
       long_description=long_description,
       url="https://github.com/CINPLA/expipe",
       platforms=['Linux', "Windows"],
-      description="",
-      classifiers=['Development Status :: Alpha',
-                   'Intended Audience :: Science/Research',
+      install_requires=install_requires,
+      description="Experiment-data management platform",
+      classifiers=['Intended Audience :: Science/Research',
                    'License :: OSI Approved :: GPLv2 License',
                    'Natural Language :: English',
-                   'Programming Language :: Python :: 2',
+                   'Programming Language :: Python :: 3',
                    'Topic :: Scientific/Engineering :: Bio-Informatics'
                    ],
       )
