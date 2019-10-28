@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/CINPLA/expipe.svg?branch=dev)](https://travis-ci.org/CINPLA/expipe)
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](http://www.repostatus.org/badges/latest/wip.svg)](http://www.repostatus.org/#wip)
+[![PyPI version](https://badge.fury.io/py/expipe.svg)](https://badge.fury.io/py/expipe)
 [![Anaconda-Server Badge](https://anaconda.org/cinpla/expipe/badges/installer/conda.svg)](https://conda.anaconda.org/cinpla/expipe)
 [![codecov](https://codecov.io/gh/CINPLA/expipe/branch/dev/graph/badge.svg)](https://codecov.io/gh/CINPLA/expipe)
 
@@ -17,6 +18,12 @@ The goal of Expipe is to simplify data management and allow the user to focus on
 production and analysis of the data.
 
 ## Installation
+
+Expipe can be installed using pip:
+
+```
+pip install expipe
+```
 
 See the [documentation](https://expipe.readthedocs.io/)
 for more information on how to use expipe.
