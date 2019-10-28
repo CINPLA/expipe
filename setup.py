@@ -2,14 +2,18 @@
 from setuptools import setup
 import os
 
-
 from setuptools import setup, find_packages
 
 long_description = open("README.md").read()
 
+d = {}
+exec(open("expipe/version.py").read(), None, d)
+version = d['version']
+pkg_name = "expipe"
+
 setup(name="expipe",
       packages=find_packages(),
-      version='1.0',
+      version=version,
       include_package_data=True,
       author="CINPLA",
       author_email="",
