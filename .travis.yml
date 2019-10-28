@@ -8,8 +8,8 @@ install:
 - pip install .
 - pip install pytest==3.6
 script:
-- python -m pytest --ignore=doc/
-- cd doc
+- python -m pytest --ignore=docs/
+- cd docs
 - make html
 deploy:
   provider: pypi
