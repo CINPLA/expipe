@@ -30,9 +30,9 @@ setup(name="expipe",
       install_requires=install_requires,
       description="Experiment-data management platform",
       classifiers=['Intended Audience :: Science/Research',
-                   'License :: OSI Approved :: GPLv2 License',
+                   'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
                    'Natural Language :: English',
                    'Programming Language :: Python :: 3',
-                   'Topic :: Scientific/Engineering :: Bio-Informatics'
+                   'Topic :: Scientific/Engineering'
                    ],
       )
