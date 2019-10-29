@@ -30,6 +30,10 @@ setup(name="expipe",
       platforms=['Linux', "Windows"],
       install_requires=install_requires,
       description="Experiment-data management platform",
+      entry_points={
+        'console_scripts': [
+            'expipe=expipe.cli:expipe'
+        ]},
       classifiers=['Intended Audience :: Science/Research',
                    'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
                    'Natural Language :: English',
