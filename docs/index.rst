@@ -11,9 +11,13 @@ analysis. The goal of Expipe is to simplify data management and allow the user
 to focus on production and analysis of the data.
 
 
+Contents
+========
+
+The following sections will guide you through the basics of Expipe for data management of experimental pipelines.
+
 .. toctree::
    :maxdepth: 2
-   :hidden:
 
    introduction
    installation

@@ -5,55 +5,54 @@ Expipe can be used to manage multiple projects.
 Each project consists of collections of actions, entities, templates and project modules.
 
 Project
---------
+=========
 
-Create a new project if it does not exist with ``require_project``:
+Create a new project with the :code:`require_project` function:
 
-.. doctest::
+.. code-block:: python
 
-    >>> import expipe
-    >>> project = expipe.require_project("test")
+    import expipe
+    project = expipe.require_project("test")
 
 The default backend for Expipe uses the filesystem.
-In this case, the above command will create a folder named `test` in your current
+In this case, the above command will create a folder named :code:`test` in your current
 working directory.
 Other backends will create a backend-specific project in its database.
 
 
-
 Actions
--------
+=========
 
 Actions are events that are performed during a project.
 An action can be an experiment, preparations for an experiment, or an analysys performed after
 an experiment.
 
 To create an action on the project or return an existing action if it already
-exists, use ``project.require_action``:
+exists, use :code:`project.require_action`:
 
-.. doctest::
+.. code-block:: python
 
-    >>> action = project.require_action("something")
+    action = project.require_action("something")
 
 Action attributes
------------------
+==================
 
-To give actions easily searchable properties you can add `Tags`, `Users`,
-`Subjects` and `Datetime`
+To give actions easily searchable properties you can add :code:`Tags`, :code:`Users`,
+:code:`Subjects` and :code:`Datetime`
 
-.. doctest::
+.. code-block:: python
 
-    >>> from datetime import datetime
-    >>> action.tags = ['place cell', 'familiar environment']
-    >>> action.datetime = datetime.now()
-    >>> action.location = 'here'
-    >>> action.type = 'Recording'
-    >>> action.subjects = ['rat1']
-    >>> action.users = ['Peter', 'Mary']
+    from datetime import datetime
+    action.tags = ['place cell', 'familiar environment']
+    action.datetime = datetime.now()
+    action.location = 'here'
+    action.type = 'Recording'
+    action.subjects = ['rat1']
+    action.users = ['Peter', 'Mary']
 
 
 Modules
--------
+=========
 
 Actions have multiple properties such as the type,
 location, users, tags and subjects.
@@ -64,88 +63,102 @@ using templates to make it easy to add the same information to multiple actions.
 Ideally, templates should be designed in the beginning of a project to define
 what should be registered in each action.
 
-To add a module to an action, use `require_module`.
-The function takes an optional `template` parameter::
+To add a module to an action, use :code:`require_module`.
+The function takes an optional :code:`template` parameter:
+
+.. code-block:: python
 
     tracking = action.require_module("tracking", template="tracking")
 
-We recommend using `expipe-browser` to edit and browse module values.
 
-If you are not using templates you may also create modules using dictionaries
+If you are not using templates you may also create modules using dictionaries:
 
-.. doctest::
+.. code-block:: python
 
-    >>> import quantities as pq
-    >>> tracking_contents = {'box_shape': {'value': 'square'}}
-    >>> tracking_module = action.require_module(name="tracking",
-    ...                                         contents=tracking_contents)
-    >>> elphys_contents = {'depth': 2 * pq.um, }
-    >>> elphys_module = action.require_module(name="electrophysiology",
-    ...                                       contents=elphys_contents)
+    import quantities as pq
+    tracking_contents = {'box_shape': {'value': 'square'}}
+    tracking_module = action.require_module(name="tracking",
+                                            contents=tracking_contents)
+    elphys_contents = {'depth': 2 * pq.um, }
+    elphys_module = action.require_module(name="electrophysiology",
+                                          contents=elphys_contents)
 
-You can loop through modules in an action
+You can loop through modules in an action similarly to a dictionary:
 
-    >>> for name, val in action.modules.items():
-    ...     if name == 'electrophysiology':
-    ...         print(val['depth'])
+.. code-block:: python
+
+    for name, val in action.modules.items():
+         if name == 'electrophysiology':
+             print(val['depth'])
+
+.. parsed-literal::
+
     2.0 um
 
-To further retrieve and edit the values of a module, you can use `module.to_dict()`:
+To further retrieve and edit the values of a module, you can use the :code:`module.to_dict()`:
 
-.. doctest::
+.. code-block:: python
 
-    >>> tracking = action.require_module(name="tracking")
-    >>> print(tracking.to_dict())
+    tracking = action.require_module(name="tracking")
+    print(tracking.to_dict())
+
+.. parsed-literal::
+
     OrderedDict([('box_shape', {'value': 'square'})])
 
-From template to module
------------------------
+From Template to Module
+=========================
 
-To upload a template you can write it as a ``dict`` and use
-``require_template``.
+To upload a template you can write it as a :code:`dict` and use
+:code:`require_template`.
 
-.. doctest::
+.. code-block:: python
 
-  >>> daq_contents = {
-  ...    "channel_count": {
-  ...         "definition": "The number of input channels of the DAQ-device.",
-  ...         "value": "64"}}
-  >>> expipe.require_template(template='hardware_daq',
-  ...                         contents=daq_contents)
+  daq_contents = {
+      "channel_count": {"definition": "The number of input channels of the DAQ-device.",
+                        "value": "64"}}
+  expipe.require_template(template='hardware_daq',
+                          contents=daq_contents)
 
 
-In order to use a template and add it as a module to an `action` use
-``action.require_module``:
+In order to use a template and add it as a module to an :code:`action` use
+:code:`action.require_module`:
 
-.. doctest::
+.. code-block:: python
 
-  >>> daq = action.require_module(template='hardware_daq')
+   daq = action.require_module(template='hardware_daq')
 
-Now, the template `hardware_daq` is added to your action as a module and you
+Now, the template :code:`hardware_daq` is added to your action as a module and you
 also have it locally stored in the variable ``daq``. To retrieve ``daq`` keys
 and values use ``to_dict``:
 
-.. doctest::
+.. code-block:: python
 
-  >>> daq_dict = daq.to_dict()
-  >>> print(daq_dict.keys())
+  daq_dict = daq.to_dict()
+  print(daq_dict.keys())
+
+.. parsed-literal::
+
   odict_keys(['channel_count'])
-  >>> print(daq_dict.values())
+
+.. code-block:: python
+
+  print(daq_dict.values())
+
+.. parsed-literal::
+
   odict_values([{'definition': 'The number of input channels of the DAQ-device.', 'value': '64'}])
 
 Messages
---------
+=========
 
-Actions have multiple properties such as the type,
-location, users, tags and subjects.
 If you want to expand an action with notes and messages,
-you can use messages. Messages are annotations from users that are involved
-with an action. To add a message:
+you can use :code:`messages`. Messages are annotations from users that are involved
+with an action. To add a message to an :code:`action` you can run:
 
-.. doctest::
+.. code-block:: python
 
-    >>> from datetime import datetime
-    >>> messages = [{'message': 'hello', 'user': 'Peter', 'datetime': datetime.now()}]
-    >>> action.messages = messages
+    from datetime import datetime
+    messages = [{'message': 'hello', 'user': 'Peter', 'datetime': datetime.now()}]
+    action.messages = messages
 
-.. todo:: tutorial, starting with require_template all the way to analysis
