@@ -4,11 +4,16 @@
 Installation
 ****************
 
-You can either clone this repo and install with python::
+You can install :code:`expipe` using pip:
 
-  $ git clone https://github.com/CINPLA/expipe.git
-  $ python setup.py develop
+.. code-block:: bash
 
-Or you can download Anaconda 3 and install with conda::
+    >>> pip install expipe
 
-  $ conda install expipe -c cinpla -c defaults -c conda-forge
+Alternatively, expipe can be installed from source as follows:
+
+.. code-block:: bash
+
+    >>> git clone https://github.com/CINPLA/expipe.git
+    >>> cd expipe
+    >>> python setup.py develop

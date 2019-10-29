@@ -4,16 +4,19 @@
 Making a plugin
 ****************
 
-This section describes how to make a plugin for the expipe-cli package.
+This section describes how to make a plugin for the Expipe command line interface (CLI).
 For the complete example; see https://github.com/CINPLA/expipe-plugin-example.
 
-In order to make a plugin for the comman line interface you need to make a
+In order to make a plugin for the comman line interface you first need to make a
 python package.
 
-Begin by making a folder named ``my_plugin`` with a module, let's call it
-``my_module.py`` containing::
+Begin by making a folder named :code:`my_plugin` with a module, let's call it
+:code:`my_module.py` containing:
 
-  from expipecli.utils import IPlugin
+.. code-block:: python
+
+
+  from expipe.cliutils import IPlugin
   import click
 
 
@@ -29,17 +32,20 @@ Begin by making a folder named ``my_plugin`` with a module, let's call it
               COMMAND: stuff
               '''
 
-              print('incredible', stuff)
+              print('INCREDIBLE', stuff)
 
 
-The folder ``my_plugin`` must also contain a file ``__init__.py`` containing::
+The folder :code:`my_plugin` must also contain a file :code:`__init__.py` containing:
 
+.. code-block:: python
 
   from .my_module import MyPlugin
 
 
-Finally in ``my_plugin`` make a module called ``my_plugin_loader`` with the
-following content.::
+Finally in :code:`my_plugin` make a module called :code:`my_plugin_loader` with the
+following content:
+
+.. code-block:: python
 
   # This imports all plugins when loading expipe.
   import my_plugin
@@ -48,16 +54,18 @@ following content.::
   def reveal():
       pass
 
-In the root directory you need a ``setup.py`` file with the
-following minimum contents, note that the entry point must begin with
-``plugin-expipe`` which is absolutely necesessary.::
+In the root directory you need a :code:`setup.py` file with the
+following minimum contents, note that the entry point MUST begin with
+:code:`plugin-expipe`:
+
+.. code-block:: python
 
   from setuptools import setup
 
   from setuptools import setup, find_packages
 
   setup(
-      name="my-plugin",
+      name="my_plugin",
       packages=find_packages(),
       include_package_data=True,
       entry_points={
@@ -67,7 +75,20 @@ following minimum contents, note that the entry point must begin with
       }
   )
 
-You are good to go, you should now be able to::
+After the plugin package is ready, all you need to do is to install it and add it to the Expipe environment:
 
-  $ python setup.py develop
-  $ expipe do-incredible-stuff "is my incredible stuff"
+.. code-block:: bash
+
+  >>> python setup.py develop
+  >>> expipe config global --add plugin my_plugin
+
+Finally, you can run your new incredible plugin with expipe:
+
+.. code-block:: bash
+
+  >>> expipe do-incredible-stuff "is my incredible stuff!"
+
+.. parsed-literal::
+
+    INCREDIBLE is my incredible stuff!
+
