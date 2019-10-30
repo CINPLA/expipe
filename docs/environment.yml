@@ -1,8 +1,0 @@
-channels:
-- defaults
-- cinpla/label/dev
-- cinpla
-- conda-forge
-dependencies:
-- expipe
-- python=3.5

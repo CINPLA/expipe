@@ -21,18 +21,18 @@ Begin by making a folder named :code:`my_plugin` with a module, let's call it
 
 
   class MyPlugin(IPlugin):
-      """Create the `expipe do-incredible-stuff` command."""
+      """Create the `expipe print-me-stuff` command."""
       def attach_to_cli(self, cli):
-          @cli.command('do-incredible-stuff')
+          @cli.command('print-me-stuff')
           @click.argument('stuff', type=click.STRING)
-          def incredible(stuff):
+          def print_me_stuff(stuff):
               '''
-              Do incredible stuff
+              Print stuff
 
               COMMAND: stuff
               '''
 
-              print('INCREDIBLE', stuff)
+              print(f'Expipe is printing: {stuff}')
 
 
 The folder :code:`my_plugin` must also contain a file :code:`__init__.py` containing:
@@ -42,21 +42,8 @@ The folder :code:`my_plugin` must also contain a file :code:`__init__.py` contai
   from .my_module import MyPlugin
 
 
-Finally in :code:`my_plugin` make a module called :code:`my_plugin_loader` with the
-following content:
-
-.. code-block:: python
-
-  # This imports all plugins when loading expipe.
-  import my_plugin
-
-
-  def reveal():
-      pass
-
 In the root directory you need a :code:`setup.py` file with the
-following minimum contents, note that the entry point MUST begin with
-:code:`plugin-expipe`:
+following minimum content:
 
 .. code-block:: python
 
@@ -68,11 +55,6 @@ following minimum contents, note that the entry point MUST begin with
       name="my_plugin",
       packages=find_packages(),
       include_package_data=True,
-      entry_points={
-          'console_scripts': [
-              'plugin-expipe-superduper = my_plugin.my_plugin_loader:reveal'
-          ]
-      }
   )
 
 After the plugin package is ready, all you need to do is to install it and add it to the Expipe environment:
@@ -86,9 +68,9 @@ Finally, you can run your new incredible plugin with expipe:
 
 .. code-block:: bash
 
-  >>> expipe do-incredible-stuff "is my incredible stuff!"
+  >>> expipe print-me-stuff "Hey! This is my first Expipe plugin!"
 
 .. parsed-literal::
 
-    INCREDIBLE is my incredible stuff!
+    Expipe is printing: Hey! This is my first Expipe plugin!
 
