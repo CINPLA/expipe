@@ -68,9 +68,9 @@ Finally, you can run your new incredible plugin with expipe:
 
 .. code-block:: bash
 
-  >>> expipe do-incredible-stuff "is my incredible stuff!"
+  >>> expipe print-me-stuff "Hey! This is my first Expipe plugin!"
 
 .. parsed-literal::
 
-    INCREDIBLE is my incredible stuff!
+    Expipe is printing: Hey! This is my first Expipe plugin!
 
