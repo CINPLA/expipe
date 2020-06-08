@@ -6,16 +6,10 @@
 
 # Expipe
 
-Expipe is a lightweight data analysis platform that aims to simplify the steps
-from experiment to data analysis.
-We acknowledge the need for multiple tools, workflows and formats in
-experimental pipelines and have made an agnostic platform that focuses on adding
-value and formalizing existing workflows rather than a one-size-fits all
-solution.
-Expipe provides functionality to track experimental data and metadata for easy
-retrieval in exploration and analysis.
-The goal of Expipe is to simplify data management and allow the user to focus on
-production and analysis of the data.
+To facilitate data sharing, provenance and management of data and metadata we introduce Expipe, a semi-structured and lightweight data management platform designed for neuroscience research. 
+Expipe implements a conceptually simple and familiar project structure and includes functionalities for data and metadata handling, retrieval, and exploration, which in turn can simplify the steps from experiments to analysis. 
+Differently from existing solutions, the flexible and easy-to-use Expipe framework can provide an entry-level data management solution for both small and large experimental laboratories. 
+
 
 ## Installation
 
