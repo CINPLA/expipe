@@ -35,7 +35,8 @@ def _load_config(path):
         result = {}
     else:
         with path.open('r') as f:
-            result = yaml.safe_load(f)
+            yaml_ = yaml.YAML(typ='safe', pure=True)
+            result = yaml_.load(f)
     return result
 
 
@@ -43,11 +44,10 @@ def _dump_config(path, contents):
     assert path.suffix == '.yaml'
     path.parent.mkdir(exist_ok=True, parents=True)
     with path.open("w", encoding="utf-8") as f:
-        yaml.dump(
+        yaml_ = yaml.YAML(typ='safe', pure=True)
+        yaml_.dump(
             contents, f,
-            default_flow_style=False,
-            allow_unicode=True,
-            Dumper=yaml.RoundTripDumper)
+        )
 
 
 def _load_config_by_name(config=None):

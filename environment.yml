@@ -1,6 +1,6 @@
-name: expipe
+name: expipe-test
 dependencies:
-  - python=3.5
+  - python=3.10
   - numpy
   - matplotlib
   - scipy

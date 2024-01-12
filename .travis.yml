@@ -2,11 +2,11 @@ language: python
 os:
 - linux
 python:
-- '3.6'
+- '3.10'
 install:
 - pip install .
 - pip install sphinx
-- pip install pytest==3.6
+- pip install pytest
 script:
 - python -m pytest --ignore=docs/
 - cd docs
