@@ -54,7 +54,7 @@ def convert_quantities(value):
         result = value.tolist()
     elif isinstance(value, np.integer):
         result = int(value)
-    elif isinstance(value, np.float):
+    elif isinstance(value, float):
         result = float(value)
     else:
         # try if dictionary like objects can be converted if not return the
@@ -76,17 +76,16 @@ def convert_quantities(value):
 def yaml_dump(f, data):
     assert f.suffix == '.yaml'
     with f.open("w", encoding="utf-8") as fh:
-        yaml.dump(
+        yaml_ = yaml.YAML(typ='safe', pure=True)
+        yaml_.dump(
             convert_quantities(data), fh,
-            default_flow_style=False,
-            allow_unicode=True,
-            Dumper=yaml.RoundTripDumper
         )
 
 
 def yaml_load(path):
     with path.open('r', encoding='utf-8') as f:
-        result = yaml.load(f, Loader=yaml.Loader)
+        yaml_ = yaml.YAML(typ='safe', pure=True)
+        result = yaml_.load(f)
     return convert_back_quantities(result)
 
 

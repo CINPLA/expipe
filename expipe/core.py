@@ -406,6 +406,7 @@ class ExpipeSubObject(ExpipeObject):
             raise TypeError('Expected "str" got "' + str(type(value)) + '"')
         self._backend.attributes.set('type', value)
 
+
     @property
     def datetime(self):
         dtime = self._backend.attributes.get('datetime')
@@ -671,11 +672,13 @@ class Database:
 # Entry API
 def get_project(path, name=None):
     import expipe.backends.filesystem
+    from expipe.config import settings
+
     path = pathlib.Path(path).absolute()
 
     name = name or path.stem
 
-    global_config = config.settings.copy()
+    global_config = settings.copy()
 
     local_config_path = path / "expipe.yaml"
     if not local_config_path.exists():
@@ -723,9 +726,13 @@ def create_project(path, name=None, init=False):
         "type": "project",
         "project": name
     }
+    print(local_config)
 
     with local_config_path.open('w') as f:
-        yaml.dump(local_config, f)
+        yaml_ = yaml.YAML(typ='safe', pure=True)
+        yaml_.dump(
+            local_config, f,
+        )
 
     return get_project(path)
 

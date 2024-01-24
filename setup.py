@@ -39,4 +39,5 @@ setup(name="expipe",
                    'Natural Language :: English',
                    'Programming Language :: Python :: 3',
                    'Topic :: Scientific/Engineering'],
+      python_requires='>=3.9',
       )
