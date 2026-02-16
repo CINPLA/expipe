@@ -15,7 +15,6 @@ import os
 import glob
 import importlib
 import os.path as op
-from pkg_resources import load_entry_point
 from six import with_metaclass
 import platform
 import sys
