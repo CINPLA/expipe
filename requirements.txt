@@ -1,4 +1,4 @@
-numpy>=1.25
+numpy>=2.0.2
 ruamel.yaml>=0.18.5
 quantities>=0.14.1
 pandas>=2.1.2
