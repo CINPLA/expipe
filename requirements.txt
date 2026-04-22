@@ -3,4 +3,4 @@ ruamel.yaml>=0.18.5
 quantities>=0.14.1
 pandas>=2.1.2
 ipywidgets>=8.1.1
-click>=8.1.7
+click>=8.1.8
