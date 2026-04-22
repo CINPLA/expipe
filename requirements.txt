@@ -1,5 +1,5 @@
 numpy>=1.25
-ruamel.yaml>=0.18.5
+ruamel.yaml>=0.19.1
 quantities>=0.14.1
 pandas>=2.1.2
 ipywidgets>=8.1.1
